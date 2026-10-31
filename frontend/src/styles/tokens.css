@@ -1,0 +1,80 @@
+/* DressMe Design Tokens — Soft Pastel Fashion Aesthetic */
+:root {
+  /* Canvas & Surfaces */
+  --paper: #F8F8F6;
+  --surface: #FFFFFF;
+  --surface-alt: #FDFDFD;
+  --surface-card: #FFFFFF;
+
+  /* Typography */
+  --font-display: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-body: 'Plus Jakarta Sans', system-ui, sans-serif;
+  --ink: #292832;
+  --muted: #747180;
+  --subtle: #9E9AA7;
+  --line: #ECEBF0;
+  --line-light: #F4F3F7;
+
+  /* Core Accents */
+  --accent: #F2A8C4;
+  --accent-hover: #EB93B4;
+  --on-accent: #292832;
+  --danger: #E55353;
+  --danger-bg: #FEEBEB;
+  --success: #3D9970;
+  --success-bg: #E8F7F0;
+
+  /* Pastel Color Palette (Nutro & PinHome inspired) */
+  --pastel-pink: #F2A8C4;
+  --pastel-pink-soft: #FDEAF1;
+  --pastel-pink-subtle: #FFF5F8;
+  --pastel-pink-deep: #D46D93;
+
+  --pastel-lavender: #DCC4F2;
+  --pastel-lavender-soft: #F4ECFA;
+  --pastel-lavender-subtle: #F9F6FD;
+  --pastel-lavender-deep: #8E60BE;
+
+  --pastel-mint: #C7E8DD;
+  --pastel-mint-soft: #E6F5F0;
+  --pastel-mint-subtle: #F2FAF7;
+  --pastel-mint-deep: #3B8C73;
+
+  --pastel-butter: #F7E5A0;
+  --pastel-butter-soft: #FCF7DC;
+  --pastel-butter-subtle: #FEFBED;
+  --pastel-butter-deep: #AB8812;
+
+  --pastel-peach: #FCD5CE;
+  --pastel-peach-soft: #FEEDEA;
+  --pastel-peach-subtle: #FFF7F5;
+  --pastel-peach-deep: #CB6451;
+
+  --pastel-sky: #C5E3F6;
+  --pastel-sky-soft: #EAF4FC;
+  --pastel-sky-subtle: #F4F9FD;
+  --pastel-sky-deep: #3E84B5;
+
+  /* Legacy tone aliases for placeholders */
+  --lilac: var(--pastel-lavender);
+  --butter: var(--pastel-butter);
+  --mint: var(--pastel-mint);
+  --sky: var(--pastel-sky);
+
+  /* Layout & Geometry */
+  --side-w: 260px;
+  --radius-xs: 8px;
+  --radius-sm: 12px;
+  --radius-md: 18px;
+  --radius-lg: 24px;
+  --radius-xl: 32px;
+  --radius-pill: 9999px;
+
+  /* Shadows */
+  --shadow-subtle: 0 2px 10px rgba(41, 40, 50, 0.03);
+  --shadow-card: 0 8px 24px -4px rgba(41, 40, 50, 0.05), 0 2px 6px -1px rgba(41, 40, 50, 0.02);
+  --shadow-hover: 0 16px 36px -6px rgba(41, 40, 50, 0.08), 0 4px 12px -2px rgba(41, 40, 50, 0.04);
+  --shadow-glow-pink: 0 8px 25px -4px rgba(242, 168, 196, 0.35);
+  --shadow-glow-mint: 0 8px 25px -4px rgba(199, 232, 221, 0.45);
+  --shadow-glow-lavender: 0 8px 25px -4px rgba(220, 196, 242, 0.35);
+}
