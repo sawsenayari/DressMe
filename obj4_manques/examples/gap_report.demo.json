@@ -1,0 +1,42 @@
+[
+  {
+    "id": "gap-1",
+    "category": "outerwear",
+    "slot": "outer",
+    "description": "black denim jacket",
+    "unlockedOutfits": 10,
+    "exampleItemId": "Re-PolyVore/outwear/43179323_2.jpg"
+  },
+  {
+    "id": "gap-2",
+    "category": "top",
+    "slot": "top",
+    "description": "black shirt",
+    "unlockedOutfits": 6,
+    "exampleItemId": "Re-PolyVore/top/60935283_1.jpg"
+  },
+  {
+    "id": "gap-3",
+    "category": "accessory",
+    "slot": "bag",
+    "description": "black tote bag",
+    "unlockedOutfits": 5,
+    "exampleItemId": "Re-PolyVore/bag/215131432_1.jpg"
+  },
+  {
+    "id": "gap-4",
+    "category": "top",
+    "slot": "onepiece",
+    "description": "black dress",
+    "unlockedOutfits": 4,
+    "exampleItemId": "Re-PolyVore/dress/215016776_1.jpg"
+  },
+  {
+    "id": "gap-5",
+    "category": "shoes",
+    "slot": "shoes",
+    "description": "black heels",
+    "unlockedOutfits": 3,
+    "exampleItemId": "Re-PolyVore/shoes/216947108_4.jpg"
+  }
+]

@@ -1,0 +1,77 @@
+DressMe — Project Objectives
+Project: DressMe — Personal Fashion Assistant Based on: Personas
+Amine Trabelsi, Yasmine Ben Salah, Sami Belhadj
+
+
+
+Recap — The 3 Personas and Their Goals
+                                      Short-term        Long-term
+    Persona         Core Driver
+                                         Goal             Goal
+                                    Know whether      Build a
+                                    an item is        coherent
+Amine             Avoiding waste
+                                    worth buying      wardrobe
+Trabelsi          / tight budget
+                                    before            without
+                                    purchasing        wasting money
+                                                      Optimize her
+                                    Quickly ﬁnd a
+Yasmine Ben                                           wardrobe,
+                  Daily eﬀiciency   suitable outﬁt
+Salah                                                 always have a
+                                    every morning
+                                                      coherent look
+                                    Build a
+                                                      Build a strong
+                  Personal brand    recognizable
+Sami Belhadj                                          personal brand
+                  / credibility     “signature”
+                                                      through style
+                                    outﬁt
+
+These three proﬁles cover three non-overlapping axes: budget
+constraint, time constraint, and identity positioning. Together
+they form a solid foundation for deﬁning the project’s business and
+data science objectives.
+
+
+
+1. Business Objectives
+1. Reduce daily decision time spent on the wardrobe — aim for a
+   signiﬁcant reduction in the time spent choosing an outﬁt each
+   morning (a core pain point for Amine and Yasmine).
+2. Reduce regretted or incompatible purchases by providing
+   decision support before the purchase, not after (Amine, Sami).
+3. Increase the value extracted from the existing wardrobe —
+   maximize the number of outﬁt combinations suggested from items
+   already owned, rather than systematically pushing new purchases.
+4. Strengthen style conﬁdence and consistency for the user over
+   time (Yasmine, Sami).
+5. Adapt the value proposition to the Tunisian context — local
+   budget, seasonality, and brand availability.
+
+
+
+2. Data Science Objectives
+1. Automatic clothing classiﬁcation (category, color, season, style)
+   from photos — digitizing the wardrobe via computer vision (CNN).
+2. Compatibility scoring model between an item — existing or
+   considered for purchase — and the rest of the wardrobe, directly
+   addressing Amine’s need and Yasmine’s user journey (checking
+   before buying).
+3. Outﬁt recommendation system (outﬁt matching) combining
+   style rules with learned user preferences.
+4. Wardrobe gap detection — identifying missing pieces that would
+   maximize the number of possible combinations, useful for strategic
+   purchasing (Amine, Sami).
+5. User style proﬁling (clustering / style embedding) —
+   personalizing recommendations depending on whether the user is
+   seeking eﬀiciency (Yasmine), economy (Amine), or personal
+   branding (Sami).
+6. Contextual model (weather, occasion, calendar) to suggest the
+   outﬁt of the day — particularly relevant for Yasmine.
+
+
+Scoping document — DressMe Project
+

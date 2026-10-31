@@ -1,0 +1,1078 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage[a4paper,margin=2.2cm]{geometry}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{tabularx}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{float}
+\usepackage{titlesec}
+\usepackage{fancyhdr}
+\usepackage{amssymb}
+
+\definecolor{dressmeblue}{RGB}{32,79,130}
+\definecolor{dressmegray}{RGB}{90,90,90}
+\definecolor{lightgray}{RGB}{245,245,245}
+\definecolor{lightblue}{RGB}{235,243,252}
+\definecolor{warning}{RGB}{150,80,0}
+\definecolor{success}{RGB}{30,110,60}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=dressmeblue,
+    urlcolor=dressmeblue,
+    pdftitle={DressMe -- Objectif 4 -- Fiche technique},
+    pdfauthor={Projet DressMe}
+}
+
+\lstset{
+    basicstyle=\ttfamily\small,
+    backgroundcolor=\color{lightgray},
+    frame=single,
+    rulecolor=\color{gray},
+    breaklines=true,
+    columns=fullflexible,
+    showstringspaces=false
+}
+
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{\textit{DressMe -- Objectif 4}}
+\rhead{\textit{Fiche technique}}
+\cfoot{\thepage}
+
+\titleformat{\section}
+    {\Large\bfseries\color{dressmeblue}}
+    {\thesection}{0.7em}{}
+\titleformat{\subsection}
+    {\large\bfseries\color{dressmeblue}}
+    {\thesubsection}{0.7em}{}
+
+\newcommand{\pathcode}[1]{\texttt{\path{#1}}}
+\newcommand{\done}{\textcolor{success}{\textbf{Réalisé}}}
+\newcommand{\partialdone}{\textcolor{warning}{\textbf{Partiel}}}
+\newcommand{\notdone}{\textcolor{red}{\textbf{Non réalisé}}}
+
+\begin{document}
+
+\begin{titlepage}
+    \centering
+    \vspace*{1.5cm}
+    {\Huge\bfseries DressMe\par}
+    \vspace{0.5cm}
+    {\LARGE Fiche technique détaillée\par}
+    \vspace{0.4cm}
+    {\Large Objectif 4 : détection des lacunes de garde-robe\par}
+    \vspace{1.2cm}
+    \rule{\textwidth}{1pt}
+    \vspace{0.6cm}
+    {\large Identification des pièces manquantes permettant de maximiser
+    le nombre de tenues réalisables\par}
+    \vspace{0.6cm}
+    \rule{\textwidth}{1pt}
+    \vfill
+    \begin{tabular}{ll}
+        \textbf{Projet :} & DressMe \\
+        \textbf{Objectif :} & Wardrobe gap detection \\
+        \textbf{Version analysée :} & Pipeline LLM + FashionCLIP \\
+        \textbf{Version des prompts :} & \pathcode{gap-agent-v6} \\
+        \textbf{Date :} & 29 octobre 2026
+    \end{tabular}
+    \vfill
+    \textit{Cette fiche décrit l'architecture réellement présente dans le
+    dossier du projet, ainsi que les éléments encore incomplets.}
+\end{titlepage}
+
+\tableofcontents
+\newpage
+
+\section{Objectif et périmètre}
+
+\subsection{Objectif fonctionnel}
+
+L'objectif 4 de DressMe consiste à détecter les pièces absentes d'une
+garde-robe et à les classer selon leur capacité à augmenter le nombre de
+tenues réalisables.
+
+L'objectif officiel est le suivant :
+
+\begin{quote}
+\textit{Wardrobe gap detection -- identifying missing pieces that would
+maximize the number of possible combinations, useful for strategic
+purchasing.}
+\end{quote}
+
+En français, le système doit répondre à la question suivante :
+
+\begin{quote}
+\textit{Quelle pièce vestimentaire manque dans la garde-robe et permettrait
+de créer le plus grand nombre de nouvelles combinaisons valides ?}
+\end{quote}
+
+La mesure principale est le gain marginal :
+
+\[
+\mathrm{Gain}(c)
+=
+N(\mathcal{W}\cup\{c\})-N(\mathcal{W})
+\]
+
+où :
+
+\begin{itemize}[leftmargin=*]
+    \item $\mathcal{W}$ est la garde-robe actuelle ;
+    \item $c$ est une pièce candidate absente ;
+    \item $N(\mathcal{W})$ est le nombre de tenues valides réalisables ;
+    \item $N(\mathcal{W}\cup\{c\})$ est le nombre de tenues après ajout de la
+    pièce candidate.
+\end{itemize}
+
+Le classement des lacunes est donc fondé sur le nombre de nouvelles tenues
+débloquées, et non uniquement sur la similarité visuelle ou sur une
+recommandation subjective.
+
+\subsection{Personas concernées}
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Amine :} éviter les achats inutiles et privilégier la valeur
+    créée par une nouvelle pièce ;
+    \item \textbf{Yasmine :} trouver rapidement des tenues adaptées à son
+    quotidien ;
+    \item \textbf{Sami :} construire une garde-robe cohérente et renforcer une
+    signature stylistique.
+\end{itemize}
+
+Les personas sont actuellement utilisées comme cadres d'explication. Elles ne
+modifient pas automatiquement le classement numérique, sauf si un outil
+confirme explicitement qu'une personnalisation a été appliquée.
+
+\subsection{Périmètre actuel}
+
+Le système couvre :
+
+\begin{itemize}[leftmargin=*]
+    \item la création d'un inventaire visuel à partir d'images ;
+    \item l'extraction d'embeddings avec FashionCLIP ;
+    \item la génération de pièces candidates par un LLM ;
+    \item l'évaluation de la compatibilité entre les pièces existantes et les
+    candidates ;
+    \item le comptage déterministe des tenues ;
+    \item le calcul de bornes de gain lorsque certaines compatibilités sont
+    incertaines ;
+    \item l'explication textuelle des résultats par un agent conversationnel ;
+    \item un rapport statique pré-calculé utilisé uniquement comme solution de
+    repli.
+\end{itemize}
+
+\section{État global du projet}
+
+\begin{table}[H]
+\centering
+\caption{État des principales composantes}
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{4.2cm} X c}
+\toprule
+\textbf{Composante} & \textbf{Description} & \textbf{État} \\
+\midrule
+Inventaire FashionCLIP & Embeddings normalisés et labels visuels provisoires &
+\done \\
+Détection des doublons & Exclusion des doublons exacts de l'inventaire &
+\done \\
+Génération d'archetypes & Génération de pièces manquantes génériques par LLM &
+\done \\
+Jugement de compatibilité & Classification compatible, incompatible ou incertain &
+\partialdone \\
+Comptage des tenues & Calcul Python basé sur les templates de l'objectif 4 &
+\done \\
+Calcul du gain marginal & Calcul déterministe et bornes conservative/optimiste &
+\done \\
+Classement final LLM & Disponible uniquement après complétion des jugements &
+\partialdone \\
+Agent conversationnel & Réponses avec outils en lecture seule et garde-fous &
+\done \\
+Rapport statique de secours & Export du notebook validé et borné &
+\done \\
+Application frontend/backend & Intégration dans une application complète &
+\notdone \\
+Images d'une vraie garde-robe utilisateur & Données personnelles réelles &
+\notdone \\
+Évaluation complète de la qualité & Évaluation finale représentative &
+\notdone \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{État de l'exécution actuelle}
+
+Les éléments suivants ont été observés dans le projet :
+
+\begin{itemize}[leftmargin=*]
+    \item l'échantillon contient environ 200 images provenant de
+    Re-PolyVore ;
+    \item les images couvrent 20 catégories avec environ 10 images par
+    catégorie ;
+    \item plusieurs groupes de doublons exacts ont été détectés ;
+    \item les doublons sont exclus avant le calcul de l'inventaire ;
+    \item FashionCLIP produit des vecteurs normalisés de dimension 512 ;
+    \item cinq archetypes de lacunes ont été générés par le LLM ;
+    \item 80 jugements de compatibilité ont été réalisés sur 2\,122 jugements
+    nécessaires ;
+    \item le calcul complet de compatibilité n'est donc pas terminé ;
+    \item aucun classement final complet ne doit être présenté comme définitif
+    tant que les 2\,122 jugements ne sont pas disponibles.
+\end{itemize}
+
+La progression actuelle est donc :
+
+\[
+\frac{80}{2122}\approx 3{,}77\%
+\]
+
+Cette valeur décrit la progression technique des jugements, et non une
+performance de recommandation.
+
+\section{Architecture générale}
+
+\subsection{Vue d'ensemble}
+
+L'architecture distingue clairement :
+
+\begin{enumerate}[leftmargin=*]
+    \item la perception visuelle ;
+    \item la génération de candidates ;
+    \item le jugement de compatibilité ;
+    \item le calcul numérique déterministe ;
+    \item l'explication conversationnelle.
+\end{enumerate}
+
+Le LLM ne doit pas calculer lui-même les gains. Il fournit des catégories
+structurées et des jugements de compatibilité. Le comptage des tenues et le
+classement numérique sont effectués par Python.
+
+\begin{figure}[H]
+\centering
+\begin{tabular}{c}
+\colorbox{lightblue}{\parbox{0.75\textwidth}{\centering
+Images de la garde-robe utilisateur}} \\[0.2cm]
+$\downarrow$ \\[0.2cm]
+\colorbox{lightblue}{\parbox{0.75\textwidth}{\centering
+FashionCLIP : embeddings et attributs visuels provisoires}} \\[0.2cm]
+$\downarrow$ \\[0.2cm]
+\colorbox{lightblue}{\parbox{0.75\textwidth}{\centering
+LLM : génération d'archetypes de pièces manquantes}} \\[0.2cm]
+$\downarrow$ \\[0.2cm]
+\colorbox{lightblue}{\parbox{0.75\textwidth}{\centering
+LLM : jugements de compatibilité par paire}} \\[0.2cm]
+$\downarrow$ \\[0.2cm]
+\colorbox{lightblue}{\parbox{0.75\textwidth}{\centering
+Python : comptage des tenues et calcul des gains}} \\[0.2cm]
+$\downarrow$ \\[0.2cm]
+\colorbox{lightblue}{\parbox{0.75\textwidth}{\centering
+Agent : classement, justification et réponse utilisateur}}
+\end{tabular}
+\caption{Flux principal de l'objectif 4}
+\end{figure}
+
+\subsection{Modules principaux}
+
+\begin{table}[H]
+\centering
+\caption{Fichiers impliqués dans l'implémentation}
+\begin{tabularx}{\textwidth}{>{\ttfamily\raggedright\arraybackslash}p{5.5cm} X}
+\toprule
+\textbf{Fichier} & \textbf{Responsabilité} \\
+\midrule
+\pathcode{dressme\_gap\_agent/fashion\_encoder.py} &
+Extraction des embeddings FashionCLIP et découverte des images. \\
+\pathcode{dressme\_gap\_agent/compatibility.py} &
+Génération des archetypes, préparation des paires et validation des jugements. \\
+\pathcode{dressme\_gap\_agent/llm\_gap\_pipeline.py} &
+Orchestration de la génération, du cache, des checkpoints et du calcul final. \\
+\pathcode{dressme\_gap\_agent/outfit\_engine.py} &
+Templates de tenues, comptage des combinaisons et calcul des bornes de gain. \\
+\pathcode{dressme\_gap\_agent/sources.py} &
+Sources d'inventaire et analyse LLM exposées à l'agent. \\
+\pathcode{dressme\_gap\_agent/report.py} &
+Chargement et validation du rapport statique de secours. \\
+\pathcode{dressme\_gap\_agent/agent.py} &
+Agent conversationnel, outils, appels LLM et réponse finale. \\
+\pathcode{dressme\_gap\_agent/prompts.py} &
+Prompt système, personas, politique de grounding et contexte structuré. \\
+\pathcode{dressme\_gap\_agent/config.py} &
+Configuration du routeur, des modèles, des limites et des timeouts. \\
+\pathcode{dressme\_gap\_agent/evaluation.py} &
+Évaluation automatisée des choix d'outils et des réponses. \\
+\pathcode{tests/test\_dressme\_gap\_agent.py} &
+Tests unitaires et tests de sécurité fonctionnelle. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Prérequis}
+
+\subsection{Environnement logiciel}
+
+Le projet utilise principalement :
+
+\begin{itemize}[leftmargin=*]
+    \item Python ;
+    \item PyTorch ;
+    \item Transformers ;
+    \item FashionCLIP ;
+    \item NumPy ;
+    \item Pillow ;
+    \item OpenAI Python SDK ;
+    \item python-dotenv ;
+    \item unittest pour les tests.
+\end{itemize}
+
+Un environnement virtuel est déjà présent dans le projet sous
+\pathcode{.venv}.
+
+\subsection{Configuration du modèle}
+
+La configuration est lue depuis des variables d'environnement. Les secrets ne
+doivent pas être écrits dans le code source.
+
+\begin{lstlisting}[language=bash]
+DRESSME_LLM_BASE_URL=http://127.0.0.1:20128/v1
+DRESSME_LLM_API_KEY=<cle-locale>
+DRESSME_LLM_MODEL=GapDetection
+DRESSME_LLM_COMPAT_MODEL=groq/openai/gpt-oss-120b
+DRESSME_LLM_TEMPERATURE=0.2
+DRESSME_LLM_MAX_TOKENS=600
+DRESSME_LLM_JUDGE_MAX_TOKENS=1600
+DRESSME_LLM_TIMEOUT=30
+DRESSME_LLM_MAX_RETRIES=1
+DRESSME_LLM_BATCH_DELAY=0
+\end{lstlisting}
+
+\begin{table}[H]
+\centering
+\caption{Paramètres du pipeline}
+\begin{tabular}{lll}
+\toprule
+\textbf{Paramètre} & \textbf{Valeur actuelle} & \textbf{Rôle} \\
+\midrule
+Température & 0,2 & Réduire la variabilité des réponses \\
+Tokens réponse & 600 & Limiter l'explication finale \\
+Tokens juge & 1600 & Limiter les lots de jugements \\
+Timeout & 30 s & Éviter les appels bloqués \\
+Retries applicatifs & 1 & Réessayer les erreurs transitoires \\
+Taille d'un lot & 10 & Limiter les jugements par appel \\
+Max candidats & 6 & Limiter les archetypes générés \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Ces valeurs sont des configurations initiales. Elles ne constituent pas encore
+des hyperparamètres optimisés expérimentalement.
+
+\section{Étape 1 : acquisition et préparation des images}
+
+\subsection{Source actuelle}
+
+Les images actuellement disponibles proviennent d'un échantillon de
+Re-PolyVore. Elles ne représentent pas encore une garde-robe personnelle
+vérifiée.
+
+L'exécution actuelle vérifie principalement la faisabilité technique du
+pipeline. Elle ne permet pas encore de conclure sur la pertinence des lacunes
+pour un utilisateur réel.
+
+\subsection{Préparation}
+
+\begin{enumerate}[leftmargin=*]
+    \item Découverte des images dans le répertoire de garde-robe.
+    \item Association des images à des identifiants.
+    \item Vérification de la lisibilité des images.
+    \item Encodage par FashionCLIP.
+    \item Conversion en vecteurs normalisés.
+    \item Filtrage des doublons exacts.
+\end{enumerate}
+
+\begin{lstlisting}[language=Python]
+load_inventory_items(
+    inventory_path,
+    exclude_exact_duplicates=True
+)
+\end{lstlisting}
+
+\subsection{Limites actuelles}
+
+\begin{itemize}[leftmargin=*]
+    \item les images personnelles réelles ne sont pas encore intégrées ;
+    \item la qualité de la segmentation du vêtement n'est pas évaluée sur un
+    jeu de données utilisateur ;
+    \item les attributs visuels produits par FashionCLIP sont provisoires ;
+    \item une erreur de catégorisation visuelle peut influencer les jugements
+    de compatibilité ultérieurs.
+\end{itemize}
+
+\section{Étape 2 : extraction des représentations visuelles}
+
+\subsection{FashionCLIP}
+
+FashionCLIP transforme chaque image vestimentaire en un vecteur numérique :
+
+\[
+\mathbf{x}_i \in \mathbb{R}^{512}
+\]
+
+Le vecteur est normalisé afin de permettre la comparaison par similarité
+cosinus :
+
+\[
+\mathrm{sim}(\mathbf{x}_i,\mathbf{x}_j)
+=
+\frac{\mathbf{x}_i\cdot\mathbf{x}_j}
+{\|\mathbf{x}_i\|_2\|\mathbf{x}_j\|_2}
+\]
+
+FashionCLIP est utilisé pour :
+
+\begin{itemize}[leftmargin=*]
+    \item représenter les articles ;
+    \item produire des labels visuels provisoires ;
+    \item fournir des informations compactes au pipeline de compatibilité ;
+    \item éviter d'envoyer systématiquement les images brutes au LLM.
+\end{itemize}
+
+FashionCLIP ne calcule pas directement le gain d'une nouvelle pièce.
+
+\subsection{Attributs visuels provisoires}
+
+\begin{itemize}[leftmargin=*]
+    \item catégorie ;
+    \item couleur ;
+    \item motif ;
+    \item style ;
+    \item slot vestimentaire.
+\end{itemize}
+
+Ces attributs servent de contexte au LLM juge. Ils ne constituent pas à eux
+seuls une preuve de compatibilité.
+
+\section{Étape 3 : génération des pièces candidates}
+
+\subsection{Principe}
+
+Le système ne cherche pas directement un produit dans un catalogue commercial.
+Il demande au LLM de proposer des archetypes génériques de pièces qui pourraient
+combler les lacunes de la garde-robe.
+
+Un archetype est décrit par :
+
+\begin{itemize}[leftmargin=*]
+    \item un identifiant ;
+    \item un slot ;
+    \item une catégorie ;
+    \item une description ;
+    \item une justification stylistique.
+\end{itemize}
+
+\begin{lstlisting}[language=json]
+{
+  "item_id": "candidate-001",
+  "slot": "outer",
+  "category": "outerwear",
+  "description": "veste legere neutre",
+  "rationale": "ajoute une couche compatible avec plusieurs tenues"
+}
+\end{lstlisting}
+
+Les candidates sont des hypothèses de pièces manquantes. Elles ne sont pas des
+produits disponibles à l'achat, des liens commerciaux, des recommandations de
+prix ou des résultats personnalisés par budget sans prix vérifié.
+
+\section{Étape 4 : préparation des paires de compatibilité}
+
+Les articles existants et les candidates sont regroupés afin de générer les
+paires :
+
+\[
+(\text{article existant},\text{candidate})
+\]
+
+Les paires entre deux candidates ne sont pas utilisées dans le calcul standard
+du gain marginal.
+
+Chaque paire possède un identifiant déterministe :
+
+\begin{lstlisting}[language=Python]
+pair_id = item_id_left + "::" + item_id_right
+\end{lstlisting}
+
+Le pipeline vérifie :
+
+\begin{itemize}[leftmargin=*]
+    \item que chaque identifiant attendu est présent ;
+    \item qu'aucune paire n'est retournée deux fois ;
+    \item qu'aucune paire inconnue n'est acceptée ;
+    \item que le verdict appartient à l'ensemble autorisé.
+\end{itemize}
+
+\section{Étape 5 : jugement LLM de compatibilité}
+
+\subsection{Verdicts possibles}
+
+\begin{itemize}[leftmargin=*]
+    \item \texttt{compatible} ;
+    \item \texttt{incompatible} ;
+    \item \texttt{uncertain}.
+\end{itemize}
+
+Le verdict \texttt{uncertain} est conservé explicitement. Il ne doit pas être
+transformé silencieusement en compatibilité ou en incompatibilité.
+
+\subsection{Structure d'un jugement}
+
+\begin{lstlisting}[language=json]
+{
+  "pair_id": "item-001::candidate-001",
+  "verdict": "compatible",
+  "evidence": "la couleur neutre et la categorie permettent plusieurs associations"
+}
+\end{lstlisting}
+
+\subsection{Traitement par lots}
+
+Les jugements sont envoyés par lots de dix paires :
+
+\[
+B=10
+\]
+
+Après chaque lot, les jugements validés sont enregistrés, les paires déjà
+traitées ne sont pas renvoyées et le processus peut être relancé.
+
+\subsection{État incomplet}
+
+L'exécution actuelle contient :
+
+\[
+80 \text{ jugements réalisés sur } 2122 \text{ jugements requis}
+\]
+
+La génération du classement final est désactivée tant que le nombre de paires
+restantes n'est pas nul.
+
+\section{Étape 6 : gestion du cache et reprise}
+
+Les résultats intermédiaires sont conservés dans
+\pathcode{wardrobe/.dressme-cache/}.
+
+\begin{itemize}[leftmargin=*]
+    \item \pathcode{gap\_archetypes.json} : candidates générées ;
+    \item \pathcode{compatibility\_judgments.json} : jugements par paire ;
+    \item \pathcode{llm\_gap\_analysis.json} : résultat global du pipeline ;
+    \item \pathcode{manifest.json} : informations sur l'inventaire.
+\end{itemize}
+
+Le cache est associé à un hash de l'inventaire, une version du prompt, le
+modèle configuré et une version du pipeline.
+
+\begin{lstlisting}[language=powershell]
+python -B -m dressme_gap_agent.llm_gap_pipeline --inventory wardrobe/.dressme-cache/full/wardrobe_inventory.json --cache-dir wardrobe/.dressme-cache/llm-gap-v1 --output wardrobe/.dressme-cache/llm_gap_analysis.json --batch-size 10 --max-new-pairs 40
+\end{lstlisting}
+
+La commande doit être relancée jusqu'à obtenir :
+
+\begin{lstlisting}[language=json]
+{
+  "status": "complete",
+  "ranking_ready": true,
+  "compatibility_progress": {
+    "remaining_pairs": 0
+  }
+}
+\end{lstlisting}
+
+\section{Étape 7 : définition des templates de tenues}
+
+Le moteur repose sur les templates définis pour l'objectif 4. Les slots
+utilisés comprennent :
+
+\begin{itemize}[leftmargin=*]
+    \item \texttt{top} ;
+    \item \texttt{bottom} ;
+    \item \texttt{onepiece} ;
+    \item \texttt{outer} ;
+    \item \texttt{shoes} ;
+    \item \texttt{bag} ;
+    \item \texttt{accessory}.
+\end{itemize}
+
+\begin{table}[H]
+\centering
+\caption{Exemples de structures de tenues}
+\begin{tabular}{ll}
+\toprule
+\textbf{Template} & \textbf{Slots possibles} \\
+\midrule
+Tenue de base & top + bottom + shoes \\
+Tenue avec couche & top + bottom + outer + shoes \\
+Tenue avec accessoires & top + bottom + shoes + bag + accessory \\
+Tenue une pièce & onepiece + shoes \\
+Tenue une pièce complète & onepiece + outer + shoes + bag \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Les templates exacts du notebook restent la source de vérité numérique.
+
+\section{Étape 8 : comptage déterministe des tenues}
+
+Le moteur calcule d'abord :
+
+\[
+N(\mathcal{W})
+\]
+
+Puis, pour chaque candidate $c$ :
+
+\[
+N(\mathcal{W}\cup\{c\})
+\]
+
+Le gain est :
+
+\[
+\mathrm{Gain}(c)
+=
+N(\mathcal{W}\cup\{c\})-N(\mathcal{W})
+\]
+
+Ce calcul est effectué par Python et non par le LLM. Cette séparation rend les
+nombres reproductibles et permet de tester le moteur indépendamment de la
+génération de texte.
+
+\section{Étape 9 : gestion de l'incertitude}
+
+Lorsque certaines paires sont incertaines, le moteur calcule :
+
+\[
+\mathrm{Gain}_{\mathrm{lower}}(c)
+\]
+
+et
+
+\[
+\mathrm{Gain}_{\mathrm{upper}}(c)
+\]
+
+On obtient :
+
+\[
+\mathrm{Gain}_{\mathrm{lower}}(c)
+\leq
+\mathrm{Gain}_{\mathrm{réel}}(c)
+\leq
+\mathrm{Gain}_{\mathrm{upper}}(c)
+\]
+
+Ces bornes sont des estimations dépendantes des jugements du LLM. Elles ne sont
+pas des probabilités calibrées.
+
+\section{Étape 10 : classement des lacunes}
+
+Lorsque tous les jugements sont disponibles, les candidates sont triées par
+gain conservateur puis par gain optimiste :
+
+\[
+\mathrm{clé}(c)
+=
+\left(
+\mathrm{Gain}_{\mathrm{lower}}(c),
+\mathrm{Gain}_{\mathrm{upper}}(c)
+\right)
+\]
+
+Un résultat peut avoir la forme suivante :
+
+\begin{lstlisting}[language=json]
+{
+  "item_id": "candidate-001",
+  "description": "veste legere neutre",
+  "category": "outerwear",
+  "slot": "outer",
+  "llm_rationale": "ajoute une couche polyvalente",
+  "gain_lower": 12,
+  "gain_upper": 18,
+  "rank_by_conservative_gain": 1
+}
+\end{lstlisting}
+
+Le classement n'est pas exposé comme prêt tant que :
+
+\begin{lstlisting}[language=json]
+"ranking_ready": true
+\end{lstlisting}
+
+n'est pas présent.
+
+\section{Étape 11 : rapport statique de secours}
+
+Le fichier \pathcode{gap\_report.json} contient un export pré-calculé du
+notebook de l'objectif 4. Il est utilisé uniquement lorsqu'une analyse LLM
+complète n'est pas disponible.
+
+\begin{lstlisting}[language=json]
+{
+  "source": "precomputed_notebook_export",
+  "recalculated": false
+}
+\end{lstlisting}
+
+Le chargeur vérifie le format JSON, la présence des champs obligatoires,
+l'unicité des identifiants et la validité des gains. Les chemins locaux
+d'images ne sont pas envoyés au LLM.
+
+Le rapport statique ne recalcule pas les recommandations et n'applique pas
+automatiquement la persona, la saison ou le budget.
+
+\section{Étape 12 : agent conversationnel}
+
+L'agent explique les résultats au lieu de les recalculer. Il peut résumer
+l'inventaire, présenter les lacunes, comparer les candidates et signaler les
+contraintes non appliquées.
+
+\begin{table}[H]
+\centering
+\caption{Outils disponibles}
+\begin{tabularx}{\textwidth}{>{\ttfamily\raggedright\arraybackslash}p{4cm} X}
+\toprule
+\textbf{Outil} & \textbf{Fonction} \\
+\midrule
+\texttt{get\_wardrobe\_summary} &
+Retourner un résumé borné de l'inventaire. \\
+\texttt{rank\_wardrobe\_gaps} &
+Retourner le classement lorsque l'analyse est complète. \\
+\texttt{get\_gap\_report} &
+Retourner une tranche du rapport statique pré-calculé. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+L'agent ne dispose pas d'outil utilisateur permettant d'exécuter du shell,
+d'accéder à une base SQL, de rechercher dans des magasins, d'exécuter du code
+arbitraire ou de modifier le classement.
+
+\section{Étape 13 : contexte utilisateur}
+
+Le système accepte un contexte structuré limité :
+
+\begin{lstlisting}[language=json]
+{
+  "persona": "amine",
+  "season": "cold",
+  "budget_max_tnd": 250,
+  "wardrobe_counts": {
+    "top": 3,
+    "shoes": 1
+  }
+}
+\end{lstlisting}
+
+Les champs sont validés par liste blanche, validation des types, validation
+des bornes numériques et normalisation.
+
+Le contexte est actuellement un contexte d'explication. Il ne modifie pas
+automatiquement le classement du moteur. Le budget ne peut pas être vérifié
+sans prix réels, et la saison ne modifie pas le rapport statique.
+
+\section{Étape 14 : sécurité et fiabilité}
+
+\begin{itemize}[leftmargin=*]
+    \item taille maximale des messages utilisateur ;
+    \item validation des arguments d'outils ;
+    \item limites sur \texttt{top\_k} et \texttt{limit} ;
+    \item validation des chemins de rapport ;
+    \item vérification des types JSON ;
+    \item rejet des champs inattendus ;
+    \item validation des identifiants de paires ;
+    \item vérification des verdicts autorisés.
+\end{itemize}
+
+Par défaut, le routeur doit être local :
+\pathcode{http://127.0.0.1:20128/v1}.
+
+Une route distante est refusée par défaut. Si elle est explicitement autorisée,
+elle doit utiliser HTTPS.
+
+Les textes utilisateurs, descriptions de vêtements et résultats d'outils sont
+traités comme des données. Le prompt interdit notamment la divulgation des
+clés API, chemins locaux, variables d'environnement, prompts internes et
+raisonnements internes détaillés.
+
+\section{Étape 15 : évaluation automatisée}
+
+\begin{lstlisting}[language=powershell]
+python -B -m dressme_gap_agent.evaluation --report .\gap_report.json --output .\llm_eval_results.json
+\end{lstlisting}
+
+Les tests vérifient la sélection des outils, leurs arguments, les identifiants
+retournés, les gains retournés, les termes obligatoires et le comportement face
+à une tentative d'injection.
+
+La dernière exécution textuelle enregistrée indique :
+
+\begin{itemize}[leftmargin=*]
+    \item jeu de données : \texttt{dressme-gap-eval-v2} ;
+    \item version du prompt : \texttt{gap-agent-v5} ;
+    \item cas automatisés réussis : 6 sur 7 ;
+    \item latence moyenne : environ 1,44 seconde ;
+    \item coût : non estimé ;
+    \item contrôle de non-divulgation face à l'injection : réussi ;
+    \item tâche mélangée avec injection : échec partiel.
+\end{itemize}
+
+Cette évaluation est antérieure à \texttt{gap-agent-v6} et doit être relancée.
+
+\section{Étape 16 : tests unitaires}
+
+\begin{lstlisting}[language=powershell]
+python -m unittest discover -s tests -v
+\end{lstlisting}
+
+Les tests couvrent notamment la configuration, les limites des retries, la
+construction du prompt, la validation du contexte, le rapport statique, les
+paires de compatibilité, le calcul des tenues, les bornes de gain, la
+préparation des images et le comportement de l'agent.
+
+\section{Étape 17 : procédure de reproduction complète}
+
+\subsection{Phase A -- vérifier l'environnement}
+
+\begin{lstlisting}[language=powershell]
+.\.venv\Scripts\Activate.ps1
+python --version
+Test-Path .\wardrobe\.dressme-cache\full\wardrobe_inventory.json
+\end{lstlisting}
+
+\subsection{Phase B -- exécuter les tests}
+
+\begin{lstlisting}[language=powershell]
+python -m unittest discover -s tests -v
+\end{lstlisting}
+
+\subsection{Phase C -- préparer l'inventaire}
+
+\begin{enumerate}[leftmargin=*]
+    \item Placer les images dans le répertoire de garde-robe.
+    \item Vérifier qu'elles sont lisibles.
+    \item Exclure les doublons exacts.
+    \item Générer les embeddings FashionCLIP.
+    \item Vérifier la dimension des embeddings.
+    \item Vérifier le nombre de catégories détectées.
+\end{enumerate}
+
+\subsection{Phase D -- générer les archetypes}
+
+Vérifier la présence d'au moins une candidate, d'un slot valide, d'une
+description et d'une justification, sans lien commercial inventé.
+
+\subsection{Phase E -- exécuter les jugements}
+
+Relancer le pipeline par lots jusqu'à obtenir
+\texttt{remaining\_pairs = 0}. Vérifier que les jugements précédents sont
+conservés et que les paires déjà traitées ne sont pas renvoyées.
+
+\subsection{Phase F -- calculer le classement}
+
+Lorsque l'analyse est complète, vérifier que
+\texttt{ranking\_ready=true}, puis contrôler les gains inférieur et supérieur
+de plusieurs candidates.
+
+\subsection{Phase G -- tester l'agent}
+
+Tester les requêtes suivantes :
+
+\begin{enumerate}[leftmargin=*]
+    \item « Quelle pièce manque le plus à ma garde-robe ? »
+    \item « Compare les deux premières candidates. »
+    \item « Quel est le gain de cette veste ? »
+    \item « Je suis Amine, quelle recommandation évite le gaspillage ? »
+    \item « Quel article puis-je acheter avec 200 TND ? »
+    \item une requête contenant une tentative de prompt injection.
+\end{enumerate}
+
+\section{Techniques utilisées}
+
+\begin{table}[H]
+\centering
+\caption{Techniques principales}
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{4.2cm} X X}
+\toprule
+\textbf{Technique} & \textbf{Fonction} & \textbf{Pourquoi} \\
+\midrule
+FashionCLIP & Représentation vectorielle des images &
+Comparer et résumer les articles. \\
+Similarité cosinus & Comparaison d'embeddings &
+Mesurer la proximité visuelle. \\
+Zero-shot labels & Labels visuels sans classification supervisée locale &
+Obtenir des catégories provisoires. \\
+LLM structured output & Archetypes et verdicts JSON &
+Imposer une structure vérifiable. \\
+LLM judging & Jugement de compatibilité selon une consigne &
+Rendre les critères plus homogènes. \\
+Caching & Sauvegarde des résultats intermédiaires &
+Éviter de refaire les appels réussis. \\
+Checkpointing & Reprise après interruption &
+Permettre une exécution par lots. \\
+Comptage combinatoire & Énumération des tenues valides &
+Calculer le gain de façon déterministe. \\
+Bornes d'incertitude & Gains inférieur et supérieur &
+Ne pas masquer les jugements inconnus. \\
+Tool calling & Accès contrôlé aux données &
+Séparer les calculs de l'explication. \\
+Validation JSON & Contrôle des sorties du modèle &
+Réduire les résultats malformés. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Limites actuelles}
+
+\subsection{Limites des données}
+
+\begin{itemize}[leftmargin=*]
+    \item les images sont issues d'un échantillon externe ;
+    \item la garde-robe personnelle d'un utilisateur n'a pas encore été validée ;
+    \item les attributs visuels ne sont pas encore évalués avec une vérité
+    terrain complète.
+\end{itemize}
+
+\subsection{Limites du modèle de compatibilité}
+
+\begin{itemize}[leftmargin=*]
+    \item les verdicts de compatibilité sont produits par un LLM ;
+    \item les jugements ne sont pas calibrés sur suffisamment d'annotations
+    humaines ;
+    \item le résultat dépend du modèle et du prompt ;
+    \item la stabilité entre plusieurs fournisseurs n'est pas démontrée ;
+    \item l'analyse actuelle est incomplète.
+\end{itemize}
+
+\subsection{Limites du classement}
+
+\begin{itemize}[leftmargin=*]
+    \item aucun classement complet ne doit être annoncé avant la fin des
+    2\,122 jugements ;
+    \item les bornes de gain sont des estimations ;
+    \item les gains ne prennent pas encore en compte des prix réels ;
+    \item le budget n'est pas intégré au calcul ;
+    \item la saison et la météo ne sont pas intégrées au moteur ;
+    \item une candidate est un archetype et non un produit achetable.
+\end{itemize}
+
+\subsection{Limites de l'application}
+
+\begin{itemize}[leftmargin=*]
+    \item aucune interface frontend complète n'est présente dans ce dossier ;
+    \item aucune intégration backend de production n'est finalisée ;
+    \item la gestion des comptes utilisateurs n'est pas implémentée ;
+    \item les préférences persistantes ne sont pas encore connectées ;
+    \item la confidentialité et la rétention du fournisseur externe restent à
+    vérifier.
+\end{itemize}
+
+\section{Travail restant}
+
+\begin{longtable}{p{4.8cm} p{7.2cm} p{2.3cm}}
+\caption{Éléments à compléter avant une version finale} \\
+\toprule
+\textbf{Tâche} & \textbf{Description} & \textbf{Priorité} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Tâche} & \textbf{Description} & \textbf{Priorité} \\
+\midrule
+\endhead
+Terminer les jugements & Exécuter les 2\,042 paires restantes et obtenir
+\texttt{remaining\_pairs = 0}. & Haute \\
+Valider le classement & Vérifier manuellement les candidates et les gains
+calculés. & Haute \\
+Utiliser des images personnelles & Tester l'inventaire sur une vraie
+garde-robe utilisateur. & Haute \\
+Créer une vérité terrain & Faire annoter les compatibilités par des personnes
+ou des experts. & Haute \\
+Évaluer la qualité du gap detection & Mesurer précision, rappel, stabilité et
+corrélation avec les avis humains. & Haute \\
+Mettre à jour l'évaluation LLM & Rejouer le jeu d'évaluation avec
+\texttt{gap-agent-v6}. & Haute \\
+Ajouter les prix & Associer les archetypes à un catalogue fiable et local. &
+Moyenne \\
+Intégrer le budget & Recalculer le classement sous contrainte de prix. &
+Moyenne \\
+Intégrer la saison & Ajouter météo, saison et occasion dans les templates. &
+Moyenne \\
+Tester plusieurs modèles & Comparer qualité, coût et stabilité. & Moyenne \\
+Tester la vision distante & Vérifier l'envoi d'images vers le fournisseur
+configuré. & Moyenne \\
+Construire l'interface & Relier le pipeline à une application utilisable par
+l'utilisateur final. & Moyenne \\
+Évaluer la confidentialité & Documenter la conservation et le traitement des
+données par le fournisseur. & Haute \\
+Étudier le fine-tuning & Préparer un jeu de données annoté et un modèle dont
+les poids sont contrôlables. & Faible \\
+\bottomrule
+\end{longtable}
+
+\section{Décision concernant le fine-tuning}
+
+Aucun fine-tuning n'a été réalisé dans l'état actuel du projet.
+
+Cette décision est cohérente avec l'état de l'objectif 4 :
+
+\begin{itemize}[leftmargin=*]
+    \item le problème principal est actuellement la complétude et la
+    validation des jugements ;
+    \item le calcul numérique est déjà séparé du LLM ;
+    \item les prompts et les outils sont encore en phase d'évaluation ;
+    \item les données annotées sont insuffisantes pour entraîner un modèle ;
+    \item le modèle hébergé par le routeur ne fournit pas nécessairement ses
+    poids.
+\end{itemize}
+
+\section{Synthèse technique}
+
+L'objectif 4 de DressMe repose sur une architecture hybride :
+
+\begin{enumerate}[leftmargin=*]
+    \item FashionCLIP encode les articles de la garde-robe ;
+    \item un LLM propose des archetypes de pièces manquantes ;
+    \item un LLM juge les compatibilités entre articles ;
+    \item Python applique les règles de composition des tenues ;
+    \item Python calcule les gains et leurs bornes ;
+    \item un agent explique les résultats avec des outils contrôlés.
+\end{enumerate}
+
+\begin{quote}
+\textbf{Le LLM propose et explique ; le code valide, compte et classe.}
+\end{quote}
+
+L'implémentation actuelle est fonctionnelle sur le plan architectural, mais
+elle ne constitue pas encore une validation finale de l'objectif, car :
+
+\begin{itemize}[leftmargin=*]
+    \item l'analyse de compatibilité n'est pas terminée ;
+    \item les images personnelles ne sont pas encore utilisées ;
+    \item le classement final complet n'est pas encore disponible ;
+    \item l'évaluation humaine n'est pas encore réalisée ;
+    \item le budget, la saison et les prix ne sont pas intégrés ;
+    \item l'application utilisateur complète reste à construire.
+\end{itemize}
+
+La prochaine étape prioritaire est de terminer les jugements de compatibilité,
+de produire un fichier d'analyse avec \texttt{ranking\_ready=true}, puis de
+valider les résultats sur une véritable garde-robe et avec des annotations
+humaines.
+
+\end{document}

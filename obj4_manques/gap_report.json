@@ -1,0 +1,13 @@
+[{"index":0,
+"id":"gap-1",
+"category":"top",
+"slot":"onepiece",
+"description":"black dress",
+"unlockedOutfits":12},
+{"index":1,
+"id":"gap-2",
+"category":"top",
+"slot":"top",
+"description":"black blouse",
+"unlockedOutfits":8},
+{"index":2,"id":"gap-3","category":"bottom","slot":"bottom","description":"black skirt","unlockedOutfits":8,"exampleItemId":"Re-PolyVore/skirt/215866821_2.jpg"},{"index":3,"id":"gap-4","category":"shoes","slot":"shoes","description":"black flats","unlockedOutfits":6,"exampleItemId":"Re-PolyVore/shoes/179743929_4.jpg"},{"index":4,"id":"gap-5","category":"outerwear","slot":"outer","description":"black coat","unlockedOutfits":2,"exampleItemId":"Re-PolyVore/outwear/216208608_2.jpg"}]

@@ -6,3 +6,4 @@ venv/
 *.zip
 real/
 node_modules/
+.venv/
