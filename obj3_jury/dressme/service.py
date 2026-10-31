@@ -17,6 +17,7 @@ import time
 from collections import deque
 
 from .arbiter import arbitrate
+from .compat_bridge import CompatBridge
 from .context import make_context
 from .judges import judge_hybrid
 from .judges2 import judge_text_v3, select_shots
@@ -48,7 +49,7 @@ def build_llm(cache_dir=None):
 
 
 class DressMeService:
-    def __init__(self, pieces, genders=None, shots=None, llm=None, max_llm_per_hour=None):
+    def __init__(self, pieces, genders=None, shots=None, llm=None, max_llm_per_hour=None, compat=None):
         """pieces : {id: {"categorie", "type", "couleur", "formalite", "chaleur", "motif"}}
         genders : {id: "Ladieswear" | "Menswear" | "Divided"} (limite les corrections au même genre ; facultatif)
         shots   : tenues annotées par un humain, exemples du prompt LLM (facultatif)
@@ -57,6 +58,7 @@ class DressMeService:
         self.genders, self.shots, self.llm = genders or {}, shots or [], llm
         self.max_llm = int(max_llm_per_hour or os.environ.get("MAX_LLM_PER_HOUR", "40"))
         self._calls = deque()
+        self.compat = compat   # CompatBridge (objectif 2) ou None
 
     # ------------------------------------------------------------ construction
     @classmethod
@@ -78,7 +80,7 @@ class DressMeService:
         genders = {fn: truth[fn].get("gender", "Divided") for fn in pieces}
         if llm == "auto":
             llm = build_llm(os.path.join(root, "llm_cache"))
-        return cls(pieces, genders, shots, llm)
+        return cls(pieces, genders, shots, llm, compat=CompatBridge.from_folder(root))
 
     @classmethod
     def from_demo(cls, llm=None):
@@ -111,6 +113,15 @@ class DressMeService:
         return {"source": source, "niveau": lvl, "verdict": verdict_name(lvl), "criteres": j["criteres"],
                 "raisons": [f"{k} : {c['raison']}" for k, c in j["criteres"].items() if c["niveau"] < 2]
                 or ["Tous les critères sont satisfaisants."]}
+
+    def _compat(self, pieces, notes):
+        if self.compat is None:
+            return None
+        try:
+            return self.compat.score(pieces)
+        except Exception as e:
+            notes.append(f"Compatibilité Obj2 indisponible ({type(e).__name__}).")
+            return None
 
     # ------------------------------------------------------------ jugement
     def judge(self, piece_ids, temperature, pluie=False, occasion="décontracté", mode="complet", repair=True):
@@ -164,4 +175,5 @@ class DressMeService:
             "desaccord": final["desaccord"], "juges_dissidents": final["juges_dissidents"],
             "raisons": final["raisons"], "reparations": reps, "notes": notes,
             "mode_utilise": "complet" if len(judges) > 1 else "regles",
+            "compatibilite": self._compat(pieces, notes),
         }
