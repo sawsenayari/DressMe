@@ -1,0 +1,290 @@
+[
+ {
+  "id": "d_tee_white",
+  "categorie": "haut",
+  "type": "t-shirt",
+  "couleur": "White",
+  "formalite": 1,
+  "chaleur": 1,
+  "motif": "uni"
+ },
+ {
+  "id": "d_tee_black",
+  "categorie": "haut",
+  "type": "t-shirt",
+  "couleur": "Black",
+  "formalite": 1,
+  "chaleur": 1,
+  "motif": "uni"
+ },
+ {
+  "id": "d_tee_print",
+  "categorie": "haut",
+  "type": "t-shirt",
+  "couleur": "Multi",
+  "formalite": 1,
+  "chaleur": 1,
+  "motif": "imprimé"
+ },
+ {
+  "id": "d_polo_navy",
+  "categorie": "haut",
+  "type": "polo",
+  "couleur": "Navy Blue",
+  "formalite": 3,
+  "chaleur": 2,
+  "motif": "uni"
+ },
+ {
+  "id": "d_shirt_white",
+  "categorie": "haut",
+  "type": "chemise",
+  "couleur": "White",
+  "formalite": 4,
+  "chaleur": 2,
+  "motif": "uni"
+ },
+ {
+  "id": "d_shirt_blue",
+  "categorie": "haut",
+  "type": "chemise",
+  "couleur": "Light Blue",
+  "formalite": 4,
+  "chaleur": 2,
+  "motif": "uni"
+ },
+ {
+  "id": "d_shirt_stripe",
+  "categorie": "haut",
+  "type": "chemise",
+  "couleur": "Blue",
+  "formalite": 3,
+  "chaleur": 2,
+  "motif": "rayé"
+ },
+ {
+  "id": "d_sweater_grey",
+  "categorie": "haut",
+  "type": "pull",
+  "couleur": "Grey",
+  "formalite": 2,
+  "chaleur": 4,
+  "motif": "uni"
+ },
+ {
+  "id": "d_sweater_red",
+  "categorie": "haut",
+  "type": "pull",
+  "couleur": "Red",
+  "formalite": 2,
+  "chaleur": 4,
+  "motif": "uni"
+ },
+ {
+  "id": "d_top_pink",
+  "categorie": "haut",
+  "type": "top",
+  "couleur": "Pink",
+  "formalite": 2,
+  "chaleur": 1,
+  "motif": "uni"
+ },
+ {
+  "id": "d_jeans_blue",
+  "categorie": "bas",
+  "type": "jean",
+  "couleur": "Blue",
+  "formalite": 2,
+  "chaleur": 3,
+  "motif": "uni"
+ },
+ {
+  "id": "d_jeans_black",
+  "categorie": "bas",
+  "type": "jean",
+  "couleur": "Black",
+  "formalite": 2,
+  "chaleur": 3,
+  "motif": "uni"
+ },
+ {
+  "id": "d_chino_beige",
+  "categorie": "bas",
+  "type": "chino",
+  "couleur": "Beige",
+  "formalite": 3,
+  "chaleur": 2,
+  "motif": "uni"
+ },
+ {
+  "id": "d_trouser_grey",
+  "categorie": "bas",
+  "type": "pantalon",
+  "couleur": "Grey",
+  "formalite": 4,
+  "chaleur": 3,
+  "motif": "uni"
+ },
+ {
+  "id": "d_trouser_navy",
+  "categorie": "bas",
+  "type": "pantalon",
+  "couleur": "Navy Blue",
+  "formalite": 4,
+  "chaleur": 3,
+  "motif": "uni"
+ },
+ {
+  "id": "d_short_khaki",
+  "categorie": "bas",
+  "type": "short",
+  "couleur": "Khaki",
+  "formalite": 1,
+  "chaleur": 1,
+  "motif": "uni"
+ },
+ {
+  "id": "d_skirt_black",
+  "categorie": "bas",
+  "type": "jupe",
+  "couleur": "Black",
+  "formalite": 3,
+  "chaleur": 2,
+  "motif": "uni"
+ },
+ {
+  "id": "d_skirt_orange",
+  "categorie": "bas",
+  "type": "jupe",
+  "couleur": "Orange",
+  "formalite": 2,
+  "chaleur": 2,
+  "motif": "uni"
+ },
+ {
+  "id": "d_dress_black",
+  "categorie": "robe",
+  "type": "robe",
+  "couleur": "Black",
+  "formalite": 4,
+  "chaleur": 2,
+  "motif": "uni"
+ },
+ {
+  "id": "d_dress_floral",
+  "categorie": "robe",
+  "type": "robe",
+  "couleur": "Multi",
+  "formalite": 3,
+  "chaleur": 1,
+  "motif": "imprimé"
+ },
+ {
+  "id": "d_sneak_white",
+  "categorie": "chaussures",
+  "type": "baskets",
+  "couleur": "White",
+  "formalite": 1,
+  "chaleur": 2,
+  "motif": "uni"
+ },
+ {
+  "id": "d_sport_black",
+  "categorie": "chaussures",
+  "type": "chaussures de sport",
+  "couleur": "Black",
+  "formalite": 1,
+  "chaleur": 2,
+  "motif": "uni"
+ },
+ {
+  "id": "d_loafer_brown",
+  "categorie": "chaussures",
+  "type": "mocassins",
+  "couleur": "Brown",
+  "formalite": 3,
+  "chaleur": 2,
+  "motif": "uni"
+ },
+ {
+  "id": "d_oxford_black",
+  "categorie": "chaussures",
+  "type": "richelieu",
+  "couleur": "Black",
+  "formalite": 5,
+  "chaleur": 2,
+  "motif": "uni"
+ },
+ {
+  "id": "d_sandal_tan",
+  "categorie": "chaussures",
+  "type": "sandales",
+  "couleur": "Beige",
+  "formalite": 1,
+  "chaleur": 1,
+  "motif": "uni"
+ },
+ {
+  "id": "d_boot_brown",
+  "categorie": "chaussures",
+  "type": "bottines",
+  "couleur": "Brown",
+  "formalite": 3,
+  "chaleur": 4,
+  "motif": "uni"
+ },
+ {
+  "id": "d_jacket_blazer",
+  "categorie": "veste",
+  "type": "blazer",
+  "couleur": "Navy Blue",
+  "formalite": 4,
+  "chaleur": 3,
+  "motif": "uni"
+ },
+ {
+  "id": "d_jacket_denim",
+  "categorie": "veste",
+  "type": "veste en jean",
+  "couleur": "Blue",
+  "formalite": 2,
+  "chaleur": 3,
+  "motif": "uni"
+ },
+ {
+  "id": "d_jacket_puffer",
+  "categorie": "veste",
+  "type": "doudoune",
+  "couleur": "Black",
+  "formalite": 1,
+  "chaleur": 5,
+  "motif": "uni"
+ },
+ {
+  "id": "d_jacket_rain",
+  "categorie": "veste",
+  "type": "imperméable",
+  "couleur": "Green",
+  "formalite": 2,
+  "chaleur": 3,
+  "motif": "uni"
+ },
+ {
+  "id": "d_bag_brown",
+  "categorie": "sac",
+  "type": "sac à main",
+  "couleur": "Brown",
+  "formalite": 3,
+  "chaleur": 1,
+  "motif": "uni"
+ },
+ {
+  "id": "d_watch_silver",
+  "categorie": "accessoire",
+  "type": "montre",
+  "couleur": "Silver",
+  "formalite": 4,
+  "chaleur": 1,
+  "motif": "uni"
+ }
+]
