@@ -15,6 +15,7 @@ SLOT_TO_CAT = {  # défaut ; une catégorie explicite (champ "category") l'empor
 }
 THRESH_COMPATIBLE, THRESH_MOYENNE = 70, 40        # fixés à l'avance (garde-robes)
 PAIR_GOOD, PAIR_BAD = 0.75, 0.35                 # seuils /pairs calibrés sur 8 000 paires de validation Polyvore (31/10/2026)
+CHUNK_REFS = 25                                   # références évaluées par paquet (mémoire bornée)
 DUP_PCT = 90                                      # doublon si >= 90e centile des paires aléatoires
 MODEL_NAME = "pairmlp-image-fitb-3seeds"
 
@@ -131,12 +132,14 @@ class CompatEngine:
         W = [(torch.tensor(self._emb(w), device=self.dev), self.category_of(w)) for w in wardrobe]
         fw = torch.stack([e for e, _ in W]); cw = torch.tensor([self.cid[c] for _, c in W], device=self.dev)
         refs = self.pools[cc]; R = len(refs)
-        # ensembles W+[candidat] (indice 0) puis W+[référence r]
-        feats = torch.cat([fw, ec[None]])[None].repeat(R + 1, 1, 1)
-        cats = torch.cat([cw, torch.tensor([self.cid[cc]], device=self.dev)])[None].repeat(R + 1, 1)
-        feats[1:, -1] = refs
-        sc = self.set_scores(feats, cats)
-        rank = int(round(100 * float((sc[1:] < sc[0]).float().mean())))
+        # ensembles W+[candidat] puis W+[référence r], évalués par paquets (mémoire bornée même pour une grande garde-robe)
+        base = torch.cat([fw, ec[None]]); cb = torch.cat([cw, torch.tensor([self.cid[cc]], device=self.dev)])
+        def run(extra):
+            n = len(extra); f = base[None].repeat(n, 1, 1); f[:, -1] = extra
+            return self.set_scores(f, cb[None].repeat(n, 1))
+        s_c = run(ec[None])[0]
+        s_r = torch.cat([run(refs[i:i + CHUNK_REFS]) for i in range(0, R, CHUNK_REFS)])
+        rank = int(round(100 * float((s_r < s_c).float().mean())))
         # partenaires : paires (candidat, article) de catégorie différente
         ks = [i for i, (_, c) in enumerate(W) if c != cc]
         partners = []

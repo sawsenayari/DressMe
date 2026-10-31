@@ -1,0 +1,15 @@
+fastapi
+uvicorn
+python-multipart
+requests
+httpx
+pytest
+numpy
+torch
+torchvision
+transformers
+pillow
+scikit-learn
+joblib
+pydantic
+scipy
