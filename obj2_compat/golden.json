@@ -1,0 +1,66 @@
+[
+ {
+  "candidate": 1500,
+  "wardrobe": [
+   0,
+   1,
+   2,
+   3,
+   4
+  ],
+  "rank100": 67,
+  "dup_pct": 6,
+  "verdict": "moyenne"
+ },
+ {
+  "candidate": 2200,
+  "wardrobe": [
+   10,
+   500,
+   900,
+   1300,
+   2800
+  ],
+  "rank100": 52,
+  "dup_pct": 18,
+  "verdict": "moyenne"
+ },
+ {
+  "candidate": 300,
+  "wardrobe": [
+   1,
+   1700,
+   2000,
+   2500,
+   3100
+  ],
+  "rank100": 69,
+  "dup_pct": 45,
+  "verdict": "moyenne"
+ },
+ {
+  "candidate": 2900,
+  "wardrobe": [
+   20,
+   600,
+   1400,
+   2100,
+   3250
+  ],
+  "rank100": 40,
+  "dup_pct": 43,
+  "verdict": "moyenne"
+ },
+ {
+  "candidate": 800,
+  "wardrobe": [
+   5,
+   1005,
+   2005,
+   3005
+  ],
+  "rank100": 25,
+  "dup_pct": 15,
+  "verdict": "peu compatible"
+ }
+]

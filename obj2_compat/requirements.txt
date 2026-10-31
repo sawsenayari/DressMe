@@ -1,0 +1,9 @@
+torch
+numpy
+fastapi
+uvicorn
+pydantic
+pytest
+httpx
+scipy
+pandas
