@@ -1,0 +1,204 @@
+{
+  "$defs": {
+    "Confidence": {
+      "additionalProperties": true,
+      "properties": {
+        "slot": {
+          "default": 1.0,
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Slot",
+          "type": "number"
+        },
+        "colour": {
+          "default": 1.0,
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Colour",
+          "type": "number"
+        },
+        "type": {
+          "default": 1.0,
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Type",
+          "type": "number"
+        }
+      },
+      "title": "Confidence",
+      "type": "object"
+    }
+  },
+  "additionalProperties": true,
+  "description": "Fiche article v1. Les champs inconnus sont conservés (extra=allow).",
+  "properties": {
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "name": {
+      "default": "",
+      "title": "Name",
+      "type": "string"
+    },
+    "slot": {
+      "enum": [
+        "top",
+        "bottom",
+        "onepiece",
+        "outer",
+        "footwear",
+        "bag",
+        "accessory"
+      ],
+      "title": "Slot",
+      "type": "string"
+    },
+    "type": {
+      "default": "Other",
+      "title": "Type",
+      "type": "string"
+    },
+    "colour": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 2,
+      "title": "Colour",
+      "type": "array"
+    },
+    "usage": {
+      "default": "Casual",
+      "title": "Usage",
+      "type": "string"
+    },
+    "warmth": {
+      "default": 1,
+      "maximum": 4,
+      "minimum": 0,
+      "title": "Warmth",
+      "type": "integer"
+    },
+    "formality": {
+      "default": 1,
+      "maximum": 3,
+      "minimum": 0,
+      "title": "Formality",
+      "type": "integer"
+    },
+    "waterproof": {
+      "default": false,
+      "title": "Waterproof",
+      "type": "boolean"
+    },
+    "open_toe": {
+      "default": false,
+      "title": "Open Toe",
+      "type": "boolean"
+    },
+    "gender": {
+      "default": "Unisex",
+      "title": "Gender",
+      "type": "string"
+    },
+    "image": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Image"
+    },
+    "image_crop": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Image Crop"
+    },
+    "embedding": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Embedding"
+    },
+    "season": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": "all",
+      "title": "Season"
+    },
+    "pattern": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": "plain",
+      "title": "Pattern"
+    },
+    "confidence": {
+      "$ref": "#/$defs/Confidence"
+    },
+    "source": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Source"
+    },
+    "price_dt": {
+      "anyOf": [
+        {
+          "minimum": 0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Price Dt"
+    },
+    "traditional": {
+      "default": false,
+      "title": "Traditional",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "id",
+    "slot"
+  ],
+  "title": "ItemCard",
+  "type": "object"
+}

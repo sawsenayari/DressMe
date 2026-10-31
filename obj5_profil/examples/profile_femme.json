@@ -1,0 +1,59 @@
+{
+  "version": "obj5-profile-v1",
+  "user_id": "demo_femme",
+  "persona": "image",
+  "scores": {
+    "efficacite": 0.33,
+    "economie": null,
+    "image": 0.436
+  },
+  "palette": [
+    {
+      "colour": "red",
+      "weight": 0.207
+    },
+    {
+      "colour": "beige",
+      "weight": 0.189
+    },
+    {
+      "colour": "multicolor",
+      "weight": 0.143
+    },
+    {
+      "colour": "white",
+      "weight": 0.129
+    },
+    {
+      "colour": "green",
+      "weight": 0.092
+    }
+  ],
+  "formality_pref": 2.237,
+  "price_percentile": null,
+  "dominant_cluster": {
+    "id": 11,
+    "name": "onepiece · Ethnic · multicolor/black · traditionnel",
+    "share": 0.187
+  },
+  "diversity": 0.866,
+  "slot_counts": {
+    "onepiece": 129,
+    "top": 34,
+    "bottom": 9,
+    "outer": 11,
+    "accessory": 11,
+    "footwear": 4
+  },
+  "n_items": 218,
+  "n_items_used": 198,
+  "embedding_space": "attributes",
+  "model": "obj5-style-model-v1:attributes:k16",
+  "warnings": [
+    "1 fiche(s) ignorée(s), confidence.slot < 0.3 : it_0748",
+    "19 doublon(s) quasi exact(s) ignoré(s) : it_0724, it_0774, it_0796, it_0797, it_0798, it_0803, it_0806, it_0811, it_0818, it_0823",
+    "Prix connus pour 0/198 pièces : score « economie » et price_percentile non évaluables (null).",
+    "39% de pièces traditionnelles : hors domaine Polyvore, à interpréter avec prudence.",
+    "Espace 'attributes' (repli) : recalculer avec FashionCLIP dès que les embeddings communs sont disponibles."
+  ]
+}

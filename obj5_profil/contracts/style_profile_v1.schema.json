@@ -1,0 +1,203 @@
+{
+  "$defs": {
+    "DominantCluster": {
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "integer"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "share": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Share",
+          "type": "number"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "share"
+      ],
+      "title": "DominantCluster",
+      "type": "object"
+    },
+    "PaletteEntry": {
+      "properties": {
+        "colour": {
+          "title": "Colour",
+          "type": "string"
+        },
+        "weight": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Weight",
+          "type": "number"
+        }
+      },
+      "required": [
+        "colour",
+        "weight"
+      ],
+      "title": "PaletteEntry",
+      "type": "object"
+    },
+    "PersonaScores": {
+      "properties": {
+        "efficacite": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Efficacite",
+          "type": "number"
+        },
+        "economie": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Economie"
+        },
+        "image": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Image",
+          "type": "number"
+        }
+      },
+      "required": [
+        "efficacite",
+        "image"
+      ],
+      "title": "PersonaScores",
+      "type": "object"
+    }
+  },
+  "description": "Profil de style v1 (objectif 5).",
+  "properties": {
+    "version": {
+      "const": "obj5-profile-v1",
+      "default": "obj5-profile-v1",
+      "title": "Version",
+      "type": "string"
+    },
+    "user_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "User Id"
+    },
+    "persona": {
+      "enum": [
+        "efficacite",
+        "economie",
+        "image",
+        "mixte"
+      ],
+      "title": "Persona",
+      "type": "string"
+    },
+    "scores": {
+      "$ref": "#/$defs/PersonaScores"
+    },
+    "palette": {
+      "items": {
+        "$ref": "#/$defs/PaletteEntry"
+      },
+      "title": "Palette",
+      "type": "array"
+    },
+    "formality_pref": {
+      "maximum": 3,
+      "minimum": 0,
+      "title": "Formality Pref",
+      "type": "number"
+    },
+    "price_percentile": {
+      "anyOf": [
+        {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Price Percentile"
+    },
+    "dominant_cluster": {
+      "$ref": "#/$defs/DominantCluster"
+    },
+    "diversity": {
+      "maximum": 1,
+      "minimum": 0,
+      "title": "Diversity",
+      "type": "number"
+    },
+    "slot_counts": {
+      "additionalProperties": {
+        "type": "integer"
+      },
+      "title": "Slot Counts",
+      "type": "object"
+    },
+    "n_items": {
+      "title": "N Items",
+      "type": "integer"
+    },
+    "n_items_used": {
+      "title": "N Items Used",
+      "type": "integer"
+    },
+    "embedding_space": {
+      "enum": [
+        "fashionclip",
+        "attributes"
+      ],
+      "title": "Embedding Space",
+      "type": "string"
+    },
+    "model": {
+      "title": "Model",
+      "type": "string"
+    },
+    "warnings": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Warnings",
+      "type": "array"
+    }
+  },
+  "required": [
+    "persona",
+    "scores",
+    "palette",
+    "formality_pref",
+    "dominant_cluster",
+    "diversity",
+    "n_items",
+    "n_items_used",
+    "embedding_space",
+    "model"
+  ],
+  "title": "StyleProfile",
+  "type": "object"
+}

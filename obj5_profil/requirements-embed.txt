@@ -1,0 +1,5 @@
+# Uniquement pour scripts/compute_fashionclip_embeddings.py
+torch
+transformers>=4.40
+pillow
+numpy

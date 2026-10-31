@@ -1,0 +1,100 @@
+{
+  "profile": {
+    "version": "obj5-profile-v1",
+    "user_id": "demo_casual",
+    "persona": "efficacite",
+    "scores": {
+      "efficacite": 0.692,
+      "economie": null,
+      "image": 0.346
+    },
+    "palette": [
+      {
+        "colour": "black",
+        "weight": 0.708
+      },
+      {
+        "colour": "white",
+        "weight": 0.15
+      },
+      {
+        "colour": "blue",
+        "weight": 0.141
+      }
+    ],
+    "formality_pref": 1.25,
+    "price_percentile": null,
+    "dominant_cluster": {
+      "id": 2,
+      "name": "onepiece · Casual · black/yellow",
+      "share": 0.5
+    },
+    "diversity": 0.667,
+    "slot_counts": {
+      "onepiece": 2,
+      "top": 2,
+      "bottom": 2,
+      "footwear": 1,
+      "accessory": 1
+    },
+    "n_items": 8,
+    "n_items_used": 8,
+    "embedding_space": "attributes",
+    "model": "obj5-style-model-v1:attributes:k16",
+    "warnings": [
+      "Prix connus pour 0/8 pièces : score « economie » et price_percentile non évaluables (null).",
+      "Garde-robe mêlant articles homme et femme : vérifier qu'il s'agit bien d'un seul utilisateur.",
+      "Seulement 8 pièces exploitables : profil peu stable.",
+      "Espace 'attributes' (repli) : recalculer avec FashionCLIP dès que les embeddings communs sont disponibles."
+    ]
+  },
+  "items": [
+    {
+      "id": "it_0758",
+      "score": 0.8999,
+      "cosine": 0.7999,
+      "bonus": 0.1,
+      "reasons": [
+        "couleur neutre"
+      ]
+    },
+    {
+      "id": "it_0983",
+      "score": 0.8999,
+      "cosine": 0.7999,
+      "bonus": 0.1,
+      "reasons": [
+        "couleur neutre"
+      ]
+    },
+    {
+      "id": "it_0994",
+      "score": 0.8796,
+      "cosine": 0.7296,
+      "bonus": 0.15,
+      "reasons": [
+        "couleur neutre",
+        "pièce basique"
+      ]
+    },
+    {
+      "id": "it_1067",
+      "score": 0.7745,
+      "cosine": 0.6745,
+      "bonus": 0.1,
+      "reasons": [
+        "couleur neutre"
+      ]
+    },
+    {
+      "id": "it_0896",
+      "score": 0.6848,
+      "cosine": 0.5348,
+      "bonus": 0.15,
+      "reasons": [
+        "couleur neutre",
+        "pièce basique"
+      ]
+    }
+  ]
+}
