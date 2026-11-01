@@ -54,8 +54,8 @@ export default function DoesItMatch() {
         const res = await scoreCandidate(file);
         setResult(res);
       }
-    } catch {
-      setError('Erreur d\'évaluation. Vérifiez le service /compat (Objectif 2).');
+    } catch (e) {
+      setError(`Erreur d'évaluation (service /compat, Objectif 2) : ${e instanceof Error ? e.message : e}`);
     } finally {
       setBusy(false);
     }

@@ -108,9 +108,9 @@ export interface StyleProfile {
   axis: StyleAxis;
   budgetMode: boolean;
   scores?: {
-    efficacite: number; // 0-100
-    economie: number; // 0-100
-    image: number; // 0-100
+    efficacite: number | null; // 0-100, null = non calculable
+    economie: number | null; // 0-100, null = non calculable
+    image: number | null; // 0-100, null = non calculable
   };
   diversityScore?: number; // 0-100 wardrobe variety index
   formalityPref?: number; // 0 to 3

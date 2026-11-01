@@ -96,6 +96,8 @@ export default function Profile() {
   }
 
   const scores = profile.scores || { efficacite: 86, economie: 62, image: 74 };
+  // null = score non calculable par l'Obj5 (ex. économie sans prix dans les fiches)
+  const pct = (v: number | null) => (v == null ? '—' : `${v}%`);
 
   return (
     <>
@@ -198,10 +200,10 @@ export default function Profile() {
               <span style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--pastel-mint-deep)' }}>
                 ⚡ EFFICACITÉ
               </span>
-              <strong style={{ fontSize: '1.3rem' }}>{scores.efficacite}%</strong>
+              <strong style={{ fontSize: '1.3rem' }}>{pct(scores.efficacite)}</strong>
             </div>
             <div style={{ width: '100%', height: '8px', background: '#FFFFFF', borderRadius: '999px', margin: '12px 0 8px', overflow: 'hidden' }}>
-              <div style={{ width: `${scores.efficacite}%`, height: '100%', background: 'var(--pastel-mint-deep)', borderRadius: '999px' }} />
+              <div style={{ width: `${scores.efficacite ?? 0}%`, height: '100%', background: 'var(--pastel-mint-deep)', borderRadius: '999px' }} />
             </div>
             <p style={{ fontSize: '0.78rem', color: 'var(--muted)', margin: 0 }}>
               Facilité et rapidité de sélection matinale.
@@ -213,10 +215,10 @@ export default function Profile() {
               <span style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--pastel-butter-deep)' }}>
                 🌿 ÉCONOMIE
               </span>
-              <strong style={{ fontSize: '1.3rem' }}>{scores.economie}%</strong>
+              <strong style={{ fontSize: '1.3rem' }}>{pct(scores.economie)}</strong>
             </div>
             <div style={{ width: '100%', height: '8px', background: '#FFFFFF', borderRadius: '999px', margin: '12px 0 8px', overflow: 'hidden' }}>
-              <div style={{ width: `${scores.economie}%`, height: '100%', background: 'var(--pastel-butter-deep)', borderRadius: '999px' }} />
+              <div style={{ width: `${scores.economie ?? 0}%`, height: '100%', background: 'var(--pastel-butter-deep)', borderRadius: '999px' }} />
             </div>
             <p style={{ fontSize: '0.78rem', color: 'var(--muted)', margin: 0 }}>
               Taux de réutilisation et rentabilisation des pièces.
@@ -228,10 +230,10 @@ export default function Profile() {
               <span style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--pastel-lavender-deep)' }}>
                 💎 IMAGE / SIGNATURE
               </span>
-              <strong style={{ fontSize: '1.3rem' }}>{scores.image}%</strong>
+              <strong style={{ fontSize: '1.3rem' }}>{pct(scores.image)}</strong>
             </div>
             <div style={{ width: '100%', height: '8px', background: '#FFFFFF', borderRadius: '999px', margin: '12px 0 8px', overflow: 'hidden' }}>
-              <div style={{ width: `${scores.image}%`, height: '100%', background: 'var(--pastel-lavender-deep)', borderRadius: '999px' }} />
+              <div style={{ width: `${scores.image ?? 0}%`, height: '100%', background: 'var(--pastel-lavender-deep)', borderRadius: '999px' }} />
             </div>
             <p style={{ fontSize: '0.78rem', color: 'var(--muted)', margin: 0 }}>
               Cohérence esthétique et allure distinctive.

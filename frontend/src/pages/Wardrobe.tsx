@@ -69,8 +69,8 @@ export default function Wardrobe() {
         await addItem(file);
         setVersion(v => v + 1);
       }
-    } catch {
-      setError('Impossible d\'analyser la photo. Vérifiez le service de segmentation & classification.');
+    } catch (e) {
+      setError(`Impossible d'analyser la photo : ${e instanceof Error ? e.message : e}`);
       throw new Error('Upload failed');
     } finally {
       setBusy(false);
