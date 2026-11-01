@@ -79,11 +79,19 @@ export interface OutfitJuryResult {
   verdict: JuryVerdict;
   verdictLabel: string;
   rationale: string;
+  mode?: 'complet' | 'regles'; // complet = règles + LLM + hybride (DRESSME_JURY_LLM=1 et une clé)
+  notes?: string[]; // remarques de l'Obj3 (clé absente, quota LLM atteint…)
   judges: {
     rules: { status: 'pass' | 'warn' | 'fail'; message: string };
     visual: { score01: number | null; status: 'pass' | 'warn' | 'fail' | 'unavailable'; message: string }; // null = non disponible
     llm: { verdict: string; critique: string };
-    context: { matchWeather: boolean | null; matchOccasion: boolean; message: string }; // null = température non fournie
+    context: {
+      matchWeather: boolean | null; // null = température non fournie
+      matchOccasion: boolean;
+      weatherLevel?: number | null; // 0 inadapté, 1 à ajuster, 2 adapté (critère météo de l'Obj3)
+      occasionLevel?: number; // idem pour la formalité vis-à-vis de l'occasion
+      message: string;
+    };
     compatibility: { score01?: number; message: string }; // absent = non calculable (Obj2)
   };
   repairs: {

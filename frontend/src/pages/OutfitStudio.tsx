@@ -343,18 +343,24 @@ function Studio({ live }: { live: boolean }) {
                 <div style={{ display: 'grid', gap: '12px', fontSize: '0.88rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid var(--line)' }}>
                     <span>📐 <strong>Juge Règles & Proportions</strong></span>
-                    <span style={{ color: juryResult.judges.rules.status === 'pass' ? 'var(--pastel-mint-deep)' : 'var(--danger)', fontWeight: 600 }}>
-                      {juryResult.judges.rules.status === 'pass' ? '✓ Valide' : '⚠️ Non conforme'}
+                    <span style={{ color: juryResult.judges.rules.status === 'pass' ? 'var(--pastel-mint-deep)' : juryResult.judges.rules.status === 'warn' ? 'var(--pastel-butter-deep)' : 'var(--danger)', fontWeight: 600 }}
+                          title={juryResult.judges.rules.message}>
+                      {juryResult.judges.rules.status === 'pass' ? '✓ Valide' : juryResult.judges.rules.status === 'warn' ? '⚠️ Réserves' : '✗ Non conforme'}
                     </span>
                   </div>
 
-                  <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid var(--line)' }}>
-                    <span>🎨 <strong>Juge Visuel (FashionCLIP)</strong></span>
-                    <span style={{ fontWeight: 600 }} title={juryResult.judges.visual.message}>
-                      {juryResult.judges.visual.score01 == null
-                        ? 'Non disponible'
-                        : `Score: Math ${(juryResult.judges.visual.score01 * 100).toFixed(0)}%`}
-                    </span>
+                  <div style={{ paddingBottom: '8px', borderBottom: '1px solid var(--line)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span>🎨 <strong>Juge Visuel</strong></span>
+                      <span style={{ fontWeight: 600, color: juryResult.judges.visual.score01 == null ? 'var(--muted)' : 'var(--ink)' }}>
+                        {juryResult.judges.visual.score01 == null
+                          ? 'Non disponible'
+                          : `Score : ${(juryResult.judges.visual.score01 * 100).toFixed(0)} %`}
+                      </span>
+                    </div>
+                    {juryResult.judges.visual.score01 == null && (
+                      <p style={{ margin: '4px 0 0', fontSize: '0.78rem', color: 'var(--muted)' }}>{juryResult.judges.visual.message}</p>
+                    )}
                   </div>
 
                   <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid var(--line)' }}>
@@ -366,19 +372,37 @@ function Studio({ live }: { live: boolean }) {
                     </span>
                   </div>
 
-                  <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid var(--line)' }}>
-                    <span>🌤️ <strong>Juge Contexte (Météo/Agenda)</strong></span>
-                    <span style={{ color: juryResult.judges.context.matchWeather === false ? 'var(--danger)' : juryResult.judges.context.matchWeather ? 'var(--pastel-mint-deep)' : 'var(--muted)', fontWeight: 600 }}>
-                      {juryResult.judges.context.matchWeather === null ? 'Météo non évaluée' : juryResult.judges.context.matchWeather ? '✓ Confort adapté' : '⚠️ Inadapté'}
-                    </span>
+                  <div style={{ paddingBottom: '8px', borderBottom: '1px solid var(--line)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px' }}>
+                      <span>🌤️ <strong>Juge Contexte</strong></span>
+                      <span style={{ fontWeight: 600, textAlign: 'right' }}>
+                        {(() => {
+                          const ctx = juryResult.judges.context;
+                          const lvl = (l: number | null | undefined, ok: boolean | null) => (l ?? (ok === null ? null : ok ? 2 : 0));
+                          const txt = (l: number | null) => (l === null ? '— non évaluée' : l === 2 ? '✓ adaptée' : l === 1 ? '⚠️ à ajuster' : '✗ inadaptée');
+                          return `Météo ${txt(lvl(ctx.weatherLevel, ctx.matchWeather))} · Occasion ${txt(lvl(ctx.occasionLevel, ctx.matchOccasion))}`;
+                        })()}
+                      </span>
+                    </div>
+                    <p style={{ margin: '4px 0 0', fontSize: '0.78rem', color: 'var(--muted)' }}>{juryResult.judges.context.message}</p>
                   </div>
 
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span>🤖 <strong>Juge Synthèse LLM</strong></span>
-                    <span style={{ fontStyle: 'italic', color: 'var(--muted)' }} title={juryResult.judges.llm.critique}>
-                      {juryResult.judges.llm.verdict === 'non disponible' ? 'Non disponible' : `"${juryResult.judges.llm.verdict}"`}
-                    </span>
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px' }}>
+                      <span>🤖 <strong>Juge LLM {juryResult.mode === 'complet' ? '(+ hybride)' : ''}</strong></span>
+                      <span style={{ fontWeight: 600, color: juryResult.judges.llm.verdict === 'non disponible' ? 'var(--muted)' : 'var(--ink)', textAlign: 'right' }}>
+                        {juryResult.judges.llm.verdict === 'non disponible' ? 'Non disponible' : juryResult.judges.llm.verdict}
+                      </span>
+                    </div>
+                    {juryResult.judges.llm.critique && (
+                      <p style={{ margin: '6px 0 0', fontSize: '0.82rem', fontStyle: 'italic', color: 'var(--muted)', lineHeight: 1.45 }}>
+                        {juryResult.judges.llm.critique}
+                      </p>
+                    )}
                   </div>
+                  {!!juryResult.notes?.length && juryResult.judges.llm.verdict !== 'non disponible' && (
+                    <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--muted)' }}>ℹ️ {juryResult.notes.join(' ')}</p>
+                  )}
                 </div>
               </div>
 

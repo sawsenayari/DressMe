@@ -93,6 +93,7 @@ def test_outfit_today_obj6_obj3_obj2(tmp_path, monkeypatch):
 
 def test_outfit_judge_obj3_obj2(tmp_path, monkeypatch):
     """Tenue composée -> jury Obj3 (règles) et compatibilité Obj2 réels -> type OutfitJuryResult du front ; rien d'inventé."""
+    monkeypatch.setenv("DRESSME_JURY_LLM", "0")   # règles seules, même si gateway/.env active le LLM
     store = make_store(tmp_path)
     monkeypatch.setenv("DRESSME_PROFILE_MODEL", str(store / "style_model.joblib"))
     sys.path.insert(0, str(REPO / "gateway"))
@@ -108,7 +109,9 @@ def test_outfit_judge_obj3_obj2(tmp_path, monkeypatch):
     r = judge(item_ids=[pick("top"), pick("bottom"), pick("footwear"), pick("accessory")], occasion="work", temperatureC=21, rain=False)
     assert r.status_code == 200, r.text
     o = r.json(); n = {"convient": 2, "a_ameliorer": 1, "deconseille": 0}[o["verdict"]]
-    assert o["score"] == n * 50 and o["verdictLabel"] and o["rationale"]
+    lo, hi = {2: (70, 100), 1: (40, 69), 0: (0, 39)}[n]                         # tranche du verdict, nuancée par les critères
+    assert lo <= o["score"] <= hi and o["verdictLabel"] and "critères satisfaits" in o["rationale"]
+    assert o["judges"]["context"]["weatherLevel"] in (0, 1, 2) and o["judges"]["context"]["occasionLevel"] in (0, 1, 2)
     js = o["judges"]
     assert js["rules"]["status"] in ("pass", "warn", "fail") and js["rules"]["message"]
     assert js["visual"]["score01"] is None and js["visual"]["status"] == "unavailable" and "non disponible" in js["visual"]["message"]
@@ -232,3 +235,29 @@ def test_outfit_agenda_exclusions_and_feedback(tmp_path, monkeypatch):
     assert r.status_code == 200 and calls[-1][0] == "/api/feedback" and calls[-1][1]["item_ids"] == o["excludeKey"] and calls[-1][1]["uid"] == "me"
     assert c.post("/outfits/feedback", json={"item_ids": ["x"], "accepted": False, "reason": "bof"}).status_code == 422
     assert c.post("/outfits/feedback", json={"item_ids": [], "accepted": True}).status_code == 422
+
+def test_outfit_judge_with_llm(tmp_path, monkeypatch):
+    """Outfit Studio avec le juge LLM de l'Obj3 (DRESSME_JURY_LLM=1) : faux LLM, arbitrage règles + LLM + hybride."""
+    store = make_store(tmp_path)
+    monkeypatch.setenv("DRESSME_PROFILE_MODEL", str(store / "style_model.joblib")); monkeypatch.setenv("DRESSME_JURY_LLM", "1")
+    sys.path.insert(0, str(REPO / "gateway"))
+    import app as g
+    from fastapi.testclient import TestClient
+    monkeypatch.setattr(g, "STORE", store); monkeypatch.setattr(g, "_cache", {})
+    g.jury()
+    from dressme import service as obj3
+    class FakeLLM:
+        def json_call(self, prompt, images=None):
+            crit = {k: {"niveau": 2, "raison": "ok"} for k in ("couleurs", "formalite", "meteo", "coherence")}
+            crit["couleurs"] = {"niveau": 1, "raison": "Bleu et gris un peu ternes ensemble."}
+            return {"verdict": "à améliorer", "criteres": crit, "raisons": ["couleurs : Bleu et gris un peu ternes ensemble."]}
+    monkeypatch.setattr(obj3, "build_llm", lambda *a, **k: FakeLLM())
+    cat = json.load(open(store / "wardrobe.json", encoding="utf-8"))
+    ids = [next(x for x in cat if x["slot"] == s)["id"] for s in ("top", "bottom", "footwear")]
+    r = TestClient(g.app).post("/outfits/judge", json={"item_ids": ids, "occasion": "casual", "temperatureC": 20})
+    assert r.status_code == 200, r.text
+    j = r.json(); assert j["mode"] == "complet" and j["judges"]["llm"]["verdict"] != "non disponible", j
+    assert "ternes" in j["judges"]["llm"]["critique"] and "LLM" in j["rationale"]
+    monkeypatch.setattr(obj3, "build_llm", lambda *a, **k: None); monkeypatch.setattr(g, "_cache", {})   # pas de clé -> règles seules
+    j = TestClient(g.app).post("/outfits/judge", json={"item_ids": ids, "occasion": "casual"}).json()
+    assert j["mode"] == "regles" and j["judges"]["llm"]["verdict"] == "non disponible" and "clé" in j["judges"]["llm"]["critique"]

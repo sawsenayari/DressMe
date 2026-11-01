@@ -173,6 +173,7 @@ class DressMeService:
                              "par_juge": {k: j["criteres"][c]["niveau"] for k, j in judges.items()}}
                          for c in CRITERIA},
             "votes": {k: j["verdict"] for k, j in judges.items()},
+            "raisons_par_juge": {k: j["raisons"] for k, j in judges.items()},
             "desaccord": final["desaccord"], "juges_dissidents": final["juges_dissidents"],
             "raisons": final["raisons"], "reparations": reps, "notes": notes,
             "mode_utilise": "complet" if len(judges) > 1 else "regles",

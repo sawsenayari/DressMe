@@ -37,6 +37,18 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 REPO = Path(__file__).resolve().parent.parent
+
+
+def _load_env_file(path):
+    """gateway/.env (ignoré par git) : KEY=VALUE, sans écraser les variables déjà définies (ex. clés LLM du jury Obj3)."""
+    if path.exists():
+        for line in path.read_text(encoding="utf-8").splitlines():
+            k, sep, v = line.strip().partition("=")
+            if sep and k and not k.startswith("#"):
+                os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
+
+
+_load_env_file(Path(__file__).resolve().parent / ".env")
 STORE = Path(os.environ.get("DRESSME_STORE", REPO / "obj5_profil" / "data"))
 OBJ2 = Path(os.environ.get("DRESSME_OBJ2", REPO / "obj2_compat"))
 GAPS = Path(os.environ.get("DRESSME_GAPS", REPO / "obj4_manques" / "gap_report.json"))
@@ -249,7 +261,7 @@ def _save_catalog_file(d):
     tmp = p.with_suffix(".json.tmp")
     tmp.write_text(json.dumps(d, indent=2, ensure_ascii=False), encoding="utf-8")
     os.replace(tmp, p)
-    for k in ("c", "p", "j"):  # catalogue relu ; profil Obj5 et jury Obj3 reconstruits (ils refusent les identifiants inconnus)
+    for k in ("c", "p", "j", "jl"):  # catalogue relu ; profil Obj5 et jury Obj3 reconstruits (ils refusent les identifiants inconnus)
         _cache.pop(k, None)
 
 
@@ -538,6 +550,21 @@ def jury():
     return _cache["j"]
 
 
+def jury_llm():
+    """Jury Obj3 complet (règles + LLM + hybride) si DRESSME_JURY_LLM=1 et une clé GEMINI_API_KEY ou LLM_API_KEY (Groq) ;
+    None sinon (règles seules). Réservé à Outfit Studio : Today juge plusieurs tenues par appel (latence, quota 40/h)."""
+    if os.environ.get("DRESSME_JURY_LLM") != "1":
+        return None
+    if "jl" not in _cache:
+        jury()   # chemin de l'Obj3
+        from dressme.service import DressMeService, build_llm
+        llm = build_llm(str(OBJ3 / "app_data" / "llm_cache"))   # cache des réponses (app_data/ ignoré par git)
+        _cache["jl"] = DressMeService({c["id"]: to_obj3_piece(c) for c in catalog()}, llm=llm) if llm else None
+        if llm is None:
+            print("[obj3] DRESSME_JURY_LLM=1 mais aucune clé GEMINI_API_KEY / LLM_API_KEY : règles seules.", file=sys.stderr)
+    return _cache["jl"]
+
+
 def outfit_compat01(cards):
     """Moyenne des scores /pairs de l'Obj2 sur les paires de la tenue (None si des embeddings manquent)."""
     W = [c for c in cards if c.get("embedding") and (STORE / c["embedding"]).exists()]
@@ -614,7 +641,15 @@ def outfit_feedback(body: FeedbackIn):
 # ---------------------------------------------------------------- objectif 3 : jury d'une tenue composée (Outfit Studio)
 JURY_VERDICT = {0: "deconseille", 1: "a_ameliorer", 2: "convient"}   # niveau Obj3 -> JuryVerdict du front
 JURY_STATUS = {0: "fail", 1: "warn", 2: "pass"}
-JURY_SCORE = 50                                                       # score = niveau x 50 : l'Obj3 ne note pas plus finement
+JURY_BANDS = {0: (0, 39), 1: (40, 69), 2: (70, 100)}   # mêmes seuils que /compat : déconseillé < 40 <= à améliorer < 70 <= convient
+JUDGE_NAMES = {"regles": "règles", "llm": "LLM", "hybride": "hybride"}
+
+
+def jury_score(niveau, crit):
+    """Note 0-100 : la tranche vient du verdict de l'Obj3, la position dans la tranche de la part des 4 critères satisfaits."""
+    lo, hi = JURY_BANDS[niveau]
+    ok = sum(c["niveau"] == 2 for c in crit.values())
+    return round(lo + (hi - lo) * ok / len(crit))
 NON_DISPONIBLE = "non disponible"
 
 
@@ -646,23 +681,48 @@ def outfit_judge(body: JudgeRequest):
     if body.occasion not in OCC_OBJ3:
         raise HTTPException(422, f"occasion inconnue : {body.occasion} (attendu : {list(OCC_OBJ3)})")
     ids = list(dict.fromkeys(body.item_ids))
+    svc = jury_llm()
     try:
-        j = jury().judge(ids, body.temperatureC, body.rain, OCC_OBJ3[body.occasion], mode="regles")
+        j = (svc or jury()).judge(ids, body.temperatureC, body.rain, OCC_OBJ3[body.occasion], mode="complet" if svc else "regles")
     except ValueError as e:   # tenue vide ou identifiant inconnu
         raise HTTPException(422, str(e))
     by_id = {c["id"]: c for c in catalog()}
     crit, niveau = j["criteres"], j["niveau"]
-    bad = [f"{k} : {v['raison']}" for k, v in crit.items() if v["niveau"] < 2]
-    return {"score": niveau * JURY_SCORE, "verdict": JURY_VERDICT[niveau], "verdictLabel": j["verdict"].capitalize(),
-            "rationale": f"{' · '.join(j['raisons'])} (Score = niveau {niveau}/2 du jury Obj3, règles seules.)",
+    votes, par_juge, notes = j.get("votes", {}), j.get("raisons_par_juge", {}), j.get("notes", [])
+    complet = j.get("mode_utilise") == "complet"
+    rules_lvl = min(v["par_juge"].get("regles", v["niveau"]) for v in crit.values())
+    rules_msg = [r for r in par_juge.get("regles", []) if r != "Tous les critères sont satisfaisants."]
+    if "llm" in votes or "hybride" in votes:   # avis du LLM (et du juge hybride règles + LLM)
+        llm = {"verdict": " / ".join(f"{k} : {v}" for k, v in votes.items() if k in ("llm", "hybride")),
+               "critique": " · ".join(par_juge.get("llm") or par_juge.get("hybride") or [])}
+    else:
+        why = " ".join(notes) or ("Activer avec DRESSME_JURY_LLM=1 et une clé LLM (gateway/.env)."
+                                  if os.environ.get("DRESSME_JURY_LLM") != "1" else "Aucune clé GEMINI_API_KEY / LLM_API_KEY.")
+        llm = {"verdict": NON_DISPONIBLE, "critique": f"Juge LLM {NON_DISPONIBLE} : {why}"}
+    reserves = [k for k, v in crit.items() if v["niveau"] < 2]
+    ok = len(crit) - len(reserves)
+    label = j["verdict"].capitalize() + (", avec réserves" if niveau == 2 and reserves else "")
+    votes_txt = ", ".join(f"{JUDGE_NAMES.get(k, k)} : {v}" for k, v in votes.items())
+    if reserves:
+        why = "Réserves : " + " · ".join(f"{k} : {crit[k]['raison']}" for k in reserves)
+    else:
+        why = "Les 4 critères (couleurs, formalité, météo, cohérence) sont satisfaits."
+    how = (f"Votes ({votes_txt}) -> verdict retenu à la majorité : {j['verdict']}." if complet
+           else f"Verdict du juge règles : {j['verdict']}.")
+    return {"score": jury_score(niveau, crit), "verdict": JURY_VERDICT[niveau], "verdictLabel": label,
+            "rationale": f"{why} {how} Note : {ok}/4 critères satisfaits dans la tranche « {j['verdict']} ».",
+            "mode": "complet" if complet else "regles", "notes": notes,
             "judges": {
-                "rules": {"status": JURY_STATUS[min(v["niveau"] for v in crit.values())],
-                          "message": " · ".join(bad) or "Tous les critères sont satisfaisants."},
+                "rules": {"status": JURY_STATUS[rules_lvl],
+                          "message": " · ".join(rules_msg) or "Tous les critères sont satisfaisants."},
                 "visual": {"score01": None, "status": "unavailable",
-                           "message": f"Juge visuel {NON_DISPONIBLE} : la passerelle lance l'Obj3 en règles seules."},
-                "llm": {"verdict": NON_DISPONIBLE, "critique": f"Juge LLM {NON_DISPONIBLE} : la passerelle lance l'Obj3 sans LLM."},
+                           "message": f"Juge visuel {NON_DISPONIBLE} : le juge vision de l'Obj3 demande une clé Gemini (modèle qui voit "
+                                      "les images) et une photo de la tenue ; Groq est texte seul."},
+                "llm": llm,
                 "context": {"matchWeather": None if body.temperatureC is None else crit["meteo"]["niveau"] == 2,
                             "matchOccasion": crit["formalite"]["niveau"] == 2,
+                            "weatherLevel": None if body.temperatureC is None else crit["meteo"]["niveau"],   # 0 / 1 / 2
+                            "occasionLevel": crit["formalite"]["niveau"],
                             "message": f"{crit['meteo']['raison']} · {crit['formalite']['raison']}"},
                 "compatibility": jury_compat([by_id[i] for i in ids])},
             "repairs": [jury_repair(r, by_id) for r in j["reparations"]]}
