@@ -1,5 +1,6 @@
 import type { ClothingItem } from '../../types';
 import { Placeholder } from './Placeholder';
+import { coloursLabel, seasonLabel, slotLabel } from './ItemFields';
 
 interface Props {
   item?: ClothingItem;
@@ -32,7 +33,7 @@ export function ItemTile({ item, index = 0, onClick }: Props) {
         {item ? (
           <img
             src={item.imageUrl}
-            alt={`${item.color} ${item.category}`}
+            alt={item.name || `${slotLabel(item.slot)} ${coloursLabel(item)}`}
             loading="lazy"
             onError={e => {
               // fallback if image fails to load
@@ -52,18 +53,24 @@ export function ItemTile({ item, index = 0, onClick }: Props) {
 
       {item && (
         <figcaption>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
-            <span className="tile-category">{item.category}</span>
-            <span className={`chip-tag ${categoryTagClass}`}>{item.season}</span>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px', gap: '6px' }}>
+            <span className="tile-category">{slotLabel(slotVal)}</span>
+            <span className={`chip-tag ${categoryTagClass}`}>{seasonLabel(item.season)}</span>
           </div>
+          {item.name && (
+            <div style={{ fontWeight: 600, fontSize: '0.88rem', color: 'var(--ink)', marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.name}>
+              {item.name}
+            </div>
+          )}
           <div className="tile-details">
-            <span>{item.color}</span>
-            {item.style && (
+            <span>{coloursLabel(item)}</span>
+            {(item.type || item.style) && (
               <>
                 <span>•</span>
-                <span>{item.style}</span>
+                <span>{item.type || item.style}</span>
               </>
             )}
+            {item.source === 'user_corrected' && <span title="Caractéristiques confirmées par vous">✓</span>}
           </div>
         </figcaption>
       )}

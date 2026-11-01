@@ -43,35 +43,30 @@ export default function Wardrobe() {
   // Live model backend query
   const apiState = useAsync(listItems, [version]);
 
-  async function handleAdd(file: File, meta?: Partial<ClothingItem>) {
+  // Ajout : l'Obj1 reconnaît la photo, puis les caractéristiques saisies (champs non « Auto ») remplacent sa détection
+  async function handleAdd(file: File, patch: ItemPatch) {
     setBusy(true);
     setError('');
     try {
       if (useDemoData) {
-        const newItem: ClothingItem = {
-          id: `it_${Date.now()}`,
-          name: meta?.name || 'Nouvelle Pièce',
-          imageUrl: URL.createObjectURL(file),
-          imageCrop: URL.createObjectURL(file),
-          slot: meta?.slot || 'top',
-          category: meta?.slot || 'top',
-          colour: [meta?.color || 'cream'],
-          color: meta?.color || 'cream',
-          season: meta?.season || 'spring',
-          style: meta?.style || 'style standard',
-          traditional: meta?.traditional || false,
-          confidence: { slot: 0.95, colour: 0.90, type: 0.88 },
-          source: 'user_corrected',
-          wearCount: 0,
-        };
-        addWardrobeItem(newItem);
+        const colour = patch.colour?.length ? patch.colour : ['beige'];
+        const slot = patch.slot || 'top';
+        addWardrobeItem({
+          id: `it_${Date.now()}`, name: patch.name || 'Nouvelle pièce', type: patch.type, slot, category: slot,
+          colour, color: colour[0], season: patch.season || 'all', usage: patch.usage || 'Casual',
+          formality: patch.formality ?? 1, warmth: patch.warmth ?? 1, traditional: !!patch.traditional,
+          imageUrl: URL.createObjectURL(file), imageCrop: URL.createObjectURL(file),
+          source: 'user_corrected', confidence: { slot: 1, colour: 1, type: 1 },
+        });
       } else {
-        await addItem(file);
+        const created = await addItem(file);
+        if (Object.keys(patch).length) await updateItem(created.id, patch);
         setVersion(v => v + 1);
       }
     } catch (e) {
-      setError(`Impossible d'analyser la photo : ${e instanceof Error ? e.message : e}`);
-      throw new Error('Upload failed');
+      const msg = e instanceof Error ? e.message : String(e);
+      setError(`Impossible d'ajouter la pièce : ${msg}`);
+      throw e instanceof Error ? e : new Error(msg);
     } finally {
       setBusy(false);
     }
