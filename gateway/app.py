@@ -556,8 +556,8 @@ def put_profile(body: dict):
 
 
 # ---------------------------------------------------------------- objectif 6 : tenue du jour
-OCC_OBJ6 = {"work": "work", "casual": "casual", "evening": "party"}            # Occasion du front -> Obj6
-OCC_OBJ3 = {"work": "travail", "casual": "décontracté", "evening": "soirée"}    # Occasion du front -> Obj3
+OCC_OBJ6 = {"work": "work", "casual": "casual", "evening": "party", "sport": "sport", "ceremony": "wedding"}   # front -> Obj6
+OCC_OBJ3 = {"work": "travail", "casual": "décontracté", "evening": "soirée", "sport": "sport", "ceremony": "cérémonie"}   # front -> Obj3
 CAT_OBJ3 = {"top": "haut", "bottom": "bas", "onepiece": "robe", "outer": "veste", "footwear": "chaussures",
             "bag": "sac", "accessory": "accessoire"}
 FORM_OBJ3 = {0: 1, 1: 2, 2: 3, 3: 5}   # formalité ItemCard 0-3 -> Obj3 1-5 (1 sport, 3 smart casual, 5 cérémonie)
@@ -725,22 +725,39 @@ def outfit_today(occasion: str = "casual", budget: bool = False, city: str = "Tu
         raise HTTPException(422, f"occasion inconnue : {occasion} (attendu : {list(OCC_OBJ6)})")
     by_id = {c["id"]: c for c in catalog()}
     excl = [[i for i in grp.split(",") if i] for grp in (exclude or "").split(";") if grp.strip()]
+    # deux pièces identiques (même nom, type, couleurs) donnent la même tenue à l'écran : « Autre proposition »
+    # écarte donc aussi les tenues de même aspect, et demande plus de candidats à l'Obj6 pour en garder assez
+    look = lambda i: (str(by_id[i].get("name")).lower(), by_id[i].get("type"), tuple(by_id[i].get("colour") or []))
+    excl_looks = {frozenset(look(i) for i in grp if i in by_id) for grp in excl}
     payload = {"wardrobe": [to_obj6_item(c) for c in by_id.values()], "occasion": OCC_OBJ6[occasion],
-               "city": city, "k": max(1, min(k, 10)), "uid": OBJ6_UID, "exclude_outfits": excl}
+               "city": city, "k": 10, "uid": OBJ6_UID, "exclude_outfits": excl}   # k = 10 : assez de candidats une fois les doublons écartés
     if agenda and agenda.strip():
         payload["agenda"] = agenda.strip()[:300]
     res = obj6_recommend(payload)
     ctx = res.get("context", {})
+    if excl_looks:
+        res["outfits"] = [o for o in res.get("outfits") or []
+                          if frozenset(look(i["id"]) for i in o["items"] if i["id"] in by_id) not in excl_looks]
+        if not res["outfits"]:
+            raise HTTPException(404, "Plus d'autre tenue différente avec votre garde-robe : réinitialisez les tenues écartées.")
     if not res.get("outfits"):
         raise HTTPException(404, res.get("message") or "Aucune tenue trouvée pour aujourd'hui avec votre garde-robe.")
     temp, rain = float(ctx.get("feels_like", 20)), float(ctx.get("rain_prob", 0))
-    best = None
-    for o in res["outfits"]:   # chaque candidat de l'Obj6 passe par le jury (Obj3) et la compatibilité (Obj2)
+    # Chaque candidat de l'Obj6 (classé selon la météo et l'occasion) passe par le jury (Obj3) et la compatibilité (Obj2).
+    # Ordre de choix : verdict du jury, puis nombre de réserves, puis le score de contexte de l'Obj6 ; la compatibilité
+    # ne départage que des scores quasi égaux (sinon la même paire « qui va bien » gagnerait quel que soit le contexte).
+    best, seen_looks = None, set()
+    for o in res["outfits"]:
         ids = [i["id"] for i in o["items"]] + [a["id"] for a in o.get("accessories", [])]
         cards = [by_id[i] for i in ids if i in by_id]
+        sig = frozenset(look(i["id"]) for i in o["items"] if i["id"] in by_id)
+        if not cards or sig in seen_looks:   # tenue identique à l'écran (pièces jumelles) : déjà évaluée
+            continue
+        seen_looks.add(sig)
         j = jury().judge([c["id"] for c in cards], temp, rain > .5, OCC_OBJ3[occasion], mode="regles", repair=False)
         c01 = outfit_compat01([by_id[i["id"]] for i in o["items"] if i["id"] in by_id])
-        key = (j["niveau"], c01 if c01 is not None else -1, o["score"])
+        reserves = sum(v["niveau"] < 2 for v in j["criteres"].values())
+        key = (j["niveau"], -reserves, round(float(o["score"]), 2), c01 or 0)   # compatibilité : départage seulement
         if best is None or key > best[0]:
             best = (key, o, cards, j, c01)
     _, o, cards, j, c01 = best

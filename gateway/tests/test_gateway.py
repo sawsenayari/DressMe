@@ -236,6 +236,8 @@ def test_outfit_agenda_exclusions_and_feedback(tmp_path, monkeypatch):
     assert r.status_code == 200 and calls[-1][0] == "/api/feedback" and calls[-1][1]["item_ids"] == o["excludeKey"] and calls[-1][1]["uid"] == "me"
     assert c.post("/outfits/feedback", json={"item_ids": ["x"], "accepted": False, "reason": "bof"}).status_code == 422
     assert c.post("/outfits/feedback", json={"item_ids": [], "accepted": True}).status_code == 422
+    for occ, o6 in (("sport", "sport"), ("ceremony", "wedding")):   # contextes du filtre unique de Today
+        assert c.get("/outfits/today", params={"occasion": occ}).status_code == 200 and calls[-1][1]["occasion"] == o6
 
 def test_outfit_judge_with_llm(tmp_path, monkeypatch):
     """Outfit Studio avec le juge LLM de l'Obj3 (DRESSME_JURY_LLM=1) : faux LLM, arbitrage règles + LLM + hybride."""

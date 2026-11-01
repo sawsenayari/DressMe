@@ -8,22 +8,20 @@ import { ItemDetailModal } from '../components/ui/ItemDetailModal';
 import { MannequinView } from '../components/ui/MannequinView';
 import { useApp } from '../context/AppContext';
 
-const OCCASIONS: Occasion[] = ['work', 'casual', 'evening'];
-const AXIS_FR: Record<string, string> = { efficiency: 'Efficacité', economy: 'Économie', brand: 'Image', mixte: 'Équilibre' };
-
-// Agenda du jour : texte transmis à l'Obj6 (qui le lit avec son agent) + occasion correspondante pour les puces
-const AGENDAS: { label: string; text: string; occasion: Occasion }[] = [
-  { label: '☕ Co-working & Rendez-vous informel', text: 'co-working et rendez-vous informel', occasion: 'casual' },
-  { label: '💼 Réunion Client & Présentation Projet', text: 'réunion client et présentation de projet au bureau', occasion: 'work' },
-  { label: '🎨 Vernissage & Dîner en Ville', text: 'vernissage puis dîner au restaurant en ville', occasion: 'evening' },
-  { label: '🌿 Balade Décontractée & Marché', text: 'balade décontractée et marché', occasion: 'casual' },
+// Un seul filtre de contexte : il fixe l'occasion transmise à l'Obj6 (tenue) et au jury de l'Obj3 (vérification)
+const CONTEXTS: { id: Occasion; label: string; title: string }[] = [
+  { id: 'casual', label: '☕ Journée décontractée', title: 'Décontracté' },
+  { id: 'work', label: '💼 Travail / réunion', title: 'Travail' },
+  { id: 'evening', label: '🌙 Soirée / dîner', title: 'Soirée' },
+  { id: 'sport', label: '🏃 Sport', title: 'Sport' },
+  { id: 'ceremony', label: '💍 Mariage / cérémonie', title: 'Cérémonie' },
 ];
+const AXIS_FR: Record<string, string> = { efficiency: 'Efficacité', economy: 'Économie', brand: 'Image', mixte: 'Équilibre' };
 
 export default function Today() {
   const { useDemoData, getDemoOutfit, wardrobe, profile } = useApp();
   const [occasion, setOccasion] = useState<Occasion>('casual');
-  const [selectedAgenda, setSelectedAgenda] = useState(AGENDAS[0]);
-  const [budget, setBudget] = useState(false);
+  const budget = false;   // le mode budget n'est pas géré par l'objectif 6 : pas de bouton tant qu'il ne fait rien
   const [exclude, setExclude] = useState<string[][]>([]);   // tenues écartées par « Autre proposition »
   const [feedbackState, setFeedbackState] = useState<'idle' | 'accepted' | 'rejected'>('idle');
   const [feedbackMsg, setFeedbackMsg] = useState('');
@@ -32,8 +30,7 @@ export default function Today() {
   const [displayMode, setDisplayMode] = useState<'grid' | 'mannequin'>('grid');
 
   // Live model backend query (Obj6 -> jury Obj3 + compatibilité Obj2)
-  const apiState = useAsync(() => getOutfitOfDay(occasion, budget, selectedAgenda.text, exclude),
-                            [occasion, budget, selectedAgenda, exclude]);
+  const apiState = useAsync(() => getOutfitOfDay(occasion, budget, undefined, exclude), [occasion, exclude]);
 
   // Demo outfit fallback
   const demoOutfit = getDemoOutfit(occasion, budget);
@@ -45,10 +42,7 @@ export default function Today() {
   };
 
   const changeOccasion = (o: Occasion) => { setOccasion(o); setExclude([]); };
-  const changeAgenda = (label: string) => {
-    const ag = AGENDAS.find(a => a.label === label) || AGENDAS[0];
-    setSelectedAgenda(ag); setOccasion(ag.occasion); setExclude([]);
-  };
+  const context = CONTEXTS.find(c => c.id === occasion) || CONTEXTS[0];
 
   // « Valider & Porter » : avis positif mémorisé par l'Obj6 (pièces favorisées et marquées portées aujourd'hui)
   const handleAcceptOutfit = async () => {
@@ -116,38 +110,18 @@ export default function Today() {
           </p>
         )}
 
-        {/* Agenda / Event Dropdown (Objectif 6 - Contexte) */}
-        <div
-          style={{
-            marginTop: '16px',
-            background: 'var(--surface)',
-            padding: '12px 18px',
-            borderRadius: '18px',
-            border: '1px solid var(--line)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-            flexWrap: 'wrap',
-          }}
-        >
-          <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--ink)' }}>
-            📅 Contexte Agenda du jour :
+        {/* Contexte du jour : filtre unique (occasion pour l'Obj6 et le jury) */}
+        <div style={{ marginTop: '16px', background: 'var(--surface)', padding: '12px 18px', borderRadius: '18px', border: '1px solid var(--line)' }}>
+          <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--ink)', display: 'block', marginBottom: '10px' }}>
+            📅 Contexte du jour :
           </span>
-          <select
-            value={selectedAgenda.label}
-            onChange={e => changeAgenda(e.target.value)}
-            className="form-select"
-            style={{ padding: '6px 14px', fontSize: '0.86rem', width: 'auto', flex: 1, minWidth: '220px' }}
-          >
-            {AGENDAS.map(ag => (
-              <option key={ag.label} value={ag.label}>
-                {ag.label}
-              </option>
+          <div className="chips" role="group" aria-label="Contexte du jour" style={{ marginBottom: 0 }}>
+            {CONTEXTS.map(c => (
+              <button key={c.id} className="chip" aria-pressed={c.id === occasion} onClick={() => changeOccasion(c.id)}>
+                {c.label}
+              </button>
             ))}
-          </select>
-          <span className="chip-tag chip-tag-mint" style={{ fontSize: '0.74rem' }}>
-            Suggestion du jour
-          </span>
+          </div>
         </div>
 
         {/* 4 Colorful Stats Cards */}
@@ -162,15 +136,15 @@ export default function Today() {
           <div className="card card-pink" style={{ padding: '18px 20px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--pastel-pink-deep)', textTransform: 'uppercase' }}>
-                Occasion
+                Contexte
               </span>
               <span style={{ fontSize: '18px' }}>👗</span>
             </div>
             <div style={{ fontSize: '1.5rem', fontWeight: 800, marginTop: '8px', color: 'var(--ink)' }}>
-              {({ work: 'Travail', casual: 'Décontracté', evening: 'Soirée' } as const)[occasion]}
+              {context.title}
             </div>
             <div style={{ fontSize: '0.82rem', color: 'var(--muted)', marginTop: '2px' }}>
-              {budget ? '🌿 Mode budget activé' : 'Sans contrainte de budget'}
+              Tenue choisie pour ce contexte
             </div>
           </div>
 
@@ -192,15 +166,15 @@ export default function Today() {
           <div className="card card-butter" style={{ padding: '18px 20px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--pastel-butter-deep)', textTransform: 'uppercase' }}>
-                Votre priorité
+                Jury de style
               </span>
-              <span style={{ fontSize: '18px' }}>⚡</span>
+              <span style={{ fontSize: '18px' }}>⚖️</span>
             </div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 800, marginTop: '8px', color: 'var(--ink)', textTransform: 'capitalize' }}>
-              {AXIS_FR[profile.axis] || profile.axis}
+            <div style={{ fontSize: '1.5rem', fontWeight: 800, marginTop: '8px', color: 'var(--ink)' }}>
+              {!activeOutfit ? '—' : activeOutfit.warnings?.length ? 'Avec réserves' : 'Validée'}
             </div>
             <div style={{ fontSize: '0.82rem', color: 'var(--muted)', marginTop: '2px' }}>
-              Votre priorité pour les tenues
+              {!activeOutfit ? 'En attente de la tenue' : activeOutfit.warnings?.length ? `${activeOutfit.warnings.length} point(s) d'attention` : 'Rien à signaler'}
             </div>
           </div>
 
@@ -223,26 +197,7 @@ export default function Today() {
 
       {/* Occasion & Display Mode Switcher (Grid vs Mannequin) */}
       <section style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px' }}>
-        <div className="chips" role="group" aria-label="Occasion" style={{ marginBottom: 0 }}>
-          {OCCASIONS.map(o => (
-            <button
-              key={o}
-              className="chip"
-              aria-pressed={o === occasion}
-              onClick={() => changeOccasion(o)}
-            >
-              {o === 'work' ? '💼 Travail' : o === 'casual' ? '☕ Décontracté' : '🌙 Soirée'}
-            </button>
-          ))}
-          <button
-            className="chip"
-            aria-pressed={budget}
-            onClick={() => setBudget(b => !b)}
-            title="Priorise les basiques déjà bien rentabilisés"
-          >
-            🌿 Mode budget : {budget ? 'oui' : 'non'}
-          </button>
-        </div>
+        <span />
 
         {/* View Mode Toggle: Grid Lookbook vs Mannequin Silhouette */}
         <div style={{ display: 'flex', background: 'var(--surface)', padding: '4px', borderRadius: '999px', border: '1px solid var(--line)' }}>
@@ -286,7 +241,7 @@ export default function Today() {
             <div>
               <div className="grid">
                 {activeOutfit.items.map((item, i) => (
-                  <ItemTile
+                  <ItemTile eager
                     key={item.id}
                     item={item}
                     index={i}
@@ -358,7 +313,7 @@ export default function Today() {
             <section className="split">
               <div className="grid">
                 {outfit.items.map((i, idx) => (
-                  <ItemTile
+                  <ItemTile eager
                     key={i.id}
                     item={i}
                     index={idx}

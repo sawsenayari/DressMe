@@ -4,7 +4,7 @@
 export type Slot = 'top' | 'bottom' | 'onepiece' | 'outer' | 'footwear' | 'bag' | 'accessory';
 export type Category = Slot; // Alias for backward compatibility
 export type Season = 'spring' | 'summer' | 'autumn' | 'winter' | 'all';
-export type Occasion = 'work' | 'casual' | 'evening';
+export type Occasion = 'work' | 'casual' | 'evening' | 'sport' | 'ceremony';
 export type UsageType = 'Casual' | 'Smart Casual' | 'Formal' | 'Sports' | 'Ethnic' | 'Party';
 export type StyleAxis = 'efficiency' | 'economy' | 'brand' | 'mixte';
 

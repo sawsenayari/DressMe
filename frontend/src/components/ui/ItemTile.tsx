@@ -6,9 +6,11 @@ interface Props {
   item?: ClothingItem;
   index?: number;
   onClick?: (item: ClothingItem) => void;
+  /** Chargement immédiat (quelques pièces visibles tout de suite, ex. tenue du jour). */
+  eager?: boolean;
 }
 
-export function ItemTile({ item, index = 0, onClick }: Props) {
+export function ItemTile({ item, index = 0, onClick, eager = false }: Props) {
   const slotVal = item?.slot || item?.category;
   const categoryTagClass = slotVal === 'top' 
     ? 'chip-tag-pink' 
@@ -34,7 +36,7 @@ export function ItemTile({ item, index = 0, onClick }: Props) {
           <img
             src={item.imageUrl}
             alt={item.name || `${slotLabel(item.slot)} ${coloursLabel(item)}`}
-            loading="lazy"
+            loading={eager ? 'eager' : 'lazy'}
             onError={e => {
               // fallback if image fails to load
               (e.target as HTMLElement).style.display = 'none';
