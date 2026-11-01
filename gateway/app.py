@@ -28,6 +28,11 @@ import sys
 import tempfile
 import threading
 from pathlib import Path
+try:   # certificats du système (proxy qui intercepte le HTTPS : météo, Gemini, Groq) ; facultatif
+    import truststore
+    truststore.inject_into_ssl()
+except ImportError:
+    pass
 from typing import Optional
 
 import numpy as np
@@ -812,6 +817,37 @@ def outfit_options(gender: Optional[str] = None):
     cards = [c for c in _for_gender(catalog(), gender) if c["slot"] not in ("bag", "accessory")]
     return {"colours": sorted({(c.get("colour") or [""])[0] for c in cards} - {""}),
             "types": sorted({c.get("type") for c in cards if c.get("type")}), "cities": OBJ6_CITIES}
+
+
+CITY_COORDS = {"Tunis": (36.81, 10.18), "Sfax": (34.74, 10.76), "Sousse": (35.83, 10.64), "Bizerte": (37.27, 9.87),
+               "Nabeul": (36.45, 10.73), "Djerba": (33.81, 10.85)}   # mêmes coordonnées que l'Obj6 (app/context.py)
+_weather_cache = {}
+
+
+@app.get("/weather")
+def weather(city: str = "Tunis"):
+    """Météo du jour (Open-Meteo, comme l'Obj6) : température ressentie, pluie, vent ; gardée 10 min en mémoire."""
+    import httpx
+    import time
+    if city not in CITY_COORDS:
+        raise HTTPException(422, f"Ville inconnue : choisissez parmi {', '.join(OBJ6_CITIES)}.")
+    hit = _weather_cache.get(city)
+    if hit and time.time() - hit[0] < 600:
+        return hit[1]
+    lat, lon = CITY_COORDS[city]
+    try:
+        r = httpx.get("https://api.open-meteo.com/v1/forecast", timeout=8, params={
+            "latitude": lat, "longitude": lon, "current": "apparent_temperature,temperature_2m,wind_speed_10m",
+            "daily": "precipitation_probability_max", "timezone": "auto", "forecast_days": 1})
+        r.raise_for_status(); j = r.json()
+    except Exception as e:
+        log(f"météo indisponible pour {city} ({type(e).__name__}: {e})")
+        return {"city": city, "available": False}
+    res = {"city": city, "available": True, "temperatureC": round(j["current"]["temperature_2m"]),
+           "feelsLikeC": round(j["current"]["apparent_temperature"]), "windKmh": round(j["current"]["wind_speed_10m"]),
+           "rainPct": round(j["daily"]["precipitation_probability_max"][0] or 0)}
+    _weather_cache[city] = (time.time(), res)
+    return res
 
 
 class RecommendIn(BaseModel):

@@ -370,3 +370,23 @@ def test_outfit_recommend_full_screen(tmp_path, monkeypatch):
     assert c.post("/outfits/recommend", json={"exclude_outfits": looks}).json()["message"]
     assert c.post("/outfits/recommend", json={"city": "Paris"}).status_code == 422
     assert c.post("/outfits/recommend", json={"gender": "X"}).status_code == 422
+
+
+def test_weather(monkeypatch):
+    """Météo du jour : réponse Open-Meteo simulée ; service injoignable -> available False (pas d'erreur)."""
+    sys.path.insert(0, str(REPO / "gateway"))
+    import app as g, httpx
+    from fastapi.testclient import TestClient
+    monkeypatch.setattr(g, "_weather_cache", {})
+    class R:
+        def raise_for_status(self): pass
+        def json(self): return {"current": {"temperature_2m": 21.4, "apparent_temperature": 20.6, "wind_speed_10m": 9.8},
+                                "daily": {"precipitation_probability_max": [35]}}
+    monkeypatch.setattr(httpx, "get", lambda *a, **k: R())
+    c = TestClient(g.app)
+    assert c.get("/weather", params={"city": "Sfax"}).json() == {"city": "Sfax", "available": True, "temperatureC": 21,
+                                                                 "feelsLikeC": 21, "windKmh": 10, "rainPct": 35}
+    def down(*a, **k): raise httpx.ConnectError("hors ligne")
+    monkeypatch.setattr(httpx, "get", down)
+    assert c.get("/weather", params={"city": "Djerba"}).json() == {"city": "Djerba", "available": False}
+    assert c.get("/weather", params={"city": "Paris"}).status_code == 422

@@ -14,3 +14,4 @@ joblib
 pydantic
 scipy
 pandas # base kNN de l'Obj1 (ajout de photo)
+truststore>=0.9

@@ -1,6 +1,11 @@
 import io, os
 from datetime import datetime
 from pathlib import Path
+try:   # certificats du système (proxy qui intercepte le HTTPS : météo, Gemini, Groq) ; facultatif
+    import truststore
+    truststore.inject_into_ssl()
+except ImportError:
+    pass
 from typing import Literal, Optional
 from zoneinfo import ZoneInfo
 import numpy as np

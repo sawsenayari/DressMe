@@ -7,6 +7,7 @@ import { ItemTile } from '../components/ui/ItemTile';
 import { ItemDetailModal } from '../components/ui/ItemDetailModal';
 import { MannequinView } from '../components/ui/MannequinView';
 import { colourLabel, typeLabel } from '../components/ui/ItemFields';
+import { getWeather, loadCity, saveCity } from '../services/weather';
 import { useApp } from '../context/AppContext';
 
 const CITIES = ['Tunis', 'Sfax', 'Sousse', 'Bizerte', 'Nabeul', 'Djerba'];
@@ -40,7 +41,7 @@ type CardState = { status: 'idle' | 'busy' | 'worn' | 'asking'; msg?: string };
 export default function Today() {
   const { useDemoData, getDemoOutfit } = useApp();
   const [gender, setGender] = useState<Gender>(loadGender);
-  const [city, setCity] = useState('Tunis');
+  const [city, setCity] = useState(() => (CITIES.includes(loadCity()) ? loadCity() : 'Tunis'));
   const [agenda, setAgenda] = useState('');
   const [colours, setColours] = useState<string[]>([]);
   const [types, setTypes] = useState<string[]>([]);
@@ -55,6 +56,8 @@ export default function Today() {
   const [displayMode, setDisplayMode] = useState<'grid' | 'mannequin'>('grid');
 
   const options = useAsync(() => getOutfitOptions(gender), [gender, useDemoData]);
+  const wx = useAsync(() => getWeather(city), [city]);
+  useEffect(() => saveCity(city), [city]);
 
   useEffect(() => { try { localStorage.setItem('dressme_gender', gender); } catch { /* stockage indisponible */ } }, [gender]);
   // envies qui n'existent plus pour ce genre : retirées
@@ -151,6 +154,12 @@ export default function Today() {
             <select id="today-city" className="form-input" value={city} onChange={e => setCity(e.target.value)} style={{ minWidth: '160px' }}>
               {(options.data?.cities ?? CITIES).map(c => <option key={c} value={c}>{c}</option>)}
             </select>
+          </div>
+          <div aria-label="Météo du jour" style={{ ...box, alignSelf: 'end', padding: '10px 16px', fontSize: '0.9rem' }}>
+            {wx.loading ? 'Météo…'
+              : wx.error ? <span style={{ color: 'var(--danger)' }}>Météo : {wx.error.message}</span>
+              : !wx.data?.available ? 'Météo indisponible (température estimée)'
+              : <>⛅ <strong>{wx.data.temperatureC}°C</strong> (ressenti {wx.data.feelsLikeC}°C) · 🌧️ pluie {wx.data.rainPct} % · 💨 {wx.data.windKmh} km/h</>}
           </div>
         </div>
 

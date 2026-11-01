@@ -1,6 +1,9 @@
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { AuthModal } from '../ui/AuthModal';
+import { useEffect, useState } from 'react';
+import { useAsync } from '../../hooks/useAsync';
+import { getWeather, loadCity, weatherLabel } from '../../services/weather';
 
 // Modern clean SVG icons
 const Icons = {
@@ -67,6 +70,14 @@ const NAV_LINKS = [
 
 export function AppShell() {
   const { useDemoData, setUseDemoData, searchQuery, setSearchQuery, setIsAuthModalOpen } = useApp();
+  // météo réelle de la ville choisie dans « Tenue du jour »
+  const [city, setCity] = useState(loadCity);
+  useEffect(() => {
+    const on = (e: Event) => setCity((e as CustomEvent<string>).detail);
+    window.addEventListener('dressme-city', on);
+    return () => window.removeEventListener('dressme-city', on);
+  }, []);
+  const wx = useAsync(() => getWeather(city), [city]);
   const navigate = useNavigate();
   const location = useLocation();
   // La recherche porte sur la garde-robe : taper depuis une autre page ouvre Wardrobe avec le filtre
@@ -152,7 +163,7 @@ export function AppShell() {
             {/* Live weather badge */}
             <div className="topbar-pill" title="Current weather for outfit styling">
               <span className="pill-dot"></span>
-              <span>Tunis <strong>· météo du jour</strong></span>
+              <span>{city} <strong>· {weatherLabel(wx.data)}</strong></span>
             </div>
 
             {/* Demo / Live Backend Toggle */}

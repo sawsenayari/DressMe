@@ -14,3 +14,4 @@ pytest
 pillow
 tqdm
 mcp>=1.2,<2
+truststore>=0.9
