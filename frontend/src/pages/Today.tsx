@@ -1,354 +1,341 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAsync } from '../hooks/useAsync';
-import { getOutfitOfDay, sendOutfitFeedback } from '../services/outfits';
-import type { Occasion, ClothingItem } from '../types';
-import { DataState } from '../components/ui/DataState';
+import { getOutfitOptions, recommendOutfits, sendOutfitFeedback } from '../services/outfits';
+import type { FeedbackReason } from '../services/outfits';
+import type { ClothingItem, Gender, RecommendedOutfit, RecommendRequest, RecommendResponse } from '../types';
 import { ItemTile } from '../components/ui/ItemTile';
 import { ItemDetailModal } from '../components/ui/ItemDetailModal';
 import { MannequinView } from '../components/ui/MannequinView';
+import { colourLabel, typeLabel } from '../components/ui/ItemFields';
 import { useApp } from '../context/AppContext';
 
-// Un seul filtre de contexte : il fixe l'occasion transmise à l'Obj6 (tenue) et au jury de l'Obj3 (vérification)
-const CONTEXTS: { id: Occasion; label: string; title: string }[] = [
-  { id: 'casual', label: '☕ Journée décontractée', title: 'Décontracté' },
-  { id: 'work', label: '💼 Travail / réunion', title: 'Travail' },
-  { id: 'evening', label: '🌙 Soirée / dîner', title: 'Soirée' },
-  { id: 'sport', label: '🏃 Sport', title: 'Sport' },
-  { id: 'ceremony', label: '💍 Mariage / cérémonie', title: 'Cérémonie' },
+const CITIES = ['Tunis', 'Sfax', 'Sousse', 'Bizerte', 'Nabeul', 'Djerba'];
+// Exemples d'agenda (un clic remplit le texte, que l'on peut ensuite modifier) : le texte est le seul contexte
+const AGENDA_EXAMPLES = [
+  { label: '💼 Réunion client', text: 'réunion client à 10h puis présentation' },
+  { label: '🌙 Dîner en ville', text: 'dîner au restaurant ce soir' },
+  { label: '🏃 Sport', text: 'séance de sport à la salle' },
+  { label: '💍 Mariage', text: 'mariage de ma cousine ce soir' },
+  { label: '🕌 الجمعة', text: 'نمشي للجامع نهار الجمعة' },
+  { label: '☕ Coffee with friends', text: 'coffee with friends then a walk' },
 ];
-const AXIS_FR: Record<string, string> = { efficiency: 'Efficacité', economy: 'Économie', brand: 'Image', mixte: 'Équilibre' };
+const REASONS: { id: FeedbackReason; label: string }[] = [
+  { id: 'too_hot', label: 'Trop chaud' },
+  { id: 'too_cold', label: 'Trop froid' },
+  { id: 'too_formal', label: 'Trop habillé' },
+  { id: 'too_casual', label: 'Pas assez habillé' },
+  { id: 'style', label: 'Pas mon style' },
+];
+
+const pct = (x: number) => `${Math.round(x * 100)} %`;
+const box = { background: 'var(--surface)', padding: '14px 18px', borderRadius: '18px', border: '1px solid var(--line)' };
+const label = { fontSize: '0.85rem', fontWeight: 600, color: 'var(--ink)', display: 'block', marginBottom: '8px' } as const;
+
+const loadGender = (): Gender => {
+  try { return localStorage.getItem('dressme_gender') === 'Men' ? 'Men' : 'Women'; } catch { return 'Women'; }
+};
+
+type CardState = { status: 'idle' | 'busy' | 'worn' | 'asking'; msg?: string };
 
 export default function Today() {
-  const { useDemoData, getDemoOutfit, wardrobe, profile } = useApp();
-  const [occasion, setOccasion] = useState<Occasion>('casual');
-  const budget = false;   // le mode budget n'est pas géré par l'objectif 6 : pas de bouton tant qu'il ne fait rien
-  const [exclude, setExclude] = useState<string[][]>([]);   // tenues écartées par « Autre proposition »
-  const [feedbackState, setFeedbackState] = useState<'idle' | 'accepted' | 'rejected'>('idle');
-  const [feedbackMsg, setFeedbackMsg] = useState('');
-  const [busy, setBusy] = useState(false);
+  const { useDemoData, getDemoOutfit } = useApp();
+  const [gender, setGender] = useState<Gender>(loadGender);
+  const [city, setCity] = useState('Tunis');
+  const [agenda, setAgenda] = useState('');
+  const [colours, setColours] = useState<string[]>([]);
+  const [types, setTypes] = useState<string[]>([]);
+  const [explain, setExplain] = useState(false);
+  const [result, setResult] = useState<RecommendResponse | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [cards, setCards] = useState<Record<number, CardState>>({});
+  const seen = useRef<string[][]>([]);   // tenues déjà montrées : « Une autre » ne les repropose pas
+  const queue = useRef<Promise<void>>(Promise.resolve());   // remplacements l'un après l'autre (jamais deux fois la même)
   const [selectedItem, setSelectedItem] = useState<ClothingItem | null>(null);
   const [displayMode, setDisplayMode] = useState<'grid' | 'mannequin'>('grid');
 
-  // Live model backend query (Obj6 -> jury Obj3 + compatibilité Obj2)
-  const apiState = useAsync(() => getOutfitOfDay(occasion, budget, undefined, exclude), [occasion, exclude]);
+  const options = useAsync(() => getOutfitOptions(gender), [gender, useDemoData]);
 
-  // Demo outfit fallback
-  const demoOutfit = getDemoOutfit(occasion, budget);
-  const activeOutfit = useDemoData ? demoOutfit : apiState.data;
+  useEffect(() => { try { localStorage.setItem('dressme_gender', gender); } catch { /* stockage indisponible */ } }, [gender]);
+  // envies qui n'existent plus pour ce genre : retirées
+  useEffect(() => {
+    if (!options.data) return;
+    setColours(c => c.filter(x => options.data!.colours.includes(x)));
+    setTypes(t => t.filter(x => options.data!.types.includes(x)));
+  }, [options.data]);
 
-  const flash = (state: 'accepted' | 'rejected', msg: string) => {
-    setFeedbackState(state); setFeedbackMsg(msg);
-    setTimeout(() => { setFeedbackState('idle'); setFeedbackMsg(''); }, 3500);
-  };
+  const request = (extra: Partial<RecommendRequest> = {}): RecommendRequest =>
+    ({ gender, city, agenda: agenda.trim() || undefined, colours, types, explain, k: 3, ...extra });
 
-  const changeOccasion = (o: Occasion) => { setOccasion(o); setExclude([]); };
-  const context = CONTEXTS.find(c => c.id === occasion) || CONTEXTS[0];
-
-  // « Valider & Porter » : avis positif mémorisé par l'Obj6 (pièces favorisées et marquées portées aujourd'hui)
-  const handleAcceptOutfit = async () => {
-    if (useDemoData || !apiState.data) { flash('accepted', ''); return; }
-    setBusy(true);
+  const propose = async () => {
+    setLoading(true); setError(''); setCards({});
     try {
-      const r = await sendOutfitFeedback(apiState.data.items.map(i => i.id), true, apiState.data.features);
-      flash('accepted', `C'est noté ! Vos prochaines suggestions en tiendront compte (${r.accepted} tenue(s) validée(s)).`);
+      const r = await recommendOutfits(request());
+      setResult(r); seen.current = r.outfits.map(o => o.excludeKey);
     } catch (e) {
-      flash('rejected', `Avis non enregistré : ${e instanceof Error ? e.message : e}`);
-    } finally { setBusy(false); }
+      setResult(null); setError(e instanceof Error ? e.message : String(e));
+    } finally { setLoading(false); }
   };
 
-  // « Autre proposition » : nouvelle tenue en écartant celle-ci (sans pénaliser ses pièces)
-  const handleRejectOutfit = () => {
-    if (useDemoData || !apiState.data?.excludeKey) { flash('rejected', ''); return; }
-    setExclude(prev => [...prev, apiState.data!.excludeKey!]);
+  // premier affichage : une proposition avec les réglages par défaut
+  useEffect(() => { if (!useDemoData) propose(); }, [useDemoData]);   // eslint-disable-line react-hooks/exhaustive-deps
+
+  const setCard = (i: number, s: CardState) => setCards(c => ({ ...c, [i]: s }));
+
+  // remplace la tenue i par une tenue jamais montrée (mêmes réglages que la proposition affichée)
+  const replace = (i: number, note = '') => {
+    if (!result) return Promise.resolve();
+    setCard(i, { status: 'busy' });
+    queue.current = queue.current.then(() => replaceNow(i, note));
+    return queue.current;
   };
+  const replaceNow = async (i: number, note: string) => {
+    try {
+      const r = await recommendOutfits(request({ k: 1, exclude_outfits: seen.current }));
+      const o = r.outfits[0];
+      if (!o) { setCard(i, { status: 'idle', msg: `${note}Plus d'autre tenue différente avec votre garde-robe.` }); return; }
+      seen.current = [...seen.current, o.excludeKey];
+      setResult(res => res && { ...res, outfits: res.outfits.map((x, j) => (j === i ? o : x)) });
+      setCard(i, { status: 'idle', msg: note ? `${note}Voici une autre tenue.` : undefined });
+    } catch (e) {
+      setCard(i, { status: 'idle', msg: e instanceof Error ? e.message : String(e) });
+    }
+  };
+
+  const wear = async (i: number, o: RecommendedOutfit) => {
+    setCard(i, { status: 'busy' });
+    try {
+      await sendOutfitFeedback(o.excludeKey, true, o.features);
+      setCard(i, { status: 'worn', msg: "C'est noté : vos prochaines suggestions en tiendront compte." });
+    } catch (e) {
+      setCard(i, { status: 'idle', msg: `Avis non enregistré : ${e instanceof Error ? e.message : e}` });
+    }
+  };
+
+  const dislike = async (i: number, o: RecommendedOutfit, reason: FeedbackReason) => {
+    setCard(i, { status: 'busy' });
+    try { await sendOutfitFeedback(o.excludeKey, false, o.features, reason); } catch { /* l'autre tenue reste proposée */ }
+    await replace(i, 'Avis noté. ');
+  };
+
+  const toggle = (list: string[], set: (v: string[]) => void, v: string) =>
+    set(list.includes(v) ? list.filter(x => x !== v) : [...list, v]);
+
+  const ctx = result?.context;
+  const demo = useDemoData ? getDemoOutfit('casual', false) : null;
 
   return (
     <>
-      {/* Welcome Greeting & Contextual Agenda Selector (Objectif 6) */}
-      <section style={{ marginBottom: '28px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px' }}>
-          <div>
-            <h1 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              Bonjour, Camille <span style={{ fontSize: '1.8rem' }}>✨</span>
-            </h1>
-            <p className="page-subtitle">
-              Une tenue choisie pour vous selon la météo, votre journée et votre style.
-            </p>
-          </div>
+      <section style={{ marginBottom: '22px' }}>
+        <h1 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          Tenue du jour <span style={{ fontSize: '1.8rem' }}>✨</span>
+        </h1>
+        <p className="page-subtitle">
+          Décrivez votre journée : la styliste choisit 3 tenues selon la météo de votre ville, votre agenda et vos envies.
+        </p>
+      </section>
 
-          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-            <button
-              className={`btn-sm ${feedbackState === 'accepted' ? 'btn-mint' : 'btn-secondary'}`}
-              style={{ borderRadius: '999px', fontWeight: 600 }}
-              onClick={handleAcceptOutfit}
-              disabled={busy || (!useDemoData && !apiState.data)}
-            >
-              {feedbackState === 'accepted' ? '✓ Portée aujourd\'hui !' : busy ? 'Envoi…' : '✨ Valider & Porter'}
-            </button>
-            <button
-              className="btn-secondary btn-sm"
-              style={{ borderRadius: '999px', fontSize: '0.8rem' }}
-              onClick={handleRejectOutfit}
-              disabled={!useDemoData && (apiState.loading || !apiState.data)}
-            >
-              {feedbackState === 'rejected' && useDemoData ? 'Noté pour l\'IA' : '↻ Autre proposition'}
-            </button>
+      {/* Saisie */}
+      <section className="card" style={{ marginBottom: '20px', display: 'grid', gap: '14px', background: '#FFFFFF' }}>
+        <div style={{ display: 'flex', gap: '18px', flexWrap: 'wrap' }}>
+          <div>
+            <span style={label}>Pour</span>
+            <div className="chips" role="group" aria-label="Genre" style={{ marginBottom: 0 }}>
+              {([['Women', '👩 Femme'], ['Men', '👨 Homme']] as const).map(([g, l]) => (
+                <button key={g} className="chip" aria-pressed={gender === g} onClick={() => setGender(g)}>{l}</button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label style={label} htmlFor="today-city">Ville</label>
+            <select id="today-city" className="form-input" value={city} onChange={e => setCity(e.target.value)} style={{ minWidth: '160px' }}>
+              {(options.data?.cities ?? CITIES).map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
           </div>
         </div>
 
-        {(feedbackMsg || (!useDemoData && exclude.length > 0)) && (
-          <p role="status" style={{ fontSize: '0.84rem', color: feedbackState === 'rejected' ? 'var(--danger)' : 'var(--muted)', margin: '10px 0 0' }}>
-            {feedbackMsg}
-            {!useDemoData && exclude.length > 0 && (
-              <>
-                {feedbackMsg ? ' · ' : ''}{exclude.length} tenue(s) écartée(s){' '}
-                <button className="btn-sm btn-secondary" style={{ borderRadius: '999px', fontSize: '0.74rem' }} onClick={() => setExclude([])}>
-                  Réinitialiser
-                </button>
-              </>
-            )}
-          </p>
-        )}
-
-        {/* Contexte du jour : filtre unique (occasion pour l'Obj6 et le jury) */}
-        <div style={{ marginTop: '16px', background: 'var(--surface)', padding: '12px 18px', borderRadius: '18px', border: '1px solid var(--line)' }}>
-          <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--ink)', display: 'block', marginBottom: '10px' }}>
-            📅 Contexte du jour :
-          </span>
-          <div className="chips" role="group" aria-label="Contexte du jour" style={{ marginBottom: 0 }}>
-            {CONTEXTS.map(c => (
-              <button key={c.id} className="chip" aria-pressed={c.id === occasion} onClick={() => changeOccasion(c.id)}>
-                {c.label}
-              </button>
+        <div>
+          <label style={label} htmlFor="today-agenda">📅 Votre agenda du jour (français, arabe ou anglais)</label>
+          <input
+            id="today-agenda" className="form-input" dir="auto" value={agenda} maxLength={300}
+            placeholder="ex. réunion client à 10h · عرس في الليل · dinner with friends"
+            onChange={e => setAgenda(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter' && !loading && !useDemoData) propose(); }}
+            style={{ width: '100%' }}
+          />
+          <div className="chips" role="group" aria-label="Exemples d'agenda" style={{ marginTop: '8px', marginBottom: 0 }}>
+            {AGENDA_EXAMPLES.map(a => (
+              <button key={a.label} className="chip" style={{ fontSize: '0.78rem' }} aria-pressed={agenda === a.text}
+                      onClick={() => setAgenda(a.text)}>{a.label}</button>
             ))}
           </div>
         </div>
 
-        {/* 4 Colorful Stats Cards */}
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-            gap: '16px',
-            marginTop: '20px',
-          }}
-        >
-          <div className="card card-pink" style={{ padding: '18px 20px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--pastel-pink-deep)', textTransform: 'uppercase' }}>
-                Contexte
-              </span>
-              <span style={{ fontSize: '18px' }}>👗</span>
-            </div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 800, marginTop: '8px', color: 'var(--ink)' }}>
-              {context.title}
-            </div>
-            <div style={{ fontSize: '0.82rem', color: 'var(--muted)', marginTop: '2px' }}>
-              Tenue choisie pour ce contexte
-            </div>
-          </div>
-
-          <div className="card card-mint" style={{ padding: '18px 20px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--pastel-mint-deep)', textTransform: 'uppercase' }}>
-                Compatibilité Tenue
-              </span>
-              <span style={{ fontSize: '18px' }}>⚖️</span>
-            </div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 800, marginTop: '8px', color: 'var(--ink)' }}>
-              {activeOutfit?.compat01 != null ? `${Math.round(activeOutfit.compat01 * 100)} / 100` : '—'}
-            </div>
-            <div style={{ fontSize: '0.82rem', color: 'var(--muted)', marginTop: '2px' }}>
-              {activeOutfit?.compat01 != null ? 'Accord entre les pièces' : 'Pas encore calculable'}
-            </div>
-          </div>
-
-          <div className="card card-butter" style={{ padding: '18px 20px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--pastel-butter-deep)', textTransform: 'uppercase' }}>
-                Jury de style
-              </span>
-              <span style={{ fontSize: '18px' }}>⚖️</span>
-            </div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 800, marginTop: '8px', color: 'var(--ink)' }}>
-              {!activeOutfit ? '—' : activeOutfit.warnings?.length ? 'Avec réserves' : 'Validée'}
-            </div>
-            <div style={{ fontSize: '0.82rem', color: 'var(--muted)', marginTop: '2px' }}>
-              {!activeOutfit ? 'En attente de la tenue' : activeOutfit.warnings?.length ? `${activeOutfit.warnings.length} point(s) d'attention` : 'Rien à signaler'}
-            </div>
-          </div>
-
-          <div className="card card-lavender" style={{ padding: '18px 20px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--pastel-lavender-deep)', textTransform: 'uppercase' }}>
-                Météo
-              </span>
-              <span style={{ fontSize: '18px' }}>⛅</span>
-            </div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 800, marginTop: '8px', color: 'var(--ink)' }}>
-              {activeOutfit?.weather ? `${activeOutfit.weather.temperatureC}°C` : '—'}
-            </div>
-            <div style={{ fontSize: '0.82rem', color: 'var(--muted)', marginTop: '2px' }}>
-              {activeOutfit?.weather?.label ?? "Fournie par l'objectif 6"}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Occasion & Display Mode Switcher (Grid vs Mannequin) */}
-      <section style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px' }}>
-        <span />
-
-        {/* View Mode Toggle: Grid Lookbook vs Mannequin Silhouette */}
-        <div style={{ display: 'flex', background: 'var(--surface)', padding: '4px', borderRadius: '999px', border: '1px solid var(--line)' }}>
-          <button
-            className="chip"
-            style={{
-              padding: '6px 14px',
-              fontSize: '0.8rem',
-              boxShadow: 'none',
-              background: displayMode === 'grid' ? 'var(--pastel-pink-soft)' : 'transparent',
-              color: displayMode === 'grid' ? 'var(--pastel-pink-deep)' : 'var(--muted)',
-              border: 'none',
-              fontWeight: displayMode === 'grid' ? 700 : 500,
-            }}
-            onClick={() => setDisplayMode('grid')}
-          >
-            Vue en grille
-          </button>
-          <button
-            className="chip"
-            style={{
-              padding: '6px 14px',
-              fontSize: '0.8rem',
-              boxShadow: 'none',
-              background: displayMode === 'mannequin' ? 'var(--pastel-pink-soft)' : 'transparent',
-              color: displayMode === 'mannequin' ? 'var(--pastel-pink-deep)' : 'var(--muted)',
-              border: 'none',
-              fontWeight: displayMode === 'mannequin' ? 700 : 500,
-            }}
-            onClick={() => setDisplayMode('mannequin')}
-          >
-            🪞 Vue silhouette
-          </button>
-        </div>
-      </section>
-
-      {/* Main Visual Outfit Display */}
-      {useDemoData && activeOutfit ? (
-        displayMode === 'grid' ? (
-          <section className="split">
-            <div>
-              <div className="grid">
-                {activeOutfit.items.map((item, i) => (
-                  <ItemTile eager
-                    key={item.id}
-                    item={item}
-                    index={i}
-                    onClick={it => setSelectedItem(it)}
-                  />
+        <details>
+          <summary style={{ cursor: 'pointer', fontWeight: 600, fontSize: '0.9rem' }}>
+            🎨 Mes envies (facultatif){colours.length + types.length ? ` · ${colours.length + types.length} choisie(s)` : ''}
+          </summary>
+          <p style={{ fontSize: '0.8rem', color: 'var(--muted)', margin: '6px 0 10px' }}>Rien de coché = aucun filtre.</p>
+          {options.error && <p style={{ fontSize: '0.8rem', color: 'var(--danger)' }}>Envies indisponibles : {options.error.message}</p>}
+          {options.data && (
+            <>
+              <span style={label}>Couleurs</span>
+              <div className="chips" role="group" aria-label="Couleurs souhaitées">
+                {options.data.colours.map(c => (
+                  <button key={c} className="chip" style={{ fontSize: '0.78rem' }} aria-pressed={colours.includes(c)}
+                          onClick={() => toggle(colours, setColours, c)}>{colourLabel(c)}</button>
                 ))}
               </div>
-            </div>
-
-            <aside>
-              <div className="card card-lavender" style={{ marginBottom: '20px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                  <span style={{ fontSize: '20px' }}>🪄</span>
-                  <h3 style={{ fontSize: '1.15rem', color: 'var(--pastel-lavender-deep)' }}>
-                    Justification du Jury & Styliste
-                  </h3>
-                </div>
-                <p style={{ fontSize: '0.94rem', lineHeight: '1.6', color: 'var(--ink)' }}>
-                  {activeOutfit.reason}
-                </p>
-
-                {activeOutfit.weather && (
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '10px',
-                      marginTop: '16px',
-                      paddingTop: '14px',
-                      borderTop: '1px solid rgba(220, 196, 242, 0.4)',
-                      fontSize: '0.85rem',
-                      color: 'var(--muted)',
-                    }}
-                  >
-                    <span style={{ fontSize: '18px' }}>🌤️</span>
-                    <span>
-                      Météo calculée : <strong>{activeOutfit.weather.label}</strong> à{' '}
-                      <strong>{activeOutfit.weather.temperatureC}°C</strong>
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              <div className="card" style={{ background: '#FFFFFF' }}>
-                <h4 style={{ fontSize: '1rem', marginBottom: '10px' }}>Facteurs de Décision Algorithmique</h4>
-                <ul style={{ paddingLeft: '20px', margin: 0, fontSize: '0.88rem', color: 'var(--muted)', lineHeight: '1.6' }}>
-                  <li>Pièces choisies pour bien s'accorder entre elles.</li>
-                  <li>Indice thermique adapté pour une journée à 21°C.</li>
-                  <li>Adaptée à votre priorité : <strong>{AXIS_FR[profile.axis] || profile.axis}</strong>.</li>
-                </ul>
-              </div>
-            </aside>
-          </section>
-        ) : (
-          <div style={{ maxWidth: '680px', margin: '0 auto' }}>
-            <MannequinView
-              items={activeOutfit.items}
-              tryOnImageUrl={activeOutfit.tryOnImageUrl}
-            />
-          </div>
-        )
-      ) : (
-        <DataState
-          state={apiState}
-          endpoint="GET /outfits/today"
-          pending={apiState.error ? `Tenue indisponible : ${apiState.error.message}` : "Votre tenue du jour apparaîtra ici dès la connexion aux services d'orchestration."}
-        >
-          {outfit => (
-            <section className="split">
-              <div className="grid">
-                {outfit.items.map((i, idx) => (
-                  <ItemTile eager
-                    key={i.id}
-                    item={i}
-                    index={idx}
-                    onClick={it => setSelectedItem(it)}
-                  />
+              <span style={label}>Types de vêtements</span>
+              <div className="chips" role="group" aria-label="Types souhaités" style={{ marginBottom: 0 }}>
+                {options.data.types.map(t => (
+                  <button key={t} className="chip" style={{ fontSize: '0.78rem' }} aria-pressed={types.includes(t)}
+                          onClick={() => toggle(types, setTypes, t)}>{typeLabel(t)}</button>
                 ))}
               </div>
-              <div>
-                <div className="card card-lavender" style={{ marginBottom: '16px' }}>
-                  {outfit.weather && (
-                    <p style={{ fontWeight: 600, color: 'var(--pastel-lavender-deep)', marginBottom: '8px' }}>
-                      🌤️ {outfit.weather.label}, {outfit.weather.temperatureC}°C
-                    </p>
-                  )}
-                  {outfit.reason && <p style={{ fontSize: '0.95rem', lineHeight: '1.5' }}>{outfit.reason}</p>}
-                </div>
-                {!!outfit.warnings?.length && (
-                  <div className="card" style={{ background: '#FFFFFF' }}>
-                    <h4 style={{ fontSize: '1rem', marginBottom: '10px' }}>Points d'attention</h4>
-                    <ul style={{ paddingLeft: '20px', margin: 0, fontSize: '0.88rem', color: 'var(--muted)', lineHeight: '1.6' }}>
-                      {outfit.warnings.map(w => <li key={w}>{w}</li>)}
-                    </ul>
-                  </div>
-                )}
-              </div>
-            </section>
+            </>
           )}
-        </DataState>
+        </details>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '18px', flexWrap: 'wrap' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem', cursor: 'pointer' }}>
+            <input type="checkbox" checked={explain} onChange={e => setExplain(e.target.checked)} />
+            Explications de la styliste IA
+          </label>
+          <button className="btn" onClick={propose} disabled={loading || useDemoData}>
+            {loading ? 'Recherche des tenues…' : '✨ Proposer des tenues'}
+          </button>
+          {useDemoData && <span style={{ fontSize: '0.82rem', color: 'var(--muted)' }}>Mode démonstration : connectez la garde-robe pour des propositions réelles.</span>}
+        </div>
+      </section>
+
+      {error && <div className="card card-peach" role="alert" style={{ marginBottom: '16px' }}>Tenues indisponibles : {error}</div>}
+
+      {/* Contexte, avertissements, orchestration */}
+      {result && ctx && (
+        <section style={{ display: 'grid', gap: '12px', marginBottom: '20px' }}>
+          <div style={{ ...box, fontSize: '0.9rem' }} aria-label="Contexte">
+            <strong>{ctx.city}</strong> · 🌡️ {ctx.temperatureC}°C · 🌧️ pluie {ctx.rainPct} % · occasion <strong>{ctx.occasion}</strong>
+            {ctx.formality != null && <> (formalité {ctx.formality}/3)</>}
+            {' '}· lu par : <strong>{ctx.agent ?? 'aucun agenda'}</strong>
+            {' '}· fiches locales : {ctx.rag.length ? ctx.rag.join(', ') : 'aucune'}
+            {ctx.ramadan && ' · 🌙 Ramadan'}{ctx.eid && ' · 🎉 Aïd'}
+            {ctx.notes && <div style={{ color: 'var(--muted)', fontSize: '0.82rem', marginTop: '4px' }}>{ctx.notes}</div>}
+          </div>
+
+          {(result.warnings.length > 0 || result.message) && (
+            <div className="card card-butter" role="status" style={{ padding: '12px 18px' }}>
+              <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '0.88rem', lineHeight: 1.6 }}>
+                {result.warnings.map(w => <li key={w}>⚠ {w}</li>)}
+                {result.message && <li>{result.message}</li>}
+              </ul>
+            </div>
+          )}
+
+          <details style={box}>
+            <summary style={{ cursor: 'pointer', fontWeight: 600, fontSize: '0.9rem' }}>
+              ⚙️ Orchestration · {result.steps.reduce((t, s) => t + s.ms, 0)} ms
+            </summary>
+            <ol style={{ margin: '8px 0 0', paddingLeft: '22px', fontSize: '0.85rem', lineHeight: 1.7 }}>
+              {result.steps.map(s => <li key={s.label}>{s.label} — <strong>{s.ms} ms</strong></li>)}
+            </ol>
+          </details>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <div style={{ display: 'flex', background: 'var(--surface)', padding: '4px', borderRadius: '999px', border: '1px solid var(--line)' }}>
+              {([['grid', 'Vue en grille'], ['mannequin', '🪞 Vue silhouette']] as const).map(([m, l]) => (
+                <button key={m} className="chip" aria-pressed={displayMode === m} onClick={() => setDisplayMode(m)}
+                        style={{ padding: '6px 14px', fontSize: '0.8rem', boxShadow: 'none', border: 'none' }}>{l}</button>
+              ))}
+            </div>
+          </div>
+        </section>
       )}
 
-      {/* Item Detail Modal */}
-      <ItemDetailModal
-        item={selectedItem}
-        onClose={() => setSelectedItem(null)}
-      />
+      {/* 3 tenues */}
+      {result && (
+        <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '18px' }}>
+          {result.outfits.map((o, i) => {
+            const st = cards[i] ?? { status: 'idle' };
+            return (
+              <article key={`${i}-${o.id}`} className="card" style={{ background: '#FFFFFF', display: 'grid', gap: '10px', alignContent: 'start' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '8px', flexWrap: 'wrap' }}>
+                  <h3 style={{ fontSize: '1.1rem' }}>Option {i + 1}</h3>
+                  <span style={{ fontSize: '0.85rem' }}>
+                    Score <strong>{pct(o.score)}</strong>{o.compat01 != null && <> · accord {pct(o.compat01)}</>}
+                  </span>
+                </div>
+                <span className={`chip-tag ${o.alerts.length ? 'chip-tag-butter' : 'chip-tag-mint'}`} style={{ justifySelf: 'start' }}>{o.jury}</span>
+
+                {displayMode === 'grid' ? (
+                  <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))' }}>
+                    {o.items.map((it, idx) => <ItemTile eager key={it.id} item={it} index={idx} onClick={setSelectedItem} />)}
+                  </div>
+                ) : (
+                  <MannequinView items={[...o.items, ...o.accessories]} />
+                )}
+
+                <div style={{ fontSize: '0.85rem' }}>
+                  <strong>Accessoires suggérés : </strong>
+                  {o.accessories.length
+                    ? o.accessories.map((a, j) => (
+                        <button key={a.id} className="btn-sm btn-secondary" style={{ borderRadius: '999px', fontSize: '0.78rem', marginLeft: j ? 6 : 0 }}
+                                onClick={() => setSelectedItem(a)}>{a.name || typeLabel(a.type)}</button>
+                      ))
+                    : <span style={{ color: 'var(--muted)' }}>aucun</span>}
+                </div>
+
+                <p style={{ fontSize: '0.9rem', lineHeight: 1.5, margin: 0 }}>
+                  {o.explanation ? <>🪄 {o.explanation}</> : o.reasons.join(' · ')}
+                </p>
+
+                {o.alerts.length > 0 && (
+                  <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '0.84rem', color: 'var(--danger)', lineHeight: 1.5 }}>
+                    {o.alerts.map(a => <li key={a}>⚠ {a}</li>)}
+                  </ul>
+                )}
+
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  <button className={`btn-sm ${st.status === 'worn' ? 'btn-mint' : 'btn-secondary'}`} style={{ borderRadius: '999px' }}
+                          disabled={st.status === 'busy' || st.status === 'worn'} onClick={() => wear(i, o)}>
+                    {st.status === 'worn' ? '✓ Portée aujourd\'hui' : '👍 Je la porte'}
+                  </button>
+                  <button className="btn-sm btn-secondary" style={{ borderRadius: '999px' }} disabled={st.status === 'busy'} onClick={() => replace(i)}>
+                    🔀 Une autre
+                  </button>
+                  <button className="btn-sm btn-secondary" style={{ borderRadius: '999px' }} disabled={st.status === 'busy'}
+                          aria-expanded={st.status === 'asking'}
+                          onClick={() => setCard(i, { status: st.status === 'asking' ? 'idle' : 'asking' })}>
+                    👎 Pas pour moi
+                  </button>
+                </div>
+                {st.status === 'asking' && (
+                  <div className="chips" role="group" aria-label="Pourquoi ?" style={{ marginBottom: 0 }}>
+                    {REASONS.map(r => (
+                      <button key={r.id} className="chip" style={{ fontSize: '0.78rem' }} onClick={() => dislike(i, o, r.id)}>{r.label}</button>
+                    ))}
+                  </div>
+                )}
+                {st.status === 'busy' && <p role="status" style={{ fontSize: '0.82rem', color: 'var(--muted)', margin: 0 }}>Un instant…</p>}
+                {st.msg && st.status !== 'busy' && <p role="status" style={{ fontSize: '0.82rem', color: 'var(--muted)', margin: 0 }}>{st.msg}</p>}
+              </article>
+            );
+          })}
+        </section>
+      )}
+
+      {/* Mode démonstration : tenue d'exemple, sans service */}
+      {demo && (
+        <section className="card" style={{ background: '#FFFFFF' }}>
+          <h3 style={{ fontSize: '1.1rem', marginBottom: '10px' }}>Exemple de tenue</h3>
+          <div className="grid">
+            {demo.items.map((it, idx) => <ItemTile eager key={it.id} item={it} index={idx} onClick={setSelectedItem} />)}
+          </div>
+          {demo.reason && <p style={{ fontSize: '0.9rem', marginTop: '10px' }}>{demo.reason}</p>}
+        </section>
+      )}
+
+      <ItemDetailModal item={selectedItem} onClose={() => setSelectedItem(null)} />
     </>
   );
 }

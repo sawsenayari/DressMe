@@ -12,7 +12,7 @@ branché, testé et poussé sur `main` (GitHub `sawsenayari/DressMe`, dépôt **
 
 | Écran du front | Route de la passerelle | Objectifs appelés |
 |---|---|---|
-| **Today** (tenue du jour) | `GET /outfits/today`, `POST /outfits/feedback` | Obj6 (tenue, météo) → jury Obj3 (règles) → compatibilité Obj2 |
+| **Today** (tenue du jour) | `GET /outfits/options`, `POST /outfits/recommend`, `POST /outfits/feedback` | Obj6 (agent de l'agenda, météo, 3 tenues) → jury Obj3 (règles) → compatibilité Obj2 |
 | **Wardrobe** | `GET/POST /wardrobe/items`, `PUT/DELETE /wardrobe/items/{id}` | Obj1 (reconnaissance de la photo) |
 | **Composer une tenue** (Outfit Studio) | `POST /outfits/judge` | jury Obj3 (règles + IA + photos en option) + Obj2 |
 | **Does it match ?** | `POST /compatibility/score` | Obj2 (FashionCLIP + PairMLP) |
@@ -73,7 +73,7 @@ Automatique (chaque dossier séparément, venv activé) :
 
 | Dossier | Commande (depuis ce dossier) | Attendu |
 |---|---|---|
-| `gateway` | `python -m pytest -q tests` | 11 réussis (≈ 6 min) |
+| `gateway` | `python -m pytest -q tests` | 12 réussis (≈ 7 min) |
 | `obj1_reconnaissance` | `python -m pytest -q` | 30 |
 | `obj2_compat` | `python -m pytest -q tests` puis `python recette.py` | 13 + recette PASS |
 | `obj3_jury` | `python -m pytest -q` | 11 |
@@ -85,8 +85,9 @@ Automatique (chaque dossier séparément, venv activé) :
 Les tests n'appellent jamais les vraies clés (Gemini / Groq remplacés par des faux) et n'écrivent ni dans le catalogue,
 ni dans le modèle Obj5, ni dans le cache Obj1.
 
-À la main (front) : **Today** → changer de contexte (la tenue change), « Autre proposition » (tenues différentes),
-« Valider & Porter » ; **Wardrobe** → « Ajouter une pièce » (formulaire pré-rempli puis modifiable), recherche, filtres,
+À la main (front) : **Today** → Femme / Homme, ville, agenda en français, arabe ou anglais (exemples cliquables), envies,
+« Explications de la styliste IA », « Proposer des tenues » ; vérifier la ligne de contexte, les avertissements,
+« Orchestration » (durée des étapes), puis 👍 / 🔀 / 👎 sur une tenue ; **Wardrobe** → « Ajouter une pièce » (formulaire pré-rempli puis modifiable), recherche, filtres,
 ✏️ Modifier, 🗑️ Supprimer ; **Composer une tenue** → choisir haut / bas / chaussures, changer contexte et température ;
 **Does it match ?** → `frontend\public\images\cream-trousers.jpg`, puis une photo déjà dans la garde-robe (doublon) ;
 **Pièces à ajouter** ; **Mon profil de style**. Aucune erreur 500 ne doit apparaître (F12 → Console / Réseau).

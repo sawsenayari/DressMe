@@ -324,3 +324,49 @@ def test_add_item_obj1_full_with_fake_gemini(tmp_path, monkeypatch):
     r = TestClient(g.app).post("/wardrobe/items", files={"image": ("p.jpg", photo, "image/jpeg")})
     assert r.status_code == 200, r.text
     it = r.json(); assert it["slot"] == "bottom" and it["colour"] == ["beige"] and it["source"] == "obj1.llm" and seen
+
+
+def test_outfit_recommend_full_screen(tmp_path, monkeypatch):
+    """Écran Today complet : genre, ville, agenda (agent), envies, explications, contexte, avertissements, étapes, 3 tenues."""
+    store = make_store(tmp_path)
+    monkeypatch.setenv("DRESSME_PROFILE_MODEL", str(store / "style_model.joblib"))
+    sys.path.insert(0, str(REPO / "gateway"))
+    import app as g
+    from fastapi.testclient import TestClient
+    monkeypatch.setattr(g, "STORE", store); monkeypatch.setattr(g, "_cache", {})
+    cat = json.load(open(store / "wardrobe.json", encoding="utf-8"))
+    women = [x for x in cat if (x.get("gender") or "Unisex") in ("Women", "Unisex")]
+    by = lambda s, n: [x["id"] for x in women if x["slot"] == s][n]
+    looks = [[by("top", n), by("bottom", n), by("footwear", n)] for n in range(4)]
+    calls, parsed = [], []
+    def fake(route, payload):
+        calls.append((route, payload))
+        outs = [{"score": .9 - .1 * n, "items": [{"id": i} for i in ids], "accessories": [], "reasons": ["Épaisseur adaptée à 18°C"],
+                 "warnings": ["Pas assez habillée"] if n == 1 else [], "features": {"warmth": 2.0}, "explanation": "Joli." if payload["explain"] else None}
+                for n, ids in enumerate(looks) if ids not in payload["exclude_outfits"]]
+        return {"context": {"feels_like": 18.4, "rain_prob": .2, "occasion": "wedding", "formality": 3, "agenda_source": "llm+rag",
+                            "retrieved": ["mariage tunisien"], "agenda_error": None, "prefs_relaxed": bool(payload["colours"]),
+                            "weather_source": "open-meteo"}, "outfits": outs}
+    monkeypatch.setattr(g, "_obj6_post", fake)
+    monkeypatch.setattr(g, "obj6_parse", lambda text: parsed.append(text) or "llm+rag")
+    c = TestClient(g.app)
+    opt = c.get("/outfits/options", params={"gender": "Women"}).json()
+    assert opt["cities"] == g.OBJ6_CITIES and opt["colours"] and opt["types"]
+    r = c.post("/outfits/recommend", json={"gender": "Women", "city": "Sousse", "agenda": "mariage ce soir", "explain": True,
+                                            "types": ["Tops"]})
+    assert r.status_code == 200, r.text
+    j = r.json(); route, sent = calls[-1]
+    assert route == "/api/recommend" and sent["city"] == "Sousse" and sent["types"] == ["Tops"] and sent["explain"] and parsed == ["mariage ce soir"]
+    assert all(it["gender"] in ("Women", "Unisex") for it in sent["wardrobe"])
+    x = j["context"]
+    assert (x["temperatureC"], x["rainPct"], x["occasion"], x["formality"], x["agent"], x["rag"]) == (18, 20, "mariage", 3, "IA + fiches locales", ["mariage tunisien"])
+    assert len(j["outfits"]) == 3 and j["outfits"][0]["explanation"] == "Joli." and not j["warnings"]
+    assert [s["label"].split(" (")[0] for s in j["steps"]][0] == "Lecture de l'agenda" and len(j["steps"]) == 4
+    assert any("Pas assez habillée" in o["alerts"] for o in j["outfits"])
+    # « Une autre » : tenues déjà vues exclues ; envies impossibles et garde-robe juste signalées
+    r = c.post("/outfits/recommend", json={"gender": "Women", "colours": ["red"], "k": 3, "exclude_outfits": looks[:2]}).json()
+    assert len(r["outfits"]) == 2 and r["context"]["agent"] is None and len(r["steps"]) == 3
+    assert any("envies" in w for w in r["warnings"]) and any("Garde-robe insuffisante" in w for w in r["warnings"])
+    assert c.post("/outfits/recommend", json={"exclude_outfits": looks}).json()["message"]
+    assert c.post("/outfits/recommend", json={"city": "Paris"}).status_code == 422
+    assert c.post("/outfits/recommend", json={"gender": "X"}).status_code == 422

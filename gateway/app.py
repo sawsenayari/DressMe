@@ -605,6 +605,17 @@ def obj6_recommend(payload):
     return _obj6_post("/api/recommend", payload)
 
 
+def obj6_parse(text):
+    """Lecture de l'agenda par l'agent de l'Obj6 ; renvoie l'agent utilisé (« rules », « llm », « llm+rag ») ou None."""
+    import httpx
+    try:
+        r = httpx.get(f"{OBJ6_URL}/api/parse", params={"text": text}, timeout=60)
+    except Exception as e:
+        log(f"Objectif 6 non joignable sur {OBJ6_URL} ({type(e).__name__})")
+        raise HTTPException(501, "Le service de tenue du jour ne répond pas. Réessayez dans un instant.")
+    return r.json().get("source") if r.status_code == 200 else None
+
+
 def jury():
     if "j" not in _cache:
         if str(OBJ3) not in sys.path:
@@ -780,6 +791,137 @@ def outfit_today(occasion: str = "casual", budget: bool = False, city: str = "Tu
 
 
 FEEDBACK_REASONS = {"too_hot", "too_cold", "too_formal", "too_casual", "style"}
+
+# ---------------------------------------------------------------- objectif 6 : écran complet « tenue du jour »
+OBJ6_CITIES = ["Tunis", "Sfax", "Sousse", "Bizerte", "Nabeul", "Djerba"]
+OCC6_OBJ3 = {"casual": "décontracté", "work": "travail", "formal": "travail", "sport": "sport", "wedding": "cérémonie",
+             "religious": "travail", "party": "soirée"}   # occasion déduite par l'Obj6 -> occasion du jury (Obj3)
+AGENT_USER = {"rules": "mots-clés", "llm": "IA", "llm+rag": "IA + fiches locales"}
+
+
+def _for_gender(cards, gender):
+    """Pièces portables pour le genre choisi : celles de ce genre et les pièces mixtes (ou sans genre)."""
+    if gender not in ("Women", "Men"):
+        return list(cards)
+    return [c for c in cards if (c.get("gender") or "Unisex") in (gender, "Unisex")]
+
+
+@app.get("/outfits/options")
+def outfit_options(gender: Optional[str] = None):
+    """Valeurs proposées pour les « envies » (couleurs principales et types présents dans la garde-robe) et villes."""
+    cards = [c for c in _for_gender(catalog(), gender) if c["slot"] not in ("bag", "accessory")]
+    return {"colours": sorted({(c.get("colour") or [""])[0] for c in cards} - {""}),
+            "types": sorted({c.get("type") for c in cards if c.get("type")}), "cities": OBJ6_CITIES}
+
+
+class RecommendIn(BaseModel):
+    gender: Optional[str] = None
+    city: str = "Tunis"
+    agenda: Optional[str] = None
+    colours: list[str] = []
+    types: list[str] = []
+    explain: bool = False
+    k: int = 3
+    exclude_outfits: list[list[str]] = []
+    exclude_ids: list[str] = []
+
+
+@app.post("/outfits/recommend")
+def outfit_recommend(body: RecommendIn):
+    """Écran « tenue du jour » complet : l'agent de l'Obj6 lit l'agenda (occasion, formalité), l'Obj6 propose des tenues
+    selon la météo de la ville, le jury (Obj3) et l'accord des pièces (Obj2) les vérifient ; durée de chaque étape."""
+    import time
+    if body.city not in OBJ6_CITIES:
+        raise HTTPException(422, f"Ville inconnue : choisissez parmi {', '.join(OBJ6_CITIES)}.")
+    if body.gender not in (None, "Women", "Men"):
+        raise HTTPException(422, "Genre : Femme ou Homme.")
+    k = max(1, min(body.k, 5))
+    agenda = (body.agenda or "").strip()[:300] or None
+    steps = []
+
+    def step(label, t0):
+        steps.append({"label": label, "ms": round((time.perf_counter() - t0) * 1000)})
+
+    by_id = {c["id"]: c for c in _for_gender(catalog(), body.gender)}
+    if agenda:   # étape séparée et chronométrée ; l'Obj6 garde le résultat en cache pour la recommandation
+        t0 = time.perf_counter()
+        src = obj6_parse(agenda)
+        step(f"Lecture de l'agenda ({AGENT_USER.get(src, 'mots-clés')})", t0)
+    t0 = time.perf_counter()
+    res = obj6_recommend({"wardrobe": [to_obj6_item(c) for c in by_id.values()], "city": body.city, "gender": body.gender,
+                          "agenda": agenda, "colours": body.colours, "types": body.types, "explain": body.explain, "k": 10,
+                          "uid": OBJ6_UID, "exclude_outfits": body.exclude_outfits, "exclude_ids": body.exclude_ids})
+    step("Météo, création et classement des tenues" + (" + explications de la styliste IA" if body.explain else ""), t0)
+    ctx = res.get("context", {})
+    occ6 = ctx.get("occasion", "casual")
+    temp, rain = float(ctx.get("feels_like", 20)), float(ctx.get("rain_prob", 0))
+
+    warnings = []
+    if ctx.get("agenda_error"):
+        log(f"agent de l'agenda : {ctx['agenda_error']}")
+        warnings.append("L'IA n'a pas pu lire votre agenda : il a été lu par mots-clés.")
+    if ctx.get("prefs_relaxed"):
+        warnings.append("Aucune tenue ne respecte toutes vos envies : elles ont été ignorées.")
+    if str(ctx.get("weather_source", "")).startswith("default"):
+        warnings.append("Météo indisponible : température estimée.")
+
+    # doublons visuels (pièces jumelles) et tenues déjà écartées par l'utilisateur
+    look = lambda i: (str(by_id[i].get("name")).lower(), by_id[i].get("type"), tuple(by_id[i].get("colour") or []))
+    excl_looks = {frozenset(look(i) for i in grp if i in by_id) for grp in body.exclude_outfits}
+    cands, seen = [], set()
+    for o in res.get("outfits") or []:
+        sig = frozenset(look(i["id"]) for i in o["items"] if i["id"] in by_id)
+        if sig and sig not in seen and sig not in excl_looks:
+            seen.add(sig); cands.append(o)
+
+    t_jury = t_compat = 0.0
+    scored = []
+    for o in cands:
+        ids = [i["id"] for i in o["items"]] + [a["id"] for a in o.get("accessories", [])]
+        cards = [by_id[i] for i in ids if i in by_id]
+        t0 = time.perf_counter()
+        j = jury().judge([c["id"] for c in cards], temp, rain > .5, OCC6_OBJ3.get(occ6, "décontracté"), mode="regles", repair=False)
+        t_jury += time.perf_counter() - t0
+        t0 = time.perf_counter()
+        c01 = outfit_compat01([by_id[i["id"]] for i in o["items"] if i["id"] in by_id])
+        t_compat += time.perf_counter() - t0
+        reserves = sum(v["niveau"] < 2 for v in j["criteres"].values())
+        scored.append(((j["niveau"], -reserves, round(float(o["score"]), 2), c01 or 0), o, j, c01))
+    steps.append({"label": f"Vérification par le jury de style ({len(scored)} tenue{'s' if len(scored) > 1 else ''})", "ms": round(t_jury * 1000)})
+    steps.append({"label": "Accord entre les pièces", "ms": round(t_compat * 1000)})
+    scored.sort(key=lambda x: x[0], reverse=True)
+
+    def occ_fr(txt):
+        for key, val in OCC_USER.items():
+            txt = txt.replace(f"« {key} »", f"« {val} »")
+        return txt
+
+    outfits = []
+    for _, o, j, c01 in scored[:k]:
+        alerts = list(o.get("warnings") or []) + crit_text(f"{key} : {v['raison']}" for key, v in j["criteres"].items() if v["niveau"] < 2)
+        outfits.append({
+            "id": "-".join(i["id"] for i in o["items"]),
+            "items": [to_front_item(by_id[i["id"]]) for i in o["items"] if i["id"] in by_id],
+            "accessories": [to_front_item(by_id[a["id"]]) for a in o.get("accessories", []) if a["id"] in by_id],
+            "score": round(float(o["score"]), 2), "compat01": c01,
+            "jury": "Validée par le jury de style" if j["niveau"] == 2 and not alerts else
+                    ("Convient, avec réserves" if j["niveau"] == 2 else "Le jury de style émet des réserves"),
+            "reasons": [occ_fr(r) for r in o.get("reasons") or []], "explanation": o.get("explanation"),
+            "alerts": list(dict.fromkeys(alerts)), "excludeKey": [i["id"] for i in o["items"]], "features": o.get("features") or {}})
+    if body.explain and outfits and not any(x["explanation"] for x in outfits):
+        warnings.append("Explications de la styliste IA indisponibles : les raisons calculées sont affichées.")
+    if 0 < len(outfits) < k:
+        warnings.append(f"Garde-robe insuffisante : {len(outfits)} tenue{'s' if len(outfits) > 1 else ''} différente"
+                        f"{'s' if len(outfits) > 1 else ''} seulement (sur {k}). Ajoutez des pièces pour plus de choix.")
+    message = None
+    if not outfits:
+        message = (res.get("message") if not res.get("outfits") else None) or \
+                  "Plus d'autre tenue différente avec votre garde-robe : réinitialisez les tenues écartées."
+    return {"context": {"city": body.city, "temperatureC": round(temp), "rainPct": round(rain * 100), "occasion": OCC_USER.get(occ6, occ6),
+                        "formality": ctx.get("formality"), "agent": AGENT_USER.get(ctx.get("agenda_source")) if agenda else None,
+                        "rag": ctx.get("retrieved") or [], "ramadan": bool(ctx.get("ramadan")), "eid": bool(ctx.get("eid")),
+                        "notes": ctx.get("agenda_notes"), "pieces": len(by_id)},
+            "warnings": warnings, "message": message, "steps": steps, "outfits": outfits}
 
 
 class FeedbackIn(BaseModel):

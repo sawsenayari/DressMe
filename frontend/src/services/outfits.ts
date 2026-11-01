@@ -1,4 +1,4 @@
-import type { Occasion, Outfit } from '../types';
+import type { Gender, Occasion, Outfit, OutfitOptions, RecommendRequest, RecommendResponse } from '../types';
 import { http } from './http';
 import { withAssets } from './wardrobe';
 
@@ -19,3 +19,16 @@ export const sendOutfitFeedback = (itemIds: string[], accepted: boolean, feature
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ item_ids: itemIds, accepted, features, reason }),
   });
+
+/** Couleurs et types proposés comme « envies » (présents dans la garde-robe pour ce genre) et villes. */
+export const getOutfitOptions = (gender?: Gender) =>
+  http<OutfitOptions>(`/outfits/options${gender ? `?gender=${gender}` : ''}`);
+
+/** Tenues du jour : agenda lu par l'IA, météo de la ville, envies, jury de style et accord des pièces. */
+export const recommendOutfits = (body: RecommendRequest) =>
+  http<RecommendResponse>('/outfits/recommend', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+  }).then(r => ({
+    ...r,
+    outfits: r.outfits.map(o => ({ ...o, items: o.items.map(withAssets), accessories: o.accessories.map(withAssets) })),
+  }));

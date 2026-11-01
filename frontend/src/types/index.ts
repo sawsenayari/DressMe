@@ -129,3 +129,57 @@ export interface StyleProfile {
   palette?: { color: string; weight: number }[];
   model?: 'garde-robe' | 'référence'; // référence = moins de 18 pièces : modèle Obj5 pré-entraîné
 }
+
+/** DSO6 : écran « tenue du jour » complet (POST /outfits/recommend) */
+export type Gender = 'Women' | 'Men';
+
+export interface RecommendRequest {
+  gender?: Gender;
+  city: string;
+  agenda?: string; // texte libre (français, arabe ou anglais) lu par l'agent de l'Obj6
+  colours: string[]; // envies facultatives : rien = aucun filtre
+  types: string[];
+  explain: boolean; // explications rédigées par la styliste IA
+  k?: number;
+  exclude_outfits?: string[][];
+}
+
+export interface RecommendedOutfit {
+  id: string;
+  items: ClothingItem[];
+  accessories: ClothingItem[];
+  score: number; // 0 à 1 (contexte, météo, envies, historique)
+  compat01: number | null; // accord entre les pièces (Obj2)
+  jury: string; // verdict du jury de style (Obj3)
+  reasons: string[]; // raisons calculées
+  explanation?: string | null; // explication de la styliste IA
+  alerts: string[]; // points faibles
+  excludeKey: string[];
+  features: Record<string, number>;
+}
+
+export interface RecommendResponse {
+  context: {
+    city: string;
+    temperatureC: number;
+    rainPct: number;
+    occasion: string;
+    formality: number | null;
+    agent: string | null; // qui a lu l'agenda : mots-clés, IA, IA + fiches locales
+    rag: string[]; // fiches locales consultées
+    ramadan: boolean;
+    eid: boolean;
+    notes?: string | null;
+    pieces: number;
+  };
+  warnings: string[];
+  message: string | null;
+  steps: { label: string; ms: number }[];
+  outfits: RecommendedOutfit[];
+}
+
+export interface OutfitOptions {
+  colours: string[];
+  types: string[];
+  cities: string[];
+}
