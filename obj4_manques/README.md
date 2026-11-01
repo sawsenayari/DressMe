@@ -140,6 +140,12 @@ From the repository root, run:
 .\.venv\Scripts\python.exe -m uvicorn app:app --app-dir .\dressme_compat_service --port 8002
 ```
 
+In the DressMe monorepo the Objective 2 service lives in `obj2_compat` (run from the monorepo root):
+
+```powershell
+python -m uvicorn app:app --app-dir obj2_compat --port 8002
+```
+
 Check that it is available:
 
 ```powershell

@@ -3,7 +3,7 @@
 2. Vision   : `pip install -r requirements-ml.txt` puis `python -m training.vision` (+ `--finetune --epochs 3 --unfreeze 2`) → models/vision_metrics.json
 3. Contexte : `python -m training.train --styles data/styles.csv` (+ `--feedback data/feedback.db` pour intégrer les 👍/👎)
 4. Agent    : `python -m training.eval_agent` (règles vs LLM vs LLM+RAG) ; debug : /api/parse?text=… /api/rag?q=…
-5. Serveur  : `uvicorn app.main:app --reload` ; Docker : `docker build --build-arg ML=1 -t dressme .` ; tests : `pytest`
+5. Serveur  : `uvicorn app.main:app --reload` (dans le monorepo DressMe : `--port 8006`, lancé par `run_all.bat` ; le port 8000 est celui de la passerelle) ; Docker : `docker build --build-arg ML=1 -t dressme .` ; tests : `pytest`
 6. Découpe   : `python -m training.crop_dataset --limit 1500` (catalogue) ; les photos envoyées dans l'interface sont découpées à la volée
 7. Évaluation: `python -m training.eval_agent` · `python -m training.eval_rag` · `pytest`
 8. MCP       : `python -m app.mcp_server` (serveur) ; l'assistant peut l'utiliser via la case « Passer par MCP » — voir docs/ARCHITECTURE.md

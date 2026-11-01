@@ -43,7 +43,7 @@ export interface ClothingItem {
 export interface Outfit {
   id: string;
   items: ClothingItem[];
-  compat01?: number; // 0 to 1 calculated by Objectif 2
+  compat01?: number | null; // 0 to 1 calculated by Objectif 2 (null = embeddings manquants)
   reason?: string;
   weather?: { temperatureC: number; label: string };
   agenda?: string; // Objectif 6 context variable

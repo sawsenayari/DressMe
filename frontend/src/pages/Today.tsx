@@ -141,10 +141,10 @@ export default function Today() {
               <span style={{ fontSize: '18px' }}>⚖️</span>
             </div>
             <div style={{ fontSize: '1.5rem', fontWeight: 800, marginTop: '8px', color: 'var(--ink)' }}>
-              92 / 100
+              {activeOutfit?.compat01 != null ? `${Math.round(activeOutfit.compat01 * 100)} / 100` : '—'}
             </div>
             <div style={{ fontSize: '0.82rem', color: 'var(--muted)', marginTop: '2px' }}>
-              Validée par le jury de tenues
+              {activeOutfit?.compat01 != null ? 'Score /pairs (Objectif 2)' : 'Non calculée (embeddings manquants)'}
             </div>
           </div>
 
@@ -159,22 +159,22 @@ export default function Today() {
               {profile.axis}
             </div>
             <div style={{ fontSize: '0.82rem', color: 'var(--muted)', marginTop: '2px' }}>
-              {profile.scores?.efficacite || 86}% d'efficacité matin
+              {profile.scores?.efficacite ?? '—'}% d'efficacité matin
             </div>
           </div>
 
           <div className="card card-lavender" style={{ padding: '18px 20px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--pastel-lavender-deep)', textTransform: 'uppercase' }}>
-                Météo Paris
+                Météo
               </span>
               <span style={{ fontSize: '18px' }}>⛅</span>
             </div>
             <div style={{ fontSize: '1.5rem', fontWeight: 800, marginTop: '8px', color: 'var(--ink)' }}>
-              21°C
+              {activeOutfit?.weather ? `${activeOutfit.weather.temperatureC}°C` : '—'}
             </div>
             <div style={{ fontSize: '0.82rem', color: 'var(--muted)', marginTop: '2px' }}>
-              Douceur & ciel dégagé
+              {activeOutfit?.weather?.label ?? "Fournie par l'objectif 6"}
             </div>
           </div>
         </div>
@@ -334,6 +334,14 @@ export default function Today() {
                   )}
                   {outfit.reason && <p style={{ fontSize: '0.95rem', lineHeight: '1.5' }}>{outfit.reason}</p>}
                 </div>
+                {!!outfit.warnings?.length && (
+                  <div className="card" style={{ background: '#FFFFFF' }}>
+                    <h4 style={{ fontSize: '1rem', marginBottom: '10px' }}>Points d'attention (Obj3 / Obj6)</h4>
+                    <ul style={{ paddingLeft: '20px', margin: 0, fontSize: '0.88rem', color: 'var(--muted)', lineHeight: '1.6' }}>
+                      {outfit.warnings.map(w => <li key={w}>{w}</li>)}
+                    </ul>
+                  </div>
+                )}
               </div>
             </section>
           )}

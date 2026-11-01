@@ -43,7 +43,8 @@ def test_three_evaluations_run_end_to_end(monkeypatch, tmp_path):
     ju = eval_judge.main(["--n", "2"])
     assert ju["cases"] == 6 and set(ju["judges"]) == {"juge-a", "juge-b"} and "agreement_between_judges_spearman" in ju
     for v in ju["judges"].values():
-        assert v["judge_failures"] == 0 and v["judge_discrimination"] >= .5 and v["mean_scores"]["pertinence"] > v["mean_scores_mismatched_control"]["pertinence"]
+        bv = v["by_variant"]   # le juge doit mieux noter la vraie explication que celle d'un autre contexte
+        assert v["judge_failures"] == 0 and bv["bonne"]["pertinence"] > bv["autre_contexte"]["pertinence"]
     assert (tmp_path / "judge_cases.csv").exists()
     monkeypatch.setattr(eval_tools, "SC", eval_tools.SC[:2]); to = eval_tools.main([]); srv.shutdown()
     assert to["run_errors"] == 0 and to["all_tools"].endswith("(2/2)") and to["order_ok"].endswith("(2/2)") and to["weather_consistent"].endswith("(2/2)")

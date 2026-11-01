@@ -144,7 +144,7 @@ export function AppShell() {
             {/* Live weather badge */}
             <div className="topbar-pill" title="Current weather for outfit styling">
               <span className="pill-dot"></span>
-              <span>Paris <strong>21°C</strong> Mild & Sunny</span>
+              <span>Tunis <strong>· météo</strong> (Objectif 6)</span>
             </div>
 
             {/* Demo / Live Backend Toggle */}

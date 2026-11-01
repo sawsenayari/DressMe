@@ -7,7 +7,6 @@ venv/
 real/
 node_modules/
 .venv/
-node_modules/
 dist/
 frontend/.env
 
@@ -28,3 +27,16 @@ obj6_app/data/images_crop/
 obj6_app/data/emb_clip*
 obj6_app/data/feedback.db
 obj6_app/models/clip_visual_ft.pt
+
+# Modèles : ignorés par défaut, sauf les poids légers nécessaires à l'exécution
+*.pt
+*.pth
+*.safetensors
+*.ckpt
+!obj2_compat/models/final_image_s*.pt
+!obj6_app/models/clip_lora_ft.pt
+
+# Divers
+.ipynb_checkpoints/
+*.egg-info/
+*.log

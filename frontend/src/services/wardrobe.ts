@@ -1,7 +1,7 @@
 import type { ClothingItem } from '../types';
 import { assetUrl, http, upload } from './http';
 
-const withAssets = (i: ClothingItem): ClothingItem => ({ ...i, imageUrl: assetUrl(i.imageUrl) ?? '', imageCrop: assetUrl(i.imageCrop) });
+export const withAssets = (i: ClothingItem): ClothingItem => ({ ...i, imageUrl: assetUrl(i.imageUrl) ?? '', imageCrop: assetUrl(i.imageCrop) });
 
 // DSO1 — classification + wardrobe storage
 export const listItems = () => http<ClothingItem[]>('/wardrobe/items').then(items => items.map(withAssets));

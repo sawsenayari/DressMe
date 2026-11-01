@@ -15,7 +15,7 @@ def photo(path, size=(200, 200)):
 
 
 def test_worn_photo_gives_one_crop_per_garment():
-    c = Cropper(segmenter=fake_segmenter(True)); ps = c.crop(Image.new("RGB", (200, 200), (120, 140, 160)))
+    c = Cropper(segmenter=fake_segmenter(True)); ps = c.crop(Image.new("RGB", (400, 400), (120, 140, 160)))   # 400 px : pièces > crop_min_side (96 px)
     assert {p.name for p in ps} == {"top", "bottom"} and all(p.image.size == (512, 512) for p in ps)
     assert {p.slot_hint for p in ps} == {"top", "bottom"} and all(p.quality["ok"] for p in ps)
 
@@ -36,13 +36,15 @@ def test_quality_flags_cut_and_small_and_empty():
 
 
 def test_photo_to_json_with_crop_and_slot_disagreement(cfg, tmp_path):
-    inbox = tmp_path / "inbox"; inbox.mkdir(); photo(inbox / "p1.jpg")
+    inbox = tmp_path / "inbox"; inbox.mkdir(); photo(inbox / "p1.jpg", size=(400, 400))
     svc = RecognitionService(RecognitionAgent(FakeLLM([ans("jacket", 0.9)]), FakeEmbedder(), make_retriever(), cfg), FakeEmbedder(), cfg, cropper=Cropper(segmenter=fake_segmenter(True)))
     store = tmp_path / "store"; out = recognize_folder(svc, inbox, store, crop=True, verbose=False)
     assert out["cards"] == 2 and (store / "wardrobe.json").exists()
     rep = {e["source_key"]: e for e in json.loads((store / "recognition_report.json").read_text())["items"]}
     assert set(rep) == {"p1.jpg#top", "p1.jpg#bottom"}
-    assert any(r.startswith("slot_disagrees_with_segmentation") for r in rep["p1.jpg#top"]["reasons"]) and rep["p1.jpg#top"]["status"] == "needs_review"
+    # veste reconnue dans la zone « haut » : compatible (recognition/outfit.py) ; dans la zone « bas » : désaccord -> revue
+    assert not any(r.startswith("slot_disagrees_with_segmentation") for r in rep["p1.jpg#top"]["reasons"])
+    assert any(r.startswith("slot_disagrees_with_segmentation") for r in rep["p1.jpg#bottom"]["reasons"]) and rep["p1.jpg#bottom"]["status"] == "needs_review"
     ids = {e["id"] for e in rep.values()}; recognize_folder(svc, inbox, store, crop=True, verbose=False)
     assert {e["id"] for e in json.loads((store / "recognition_report.json").read_text())["items"]} == ids      # ids stables
 
