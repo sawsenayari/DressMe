@@ -126,9 +126,9 @@ export interface StyleProfile {
   diversityScore?: number; // 0-100 wardrobe variety index
   formalityPref?: number; // 0 to 3
   dominantCluster?: string;
-  palette?: { color: string; weight: number }[];
-  model?: 'garde-robe' | 'référence'; // référence = moins de 18 pièces : modèle Obj5 pré-entraîné
-  axisChosen?: boolean; // false = orientation calculée par l'Obj5 (aucun choix enregistré)
+  palette?: { color: string; weight: number; pieces?: number }[]; // pieces = nombre de pièces de cette couleur
+  model?: 'garde-robe' | 'référence'; // référence = taxonomie de styles apprise sur le catalogue de l'Obj5
+  nStyles?: number; // nombre de styles de cette taxonomie
   persona?: StyleAxis; // orientation calculée par l'Obj5
   dominantShare?: number | null; // part de la garde-robe dans le style dominant (0-100)
   pricePercentile?: number | null; // 0-100, null = prix inconnus
@@ -148,7 +148,7 @@ export interface StyleSuggestion {
   colour: string[];
   usage?: string;
   formality?: number;
-  match: number; // proximité avec votre garde-robe (0-100)
+  match: number; // score de classement : proximité avec la garde-robe + bonus de l'orientation (0-100)
   reasons: string[];
 }
 

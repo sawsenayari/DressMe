@@ -1,21 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useAsync } from '../hooks/useAsync';
-import { getProfile, getStyleSuggestions, saveAxis } from '../services/profile';
-import type { Gender, Slot, StyleAxis, StyleProfile } from '../types';
+import { getProfile, getStyleSuggestions } from '../services/profile';
+import type { Gender, Slot, StyleProfile } from '../types';
 import { colourLabel, slotLabel, typeLabel, usageLabel } from '../components/ui/ItemFields';
 import { useApp } from '../context/AppContext';
 
-const AXES: { id: StyleAxis; title: string; text: string; icon: string; bonus: string }[] = [
-  { id: 'efficiency', title: 'Efficacité', icon: '⚡', text: "S'habiller vite, avec des pièces faciles à combiner.",
-    bonus: 'Suggestions : couleurs neutres et basiques en priorité.' },
-  { id: 'economy', title: 'Économie', icon: '🌿', text: "Rentabiliser ses pièces, n'acheter que l'essentiel.",
-    bonus: 'Suggestions : les moins chères en priorité (prix nécessaires).' },
-  { id: 'brand', title: 'Image', icon: '💎', text: 'Affirmer un style marquant et cohérent.',
-    bonus: 'Suggestions : pièces de votre style dominant en priorité.' },
-  { id: 'mixte', title: 'Équilibre', icon: '⚖️', text: 'Un peu de tout : les deux points forts de votre garde-robe.',
-    bonus: 'Suggestions : les deux meilleurs critères, à parts égales.' },
-];
-const AXIS_TITLE: Record<string, string> = Object.fromEntries(AXES.map(a => [a.id, a.title]));
+// orientation calculée par l'Obj5 (persona)
+const AXIS_TITLE: Record<string, string> = { efficiency: 'Efficacité', economy: 'Économie', brand: 'Image', mixte: 'Équilibre' };
 const FORMALITY = ['Décontracté', 'Quotidien soigné', 'Professionnel', 'Très habillé'];
 const SLOTS: Slot[] = ['top', 'bottom', 'onepiece', 'outer', 'footwear', 'bag', 'accessory'];
 const SWATCH: Record<string, string> = {
@@ -52,8 +43,6 @@ export default function Profile() {
   const [reload, setReload] = useState(0);
   const state = useAsync(() => (useDemoData ? Promise.resolve(contextProfile) : getProfile()), [useDemoData, reload]);
   const [profile, setProfile] = useState<StyleProfile>(contextProfile);
-  const [saving, setSaving] = useState(false);
-  const [msg, setMsg] = useState('');
   const [slot, setSlot] = useState<Slot | ''>('');
   const [gender, setGender] = useState<Gender | ''>('');
 
@@ -64,22 +53,9 @@ export default function Profile() {
 
   const sugg = useAsync(
     () => (useDemoData ? Promise.resolve(null) : getStyleSuggestions(slot || undefined, gender || undefined)),
-    [useDemoData, slot, gender, profile.axis, profile.axisChosen],
+    [useDemoData, slot, gender],
   );
 
-  async function chooseAxis(axis: StyleAxis | 'auto') {
-    if (useDemoData) { setProfile(p => ({ ...p, axis: axis === 'auto' ? p.axis : axis })); return; }
-    setSaving(true); setMsg('');
-    try {
-      const p = await saveAxis(axis);
-      setProfile(p); setContextProfile(p);
-      setMsg(axis === 'auto' ? `Orientation automatique : ${AXIS_TITLE[p.axis]}.` : `Orientation enregistrée : ${AXIS_TITLE[axis]}.`);
-    } catch (e) {
-      setMsg(`Choix non enregistré : ${e instanceof Error ? e.message : e}`);
-    } finally { setSaving(false); }
-  }
-
-  const scores = profile.scores;
   const pct = (v?: number | null) => (v == null ? '—' : `${v} %`);
   const formality = profile.formalityPref;
   const slots = Object.entries(profile.slotCounts ?? {}).sort((a, b) => (b[1] ?? 0) - (a[1] ?? 0));
@@ -112,10 +88,9 @@ export default function Profile() {
       {(live ? state.data : true) && (
         <>
           {/* Notes de l'analyse */}
-          {live && (profile.model === 'référence' || !!profile.notes?.length) && (
+          {live && !!profile.notes?.length && (
             <div role="status" className="card card-butter" style={{ marginBottom: '20px', padding: '12px 18px' }}>
               <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '0.88rem', lineHeight: 1.6 }}>
-                {profile.model === 'référence' && <li>Profil provisoire : il deviendra plus personnel à partir de 18 pièces.</li>}
                 {profile.notes?.map(n => <li key={n}>{n}</li>)}
               </ul>
             </div>
@@ -143,38 +118,17 @@ export default function Profile() {
             </div>
             {live && profile.space && (
               <p style={{ color: 'var(--muted)', fontSize: '0.78rem', margin: '12px 0 0' }}>
-                Analyse faite à partir {profile.space === 'photos' ? 'des photos de vos pièces' : 'des caractéristiques de vos pièces (photos non analysées)'}.
+                Vos pièces sont comparées {profile.nStyles ? `aux ${profile.nStyles} styles` : 'aux styles'} d'un catalogue de référence
+                d'après leurs caractéristiques (catégorie, couleur, usage, formalité, chaleur, saison){profile.space === 'photos' ? ' et leurs photos' : ''}.
               </p>
             )}
-          </section>
-
-          {/* Scores */}
-          <section style={{ marginBottom: '28px' }}>
-            <h3 style={h3}>Vos trois scores</h3>
-            <p style={sub}>Calculés sur votre garde-robe ; le plus élevé donne l'orientation calculée.</p>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
-              {([
-                ['efficacite', '⚡ Efficacité', 'card-mint', 'var(--pastel-mint-deep)', 'Couleurs neutres, basiques, peu de dispersion.'],
-                ['economie', '🌿 Économie', 'card-butter', 'var(--pastel-butter-deep)',
-                  profile.pricePercentile != null ? `Prix médian au ${profile.pricePercentile}e percentile du catalogue.` : 'Nécessite le prix de vos pièces.'],
-                ['image', '💎 Image', 'card-lavender', 'var(--pastel-lavender-deep)', 'Style dominant marqué, formalité, couleurs fortes.'],
-              ] as const).map(([k, title, cls, color, text]) => (
-                <div key={k} className={`card ${cls}`} style={{ padding: '18px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontWeight: 700, fontSize: '0.9rem', color }}>{title}</span>
-                    <strong style={{ fontSize: '1.3rem' }}>{pct(scores?.[k])}</strong>
-                  </div>
-                  {bar(scores?.[k] ?? 0, color)}
-                  <p style={{ fontSize: '0.78rem', color: 'var(--muted)', margin: 0 }}>{text}</p>
-                </div>
-              ))}
-            </div>
           </section>
 
           {/* Palette et répartition */}
           <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', marginBottom: '28px' }}>
             <div className="card" style={{ background: '#FFFFFF' }}>
               <h3 style={h3}>🎨 Votre palette</h3>
+              <p style={sub}>Couleurs les plus présentes dans vos pièces.</p>
               {profile.palette?.length ? (
                 <div style={{ display: 'grid', gap: '8px' }}>
                   {profile.palette.map(p => (
@@ -183,6 +137,7 @@ export default function Profile() {
                       <span style={{ width: '110px' }}>{p.color.startsWith('#') ? p.color : colourLabel(p.color)}</span>
                       <div style={{ flex: 1 }}>{bar(p.weight * 100, 'var(--pastel-pink-deep)')}</div>
                       <strong style={{ width: '42px', textAlign: 'right' }}>{Math.round(p.weight * 100)} %</strong>
+                      {p.pieces != null && <span style={{ width: '64px', color: 'var(--muted)', fontSize: '0.8rem' }}>{p.pieces} pièce{p.pieces > 1 ? 's' : ''}</span>}
                     </div>
                   ))}
                 </div>
@@ -206,41 +161,11 @@ export default function Profile() {
             )}
           </section>
 
-          {/* Orientation prioritaire */}
-          <section style={{ marginBottom: '28px' }}>
-            <h3 style={h3}>Orientation prioritaire</h3>
-            <p style={sub}>
-              Elle décide de l'ordre des pièces suggérées ci-dessous.{' '}
-              {live && (profile.axisChosen
-                ? <>Votre choix : <strong>{AXIS_TITLE[profile.axis]}</strong>.{' '}
-                    <button className="btn-sm btn-secondary" style={{ borderRadius: '999px', fontSize: '0.76rem' }} disabled={saving} onClick={() => chooseAxis('auto')}>
-                      Revenir à l'orientation calculée ({AXIS_TITLE[profile.persona ?? 'mixte']})
-                    </button></>
-                : <>Actuellement : <strong>{AXIS_TITLE[profile.axis]}</strong> (calculée d'après votre garde-robe).</>)}
-            </p>
-            <div className="options" style={{ marginTop: 0 }}>
-              {AXES.map(a => {
-                const on = profile.axis === a.id;
-                return (
-                  <button key={a.id} className="option" aria-pressed={on} disabled={saving} onClick={() => chooseAxis(a.id)}>
-                    <div className="option-icon" style={{ background: on ? 'var(--pastel-pink-soft)' : 'var(--paper)', color: on ? 'var(--pastel-pink-deep)' : 'var(--ink)' }}>
-                      {a.icon}
-                    </div>
-                    <h3 style={{ fontSize: '1.1rem', color: 'var(--ink)' }}>{a.title}</h3>
-                    <p>{a.text}</p>
-                    <p style={{ fontSize: '0.76rem', color: 'var(--muted)', marginTop: '6px' }}>{a.bonus}</p>
-                  </button>
-                );
-              })}
-            </div>
-            {msg && <p role="status" style={{ fontSize: '0.85rem', color: 'var(--muted)', marginTop: '10px' }}>{msg}</p>}
-          </section>
-
           {/* Suggestions de l'Obj5 */}
           {live && (
             <section style={{ marginBottom: '28px' }}>
               <h3 style={h3}>🛍️ Pièces qui prolongent votre style</h3>
-              <p style={sub}>Choisies dans un catalogue de référence, proches de votre garde-robe et classées selon votre orientation.</p>
+              <p style={sub}>Choisies dans un catalogue de référence, proches de votre garde-robe et classées selon votre orientation ({AXIS_TITLE[profile.persona ?? profile.axis]}).</p>
               <div className="chips" role="group" aria-label="Catégorie">
                 <button className="chip" aria-pressed={slot === ''} onClick={() => setSlot('')}>Toutes</button>
                 {SLOTS.map(s => <button key={s} className="chip" aria-pressed={slot === s} onClick={() => setSlot(s)}>{slotLabel(s)}</button>)}
@@ -263,7 +188,7 @@ export default function Profile() {
                       <span style={{ fontSize: '0.8rem', color: 'var(--muted)' }}>
                         {slotLabel(it.slot)} · {typeLabel(it.type)} · {it.colour.map(colourLabel).join(' + ')}{it.usage ? ` · ${usageLabel(it.usage)}` : ''}
                       </span>
-                      <span style={{ fontSize: '0.82rem' }}>Proche de votre style : <strong>{it.match} %</strong></span>
+                      <span style={{ fontSize: '0.82rem' }}>Correspondance avec votre style : <strong>{it.match} %</strong></span>
                       {it.reasons.length > 0 && <span style={{ fontSize: '0.78rem', color: 'var(--pastel-mint-deep)' }}>✓ {it.reasons.join(' · ')}</span>}
                     </article>
                   ))}

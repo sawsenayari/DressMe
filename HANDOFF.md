@@ -17,7 +17,7 @@ branché, testé et poussé sur `main` (GitHub `sawsenayari/DressMe`, dépôt **
 | **Composer une tenue** (Outfit Studio) | `POST /outfits/judge` | jury Obj3 (règles + IA + photos en option) + Obj2 |
 | **Does it match ?** | `POST /compatibility/score` | Obj2 (FashionCLIP + PairMLP) |
 | **Pièces à ajouter** (Gaps) | `GET /gaps` | Obj4 (rapport statique `gap_report.json`) |
-| **Mon profil de style** | `GET/PUT /profile`, `GET /profile/recommendations` | Obj5 (profil, orientation, pièces suggérées) |
+| **Mon profil de style** | `GET /profile`, `GET /profile/recommendations` | Obj5 (profil, pièces suggérées) |
 
 Ports : 8000 passerelle (seul backend du front), 8006 Obj6 (service HTTP lancé par `run_all.bat`), 5173 front (Vite).
 Les autres objectifs sont appelés **en interne** par la passerelle (pas de serveur à lancer).
@@ -90,8 +90,8 @@ ni dans le modèle Obj5, ni dans le cache Obj1.
 « Orchestration » (durée des étapes), puis 👍 / 🔀 / 👎 sur une tenue ; **Wardrobe** → « Ajouter une pièce » (formulaire pré-rempli puis modifiable), recherche, filtres,
 ✏️ Modifier, 🗑️ Supprimer ; **Composer une tenue** → choisir haut / bas / chaussures, changer contexte et température ;
 **Does it match ?** → `frontend\public\images\cream-trousers.jpg`, puis une photo déjà dans la garde-robe (doublon) ;
-**Pièces à ajouter** ; **Mon profil de style** → choisir une orientation (les suggestions changent), filtrer
-les suggestions par catégorie et Femme / Homme, « Revenir à l'orientation calculée ». Aucune erreur 500 ne doit apparaître (F12 → Console / Réseau).
+**Pièces à ajouter** ; **Mon profil de style** → filtrer les pièces suggérées par catégorie et Femme / Homme,
+« Recalculer ». Aucune erreur 500 ne doit apparaître (F12 → Console / Réseau).
 
 ## 5. Ce qui a été fait (principaux commits, du plus récent au plus ancien)
 
@@ -118,7 +118,9 @@ les suggestions par catégorie et Femme / Homme, « Revenir à l'orientation cal
   dans la réponse de `/outfits/judge` mais n'est pas affiché.
 - **Obj6** : pas de mode budget ; 6 slots (le sac devient « accessoire ») ; sa vision utilise open_clip, pas FashionCLIP.
 - **Obj4** : rapport statique (pas recalculé à chaque ajout de pièce).
-- **Obj5** : moins de 18 pièces → profil calculé avec le modèle de référence (indiqué à l'écran).
+- **Obj5** : profil et suggestions utilisent la taxonomie de référence (16 styles appris sur 423 fiches, espace
+  d'attributs, pas FashionCLIP faute d'embeddings du catalogue) ; palette = part des pièces par couleur ; suggestions
+  sans photos (catalogue de référence sans images) ; orientation Économie non évaluable sans prix.
 - **Réseau** : derrière un proxy qui intercepte le HTTPS, `pip` et les API (Gemini, Groq, météo) échouent en
   `CERTIFICATE_VERIFY_FAILED` ; `pip install truststore` puis `--use-feature=truststore` pour pip.
 - **Python global cassé** sur le poste d'origine (torch compilé pour NumPy 1.x) : toujours utiliser un venv.

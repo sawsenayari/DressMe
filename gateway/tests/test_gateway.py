@@ -32,10 +32,11 @@ def test_routes(tmp_path, monkeypatch):
     r = c.post("/compatibility/score", files={"image": ("x.jpg", b"x", "image/jpeg")}); assert r.status_code == 200, r.text
     j = r.json(); assert 0 <= j["score"] <= 100 and j["verdict"] in ("compatible", "moyenne", "peu compatible") and "duplicate" in j
     p = c.get("/profile").json(); assert p["axis"] in ("efficiency", "economy", "brand", "mixte") and p["palette"]
-    p = c.put("/profile", json={"axis": "economy"}).json(); assert p["axis"] == "economy" and p["axisChosen"]
-    assert c.get("/profile").json()["axis"] == "economy"                                 # choix gardé (profile_prefs.json)
-    p = c.put("/profile", json={"axis": "auto"}).json(); assert not p["axisChosen"] and p["axis"] == p["persona"]
-    assert c.put("/profile", json={"axis": "nimporte"}).status_code == 422
+    assert p["axis"] == p["persona"]                                                    # orientation calculée par l'Obj5
+    # palette = part des pièces par couleur (pas la confiance de l'Obj1) : triée, cohérente avec le nombre de pièces
+    pal = p["palette"]; assert [x["weight"] for x in pal] == sorted((x["weight"] for x in pal), reverse=True)
+    cat = c.get("/wardrobe/items").json()
+    assert pal[0]["pieces"] == sum(pal[0]["color"] in (i.get("colour") or []) for i in cat)
     assert {"slotCounts", "nItems", "nItemsUsed", "notes", "dominantShare", "space"} <= set(p)
     gp = c.get("/gaps"); assert gp.status_code in (200, 503)
     if gp.status_code == 200:
@@ -167,8 +168,7 @@ def test_profile_small_wardrobe_uses_reference_model(tmp_path, monkeypatch):
     assert len({(x["name"], x["type"], tuple(x["colour"])) for x in items}) == len(items)
     shoes = c.get("/profile/recommendations", params={"slot": "footwear", "k": 3, "gender": "Women"}).json()
     assert shoes["gender"] == "Women" and all(x["slot"] == "footwear" for x in shoes["items"])
-    c.put("/profile", json={"axis": "brand"})
-    assert c.get("/profile/recommendations").json()["axis"] == "brand"
+    assert c.get("/profile/recommendations").json()["axis"] in ("efficiency", "economy", "brand", "mixte")
     assert c.get("/profile/recommendations", params={"slot": "chapeau"}).status_code == 422
     monkeypatch.setattr(g, "OBJ5_REF_MODEL", tmp_path / "absent.joblib"); monkeypatch.setattr(g, "_cache", {})
     r = c.get("/profile"); assert r.status_code == 503 and "profil" in r.json()["detail"]
