@@ -1,0 +1,12 @@
+{
+  "objective": "classify",
+  "mean_utility_regret": 0.0342,
+  "mean_utility_regret_random": 2.0384,
+  "auc": 0.8754,
+  "precision_at_1": 0.954,
+  "precision_at_1_random": 0.2503,
+  "constraint_violation_top1": 0.266,
+  "constraint_violation_random": 0.6145,
+  "constraint_violation_oracle_best_possible": 0.268,
+  "rows": 239316
+}

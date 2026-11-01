@@ -1,0 +1,68 @@
+<!doctype html><html lang="fr"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DressMe — Tenue du jour</title>
+<style>:root{--bg:#fff;--fg:#1c1c1e;--card:#f3f3f5;--ac:#5b3df5}@media(prefers-color-scheme:dark){:root{--bg:#111;--fg:#eee;--card:#1d1d20}}
+body{background:var(--bg);color:var(--fg);font:16px system-ui;max-width:720px;margin:2rem auto;padding:0 1rem}
+input,select,button{font:inherit;padding:.5rem;margin:.2rem 0;width:100%;box-sizing:border-box}button{background:var(--ac);color:#fff;border:0;border-radius:8px;cursor:pointer}
+button[disabled]{opacity:.4;cursor:not-allowed}.row{display:flex;gap:.5rem}.card{background:var(--card);border-radius:12px;padding:1rem;margin:.8rem 0}small{opacity:.75}.items{display:flex;gap:.5rem;flex-wrap:wrap}
+.chips label,.chip{display:inline-block;background:#8883;border-radius:16px;padding:.25rem .7rem;margin:.15rem;cursor:pointer;width:auto}.chips input{width:auto;margin:0 .3rem 0 0}.chip.on{background:var(--ac);color:#fff}
+.it{width:96px;text-align:center;font-size:.75rem}.it img{width:96px;height:120px;object-fit:cover;border-radius:8px;background:#fff}.acc img{height:72px}
+[data-act=pick]{cursor:pointer}.bad img{outline:3px solid #b3402f}.bad{opacity:.7}.sec{opacity:.7;font-size:.8rem;margin-top:.5rem}.ok{background:#1a8f4c}.no{background:#b3402f}.skip{background:#6b6b78}details{margin:.5rem 0}
+.liked{border:2px solid #1a8f4c}</style>
+<h1>DressMe</h1><p>Tenue du jour selon la météo, l'occasion et ton agenda.</p>
+<div class="row"><select id="gender"><option value="Women">Femme</option><option value="Men">Homme</option></select>
+<select id="city"><option>Tunis</option><option>Sfax</option><option>Sousse</option><option>Bizerte</option><option>Nabeul</option><option>Djerba</option></select></div>
+<input id="agenda" placeholder="Agenda du jour (ex : réunion client à 10h, mariage ce soir)">
+<details><summary>Mes envies (facultatif — rien de coché = aucun filtre)</summary><b>Couleurs</b><div id="colours" class="chips"></div><b>Types</b><div id="types" class="chips"></div></details>
+<details><summary>Ma garde-robe (<span id="nw">0</span> pièces) — ajoute tes photos</summary>
+<input type="file" id="photo" accept="image/*" multiple><small>Photo portée : chaque vêtement est détecté et découpé automatiquement.</small><div id="wlist" class="items"></div>
+<label><input type="checkbox" id="usew" style="width:auto"> Utiliser ma garde-robe (sinon : garde-robe de démo)</label></details>
+<label><input type="checkbox" id="explain" style="width:auto"> Explications de la styliste IA (LLM)</label>
+<button id="go">Proposer des tenues</button><div id="ctx"></div><small id="xinfo"></small><div id="out"></div>
+<details id="favbox" open><summary><b>❤️ Mes tenues aimées (<span id="nf">0</span>)</b></summary><div id="favs"></div></details><p id="stats"><small></small></p>
+<script>
+const $=s=>document.querySelector(s),J=(u,b)=>fetch(u,b&&{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)}).then(r=>r.json());
+const uid=localStorage.uid||(localStorage.uid=crypto.randomUUID());let W=JSON.parse(localStorage.wardrobe||"[]"),FAV=JSON.parse(localStorage.fav||"[]");
+let shown=[],ui=[],sel=[],rs=[],banned=new Set(),rejected=[],label="";
+const REASONS=[["too_hot","Trop chaud"],["too_cold","Trop froid"],["too_formal","Trop habillé"],["too_casual","Pas assez habillé"],["style","Pas mon style"]];
+const FR={black:"Noir",white:"Blanc",blue:"Bleu",navy:"Marine",grey:"Gris",red:"Rouge",green:"Vert",brown:"Marron",beige:"Beige",pink:"Rose",yellow:"Jaune",Jeans:"Jeans",Trousers:"Pantalons","Track Pants":"Joggings",Shorts:"Shorts",Shirts:"Chemises",Tshirts:"T-shirts",Tops:"Hauts",Sweaters:"Pulls",Jackets:"Vestes",Dresses:"Robes",Skirts:"Jupes",Heels:"Talons",Flats:"Ballerines","Casual Shoes":"Chaussures casual","Formal Shoes":"Chaussures de ville","Sports Shoes":"Sport"};
+const key=o=>[...o.item_ids].sort().join("|"),itemHtml=(x,cls="",attr="")=>`<div class="it ${cls}" ${attr}>${x.image?`<img src="${x.image}" alt="">`:""}<br>${x.name}</div>`;
+const chips=(id,v)=>$("#"+id).innerHTML=v.map(x=>`<label><input type="checkbox" value="${x}">${FR[x]||x}</label>`).join(""),checked=id=>[...document.querySelectorAll(`#${id} input:checked`)].map(x=>x.value);
+async function opts(){const o=await J("/api/options?gender="+$("#gender").value);chips("colours",o.colours);chips("types",o.types)}
+async function stats(){const s=await J("/api/stats?uid="+uid);$("#stats small").textContent=s.feedback?`${s.feedback} retours · ${Math.round(s.acceptance_rate*100)}% de tenues acceptées · tes retours réordonnent déjà les propositions`:"Aucun retour pour l'instant."}
+function updX(){$("#xinfo").innerHTML=banned.size?`${banned.size} article(s) exclu(s) · <a href="#" data-act="resetx">réinitialiser</a>`:""}
+function renderW(){localStorage.wardrobe=JSON.stringify(W);$("#nw").textContent=W.length;$("#wlist").innerHTML=W.map((x,i)=>itemHtml(x,"",`data-act="delw" data-i="${i}" title="Cliquer pour retirer"`)).join("")}
+function renderF(){localStorage.fav=JSON.stringify(FAV);$("#nf").textContent=FAV.length;$("#favs").innerHTML=FAV.length?FAV.slice().reverse().map(f=>`<div class="card liked"><small>${new Date(f.ts).toLocaleDateString("fr-FR")} · ${f.label}</small>
+ <div class="items">${f.items.map(x=>itemHtml(x)).join("")}</div>${f.accessories.length?`<div class="items acc">${f.accessories.map(x=>itemHtml(x)).join("")}</div>`:""}<a href="#" data-act="unfav" data-k="${f.key}">Retirer</a></div>`).join(""):"<small>Aucune tenue aimée pour l'instant : clique sur « Je la porte ».</small>"}
+function inner(i){const o=shown[i],s=ui[i]||"view",head=`<b>Option ${i+1}</b> <small>score ${o.score}</small>`;
+ if(s==="loading")return"<small>Je cherche une autre tenue…</small>";
+ if(s==="empty")return`<small>Plus d'autre tenue possible avec ces exclusions.</small> <a href="#" data-act="resetx">Réinitialiser les exclusions</a>`;
+ if(s==="dislike"){const sl=sel[i];return`${head}<p><small>Touche les articles que tu n'aimes pas, ou change toute la tenue.</small></p><div class="items">${o.items.map((x,j)=>itemHtml(x,sl.has(j)?"bad":"",`data-act="pick" data-i="${i}" data-j="${j}"`)).join("")}</div>
+  <div class="sec">Raison (facultatif)</div>${REASONS.map(([k,l])=>`<span class="chip ${rs[i]===k?"on":""}" data-act="reason" data-i="${i}" data-r="${k}">${l}</span>`).join("")}
+  <div class="row"><button class="no" data-act="swapall" data-i="${i}">🔄 Changer toute la tenue</button><button data-act="swapsel" data-i="${i}" ${sl.size?"":"disabled"}>Remplacer les articles choisis</button></div><a href="#" data-act="cancel" data-i="${i}">Annuler</a>`}
+ const body=`${head}<div class="items">${o.items.map(x=>itemHtml(x)).join("")}</div>${o.accessories.length?`<div class="sec">Accessoires suggérés</div><div class="items acc">${o.accessories.map(x=>itemHtml(x)).join("")}</div>`:""}<small>${o.explanation||o.reasons.join(" · ")}</small>`;
+ return s==="liked"?`${body}<p><small>✓ Ajoutée à « Mes tenues aimées » — ces pièces ne seront pas reproposées pendant 3 jours.</small></p>`:
+  `${body}<div class="row"><button class="ok" data-act="like" data-i="${i}">👍 Je la porte</button><button class="skip" data-act="skip" data-i="${i}">🔀 Une autre</button><button class="no" data-act="no" data-i="${i}">👎 Pas pour moi</button></div>`}
+const render=i=>{const c=$("#c"+i);if(c){c.innerHTML=inner(i);c.classList.toggle("liked",ui[i]==="liked")}};
+const draw=()=>{$("#out").innerHTML=shown.map((_,i)=>`<div class="card" id="c${i}">${inner(i)}</div>`).join("");updX()};
+const reqBody=(k,ex)=>({city:$("#city").value,gender:$("#gender").value,agenda:$("#agenda").value||null,colours:checked("colours"),types:checked("types"),uid,explain:ex&&$("#explain").checked,
+ wardrobe:$("#usew").checked&&W.length?W:null,k,exclude_ids:[...banned],exclude_outfits:rejected});
+async function go(){$("#out").textContent="…";const r=await J("/api/recommend",reqBody(3,true)),c=r.context;shown=r.outfits;ui=[];sel=[];rs=[];
+ label=`${c.occasion} · ${c.feels_like.toFixed(0)}°C`;
+ $("#ctx").innerHTML=`<small>${c.feels_like.toFixed(0)}°C · pluie ${Math.round(c.rain_prob*100)}% · ${c.occasion} (formalité ${c.formality}) · agent : ${c.agenda_source||"—"}${c.retrieved&&c.retrieved.length?" · RAG : "+c.retrieved.join(", "):""}${c.ramadan?" · Ramadan":""}${c.eid?" · Aïd":""}</small>`
+  +(c.agenda_error?`<br><small>⚠ LLM indisponible : ${c.agenda_error}</small>`:"")+(c.prefs_relaxed?`<br><small>⚠ Aucune tenue ne respecte tes envies : filtre ignoré.</small>`:"")+(r.message?`<br><small>⚠ ${r.message}</small>`:"");draw()}
+async function swap(i){ui[i]="loading";render(i);const r=await J("/api/recommend",reqBody(8,false)),taken=new Set(shown.filter((_,j)=>j!==i).map(key)),nx=(r.outfits||[]).find(o=>!taken.has(key(o)));
+ if(!nx){ui[i]="empty";render(i);return}shown[i]=nx;ui[i]="view";render(i);updX()}
+async function like(i){const o=shown[i],k=key(o);if(!FAV.some(f=>f.key===k)){const m=x=>({id:x.id,name:x.name,image:x.image});FAV.push({key:k,ts:Date.now(),label,items:o.items.map(m),accessories:o.accessories.map(m)});renderF()}
+ ui[i]="liked";render(i);await J("/api/feedback",{uid,features:o.features,accepted:true,item_ids:o.item_ids});stats()}
+async function dislike(i,idx){const o=shown[i],ids=idx.map(j=>o.items[j].id);ids.forEach(x=>banned.add(x));rejected.push(o.item_ids);
+ J("/api/feedback",{uid,features:o.features,accepted:false,reason:rs[i]||null,item_ids:ids}).then(stats);await swap(i)}
+document.addEventListener("click",e=>{const t=e.target.closest("[data-act]");if(!t||t.disabled)return;e.preventDefault();const a=t.dataset.act,i=+t.dataset.i,j=+t.dataset.j;
+ if(a==="like")like(i);else if(a==="skip"){rejected.push(shown[i].item_ids);swap(i)}else if(a==="no"){ui[i]="dislike";sel[i]=new Set();rs[i]=null;render(i)}
+ else if(a==="pick"){sel[i].has(j)?sel[i].delete(j):sel[i].add(j);render(i)}else if(a==="reason"){rs[i]=rs[i]===t.dataset.r?null:t.dataset.r;render(i)}
+ else if(a==="cancel"){ui[i]="view";render(i)}else if(a==="swapall")dislike(i,[...shown[i].items.keys()]);else if(a==="swapsel")dislike(i,[...sel[i]]);
+ else if(a==="resetx"){banned.clear();rejected=[];updX();go()}else if(a==="unfav"){FAV=FAV.filter(f=>f.key!==t.dataset.k);renderF()}else if(a==="delw"){W.splice(i,1);renderW()}});
+$("#photo").onchange=async e=>{for(const f of e.target.files){const fd=new FormData();fd.append("file",f);const r=await fetch("/api/analyze-photo",{method:"POST",body:fd});
+  if(!r.ok){alert((await r.json()).detail);continue}const d=await r.json();
+  for(const x of d.results){const p=x.prediction,it=x.item;it.name=`${FR[p.articleType.label]||p.articleType.label} ${FR[p.colour.label]||p.colour.label} (${Math.round(p.articleType.conf*100)}%)`;W.push(it)}renderW()}$("#usew").checked=true};
+$("#gender").onchange=opts;$("#go").onclick=go;opts();stats();renderW();renderF();
+</script></html>

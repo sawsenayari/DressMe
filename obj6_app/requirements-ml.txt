@@ -1,0 +1,7 @@
+-r requirements.txt
+torch
+torchvision
+open_clip_torch
+transformers
+rembg
+onnxruntime

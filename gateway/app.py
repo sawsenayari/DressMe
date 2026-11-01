@@ -7,7 +7,7 @@ Routes attendues par le front (frontend/src/services) :
   POST /compatibility/score       -> photo (+ champ facultatif `category`) -> embedding FashionCLIP -> Obj2 /compat
   GET  /gaps                      -> rapport de l'objectif 4 (gap_report.json)
   GET/PUT /profile                -> profil de style de l'objectif 5
-  GET  /outfits/today             -> 501 tant que l'objectif 6 (tenue du jour) n'est pas branché
+  GET  /outfits/today             -> Obj6 (service HTTP, candidats + contexte météo) -> jury Obj3 (règles) + compatibilité Obj2 -> Outfit ; 501 si l'Obj6 ne répond pas
   /files/...                      -> images du catalogue
 
 Dossiers (variables d'environnement, défauts relatifs à la racine du dépôt) :
@@ -15,6 +15,8 @@ Dossiers (variables d'environnement, défauts relatifs à la racine du dépôt) 
   DRESSME_OBJ2   dossier du service de compatibilité (défaut : obj2_compat)
   DRESSME_GAPS   rapport de manques               (défaut : obj4_manques/gap_report.json)
   DRESSME_OBJ1   dossier de la reconnaissance     (défaut : obj1_reconnaissance)
+  DRESSME_OBJ3   dossier du jury de tenues        (défaut : obj3_jury)
+  OBJ6_URL       service de l'objectif 6          (défaut : http://127.0.0.1:8006 ; lancé depuis obj6_app, voir run_all.bat)
   DRESSME_OBJ1_MODE  full (Qwen si DRESSME_OBJ1_LLM=1, sinon kNN FashionCLIP seul) | mock (fiches factices, embedding ALÉATOIRE : tests seulement)
 """
 import io
@@ -36,6 +38,8 @@ STORE = Path(os.environ.get("DRESSME_STORE", REPO / "obj5_profil" / "data"))
 OBJ2 = Path(os.environ.get("DRESSME_OBJ2", REPO / "obj2_compat"))
 GAPS = Path(os.environ.get("DRESSME_GAPS", REPO / "obj4_manques" / "gap_report.json"))
 OBJ1 = Path(os.environ.get("DRESSME_OBJ1", REPO / "obj1_reconnaissance"))
+OBJ3 = Path(os.environ.get("DRESSME_OBJ3", REPO / "obj3_jury"))
+OBJ6_URL = os.environ.get("OBJ6_URL", "http://127.0.0.1:8006")
 os.environ.setdefault("DRESSME_ROOT", str(OBJ1 / "data"))          # base kNN de l'Obj1 (data/agent_final)
 os.environ.setdefault("DRESSME_STORE", str(STORE))
 os.environ.setdefault("DRESSME_CATALOG", str(STORE / "wardrobe.json"))
@@ -200,7 +204,7 @@ def _append_to_catalog(card):
     tmp = p.with_suffix(".json.tmp")
     tmp.write_text(json.dumps(d, indent=2, ensure_ascii=False), encoding="utf-8")
     os.replace(tmp, p)
-    for k in ("c", "p"):  # catalogue relu ; profil Obj5 reconstruit (il refuse les identifiants inconnus)
+    for k in ("c", "p", "j"):  # catalogue relu ; profil Obj5 et jury Obj3 reconstruits (ils refusent les identifiants inconnus)
         _cache.pop(k, None)
 
 
@@ -303,6 +307,88 @@ def put_profile(body: dict):
     return get_profile()
 
 
+# ---------------------------------------------------------------- objectif 6 : tenue du jour
+OCC_OBJ6 = {"work": "work", "casual": "casual", "evening": "party"}            # Occasion du front -> Obj6
+OCC_OBJ3 = {"work": "travail", "casual": "décontracté", "evening": "soirée"}    # Occasion du front -> Obj3
+CAT_OBJ3 = {"top": "haut", "bottom": "bas", "onepiece": "robe", "outer": "veste", "footwear": "chaussures",
+            "bag": "sac", "accessory": "accessoire"}
+FORM_OBJ3 = {0: 1, 1: 2, 2: 3, 3: 5}   # formalité ItemCard 0-3 -> Obj3 1-5 (1 sport, 3 smart casual, 5 cérémonie)
+
+
+def to_obj6_item(c):
+    col = (c.get("colour") or ["black"])[0]
+    return {"id": c["id"], "name": c.get("name") or c.get("type") or c["id"], "slot": "accessory" if c["slot"] == "bag" else c["slot"],
+            "colour": col, "usage": c.get("usage") or "Casual", "warmth": float(c.get("warmth") or 1),
+            "formality": int(c.get("formality") if c.get("formality") is not None else 1), "waterproof": bool(c.get("waterproof")),
+            "open_toe": bool(c.get("open_toe")), "type": c.get("type"), "gender": c.get("gender") or "Unisex"}
+
+
+def to_obj3_piece(c):
+    col = (c.get("colour") or ["multi"])[0]
+    return {"categorie": CAT_OBJ3[c["slot"]], "type": (c.get("type") or c["slot"]).lower(),
+            "couleur": "Multi" if col.startswith("multi") else col.title(),
+            "formalite": FORM_OBJ3.get(c.get("formality"), 2), "chaleur": min(5, int(c.get("warmth") or 0) + 1),
+            "motif": "uni" if (c.get("pattern") or "plain") == "plain" else "imprimé"}
+
+
+def obj6_recommend(payload):
+    """Appel HTTP à l'objectif 6. Service absent ou en erreur -> 501 (Obj6 non lançable)."""
+    import httpx
+    try:
+        r = httpx.post(f"{OBJ6_URL}/api/recommend", json=payload, timeout=60)
+        r.raise_for_status()
+        return r.json()
+    except Exception as e:
+        raise HTTPException(501, f"Objectif 6 non joignable sur {OBJ6_URL} ({type(e).__name__}) : lancer obj6_app (voir run_all.bat).")
+
+
+def jury():
+    if "j" not in _cache:
+        if str(OBJ3) not in sys.path:
+            sys.path.append(str(OBJ3))
+        from dressme.service import DressMeService
+        _cache["j"] = DressMeService({c["id"]: to_obj3_piece(c) for c in catalog()}, llm=None)   # règles seules
+    return _cache["j"]
+
+
+def outfit_compat01(cards):
+    """Moyenne des scores /pairs de l'Obj2 sur les paires de la tenue (None si des embeddings manquent)."""
+    W = [c for c in cards if c.get("embedding") and (STORE / c["embedding"]).exists()]
+    if len(W) < 2 or len(W) < len(cards):
+        return None
+    M = np.array(engine().pairs([{"id": c["id"], "slot": c["slot"], "embedding": c["embedding"]} for c in W],
+                                [{"id": c["id"], "slot": c["slot"], "embedding": c["embedding"]} for c in W]))
+    iu = np.triu_indices(len(W), 1)
+    return round(float(M[iu].mean()), 2)
+
+
 @app.get("/outfits/today")
-def outfit_today(occasion: str = "casual", budget: bool = False):
-    raise HTTPException(501, "Tenue du jour = objectif 6 (contexte, météo, agenda), pas encore branché.")
+def outfit_today(occasion: str = "casual", budget: bool = False, city: str = "Tunis", k: int = 5):
+    if occasion not in OCC_OBJ6:
+        raise HTTPException(422, f"occasion inconnue : {occasion} (attendu : {list(OCC_OBJ6)})")
+    by_id = {c["id"]: c for c in catalog()}
+    res = obj6_recommend({"wardrobe": [to_obj6_item(c) for c in by_id.values()], "occasion": OCC_OBJ6[occasion],
+                          "city": city, "k": max(1, min(k, 10))})
+    ctx = res.get("context", {})
+    if not res.get("outfits"):
+        raise HTTPException(404, res.get("message") or "Aucune tenue proposée par l'objectif 6.")
+    temp, rain = float(ctx.get("feels_like", 20)), float(ctx.get("rain_prob", 0))
+    best = None
+    for o in res["outfits"]:   # chaque candidat de l'Obj6 passe par le jury (Obj3) et la compatibilité (Obj2)
+        ids = [i["id"] for i in o["items"]] + [a["id"] for a in o.get("accessories", [])]
+        cards = [by_id[i] for i in ids if i in by_id]
+        j = jury().judge([c["id"] for c in cards], temp, rain > .5, OCC_OBJ3[occasion], mode="regles", repair=False)
+        c01 = outfit_compat01([by_id[i["id"]] for i in o["items"] if i["id"] in by_id])
+        key = (j["niveau"], c01 if c01 is not None else -1, o["score"])
+        if best is None or key > best[0]:
+            best = (key, o, cards, j, c01)
+    _, o, cards, j, c01 = best
+    reasons = list(o.get("reasons") or []) + [f"Jury (Obj3) : {j['verdict']}."]
+    warns = list(o.get("warnings") or []) + [f"{k} : {v['raison']}" for k, v in j["criteres"].items() if v["niveau"] < 2]
+    if c01 is None:
+        warns.append("Compatibilité (Obj2) non calculée : embeddings manquants dans le catalogue.")
+    if budget:
+        warns.append("Mode budget : pas encore pris en compte par l'objectif 6.")
+    return {"id": "-".join(c["id"] for c in cards), "items": [to_front_item(c) for c in cards], "compat01": c01,
+            "reason": " · ".join(reasons), "weather": {"temperatureC": round(temp), "label": f"{city}, pluie {rain:.0%} ({ctx.get('weather_source', '?')})"},
+            "agenda": ctx.get("occasion"), "warnings": warns}

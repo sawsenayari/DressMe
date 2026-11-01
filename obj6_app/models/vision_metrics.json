@@ -1,0 +1,95 @@
+{
+  "frozen_probe": {
+    "articleType": {
+      "test_acc": 0.8491,
+      "test_macro_f1": 0.8109,
+      "val_macro_f1": 0.816,
+      "baseline_majority_acc": 0.0826,
+      "per_class_f1": {
+        "Belts": 0.993,
+        "Capris": 0.737,
+        "Caps": 0.959,
+        "Casual Shoes": 0.798,
+        "Clutches": 0.886,
+        "Dresses": 0.804,
+        "Flats": 0.4,
+        "Flip Flops": 0.876,
+        "Formal Shoes": 0.842,
+        "Handbags": 0.966,
+        "Heels": 0.741,
+        "Jackets": 0.812,
+        "Jeans": 0.857,
+        "Kurtas": 0.819,
+        "Kurtis": 0.325,
+        "Leggings": 0.851,
+        "Sandals": 0.697,
+        "Scarves": 0.966,
+        "Shirts": 0.927,
+        "Shorts": 0.947,
+        "Skirts": 0.929,
+        "Sports Sandals": 0.421,
+        "Sports Shoes": 0.859,
+        "Sunglasses": 1.0,
+        "Sweaters": 0.805,
+        "Sweatshirts": 0.795,
+        "Ties": 1.0,
+        "Tops": 0.78,
+        "Track Pants": 0.829,
+        "Trousers": 0.876,
+        "Tshirts": 0.908,
+        "Tunics": 0.358,
+        "Watches": 1.0
+      }
+    },
+    "colour": {
+      "test_acc": 0.7104,
+      "test_macro_f1": 0.6398,
+      "val_macro_f1": 0.6251,
+      "baseline_majority_acc": 0.2419,
+      "per_class_f1": {
+        "beige": 0.564,
+        "black": 0.809,
+        "blue": 0.711,
+        "brown": 0.74,
+        "gold": 0.644,
+        "green": 0.766,
+        "grey": 0.542,
+        "multi": 0.286,
+        "navy": 0.488,
+        "orange": 0.642,
+        "other": 0.19,
+        "pink": 0.717,
+        "purple": 0.774,
+        "red": 0.826,
+        "white": 0.751,
+        "yellow": 0.787
+      },
+      "variant": "clip",
+      "val_macro_f1_with_pixels": 0.5492
+    },
+    "usage": {
+      "test_acc": 0.8513,
+      "test_macro_f1": 0.7887,
+      "val_macro_f1": 0.7817,
+      "baseline_majority_acc": 0.7482,
+      "per_class_f1": {
+        "Casual": 0.893,
+        "Ethnic": 0.803,
+        "Formal": 0.701,
+        "Sports": 0.758
+      }
+    },
+    "season": {
+      "test_acc": 0.6366,
+      "test_macro_f1": 0.5472,
+      "val_macro_f1": 0.5457,
+      "baseline_majority_acc": 0.457,
+      "per_class_f1": {
+        "Fall": 0.627,
+        "Spring": 0.121,
+        "Summer": 0.656,
+        "Winter": 0.784
+      }
+    }
+  }
+}

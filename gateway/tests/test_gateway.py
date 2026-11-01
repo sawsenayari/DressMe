@@ -61,3 +61,30 @@ def test_add_item_with_obj1_mock(tmp_path, monkeypatch):
     assert card["embedding"] == f"emb/{it['id']}.npy" and np.load(store / card["embedding"]).shape == (512,)
     assert (store / card["image"]).exists() and (store / card["image_crop"]).exists()
     assert len(c.get("/wardrobe/items").json()) == n0 + 1 and c.get("/profile").status_code == 200
+
+def test_outfit_today_obj6_obj3_obj2(tmp_path, monkeypatch):
+    """Obj6 remplacé par une fausse réponse HTTP ; jury Obj3 (règles) et compatibilité Obj2 réels -> type Outfit du front."""
+    store = make_store(tmp_path)
+    monkeypatch.setenv("DRESSME_PROFILE_MODEL", str(store / "style_model.joblib"))
+    sys.path.insert(0, str(REPO / "gateway"))
+    import app as g
+    from fastapi.testclient import TestClient
+    monkeypatch.setattr(g, "STORE", store); monkeypatch.setattr(g, "_cache", {})
+    c = TestClient(g.app)
+    monkeypatch.setattr(g, "OBJ6_URL", "http://127.0.0.1:9")                              # Obj6 absent -> 501
+    assert c.get("/outfits/today").status_code == 501
+    cat = json.load(open(store / "wardrobe.json", encoding="utf-8"))
+    pick = lambda s: next(x for x in cat if x["slot"] == s)
+    sent = {}
+    def fake(payload):
+        sent.update(payload)
+        o = lambda ids, sc: {"score": sc, "items": [{"id": i} for i in ids], "accessories": [], "reasons": ["Épaisseur adaptée"], "warnings": []}
+        return {"context": {"feels_like": 21, "rain_prob": .1, "occasion": "work", "weather_source": "request"},
+                "outfits": [o([pick("top")["id"], pick("bottom")["id"], pick("footwear")["id"]], .9), o([pick("onepiece")["id"], pick("footwear")["id"]], .8)]}
+    monkeypatch.setattr(g, "obj6_recommend", fake)
+    r = c.get("/outfits/today", params={"occasion": "work"}); assert r.status_code == 200, r.text
+    out = r.json()
+    assert sent["occasion"] == "work" and all(i["slot"] != "bag" for i in sent["wardrobe"]) and len(sent["wardrobe"]) == len(cat)
+    assert out["items"] and all({"id", "slot", "imageUrl"} <= set(i) for i in out["items"])
+    assert 0 <= out["compat01"] <= 1 and "Jury (Obj3)" in out["reason"] and out["weather"]["temperatureC"] == 21
+    assert c.get("/outfits/today", params={"occasion": "plage"}).status_code == 422

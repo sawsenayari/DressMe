@@ -21,3 +21,10 @@ obj1_reconnaissance/data/store/_tmp/
 obj1_reconnaissance/data/agent_final/kb_emb.npy
 obj1_reconnaissance/data/agent_final/tn_refs_*.npy
 obj1_reconnaissance/data/agent_final/llm_calls.jsonl
+
+# Obj6 : images, embeddings et modèles lourds (régénérables), données utilisateur
+obj6_app/data/images/
+obj6_app/data/images_crop/
+obj6_app/data/emb_clip*
+obj6_app/data/feedback.db
+obj6_app/models/clip_visual_ft.pt

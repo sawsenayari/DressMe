@@ -1,0 +1,77 @@
+{
+  "cases": 21,
+  "variants_judged": 63,
+  "generation_failures": 1,
+  "judges": {
+    "qwen/qwen3.8-27b": {
+      "by_variant": {
+        "bonne": {
+          "n": 21,
+          "overall": 4.79,
+          "pertinence": 4.67,
+          "fidelite": 4.81,
+          "honnetete": 4.9,
+          "clarte": 4.29
+        },
+        "autre_contexte": {
+          "n": 21,
+          "overall": 1.21,
+          "pertinence": 1.05,
+          "fidelite": 1.19,
+          "honnetete": 1.38,
+          "clarte": 2.76
+        },
+        "invente": {
+          "n": 21,
+          "overall": 2.32,
+          "pertinence": 1.62,
+          "fidelite": 1.0,
+          "honnetete": 4.33,
+          "clarte": 2.0
+        }
+      },
+      "detection_rate": {
+        "autre_contexte": 1.0,
+        "invente": 1.0
+      },
+      "false_alarm_on_good": 0.05,
+      "judge_failures": 0
+    },
+    "openai/gpt-oss-120b": {
+      "by_variant": {
+        "bonne": {
+          "n": 21,
+          "overall": 4.81,
+          "pertinence": 4.62,
+          "fidelite": 4.81,
+          "honnetete": 5.0,
+          "clarte": 5.0
+        },
+        "autre_contexte": {
+          "n": 21,
+          "overall": 2.54,
+          "pertinence": 1.19,
+          "fidelite": 1.57,
+          "honnetete": 4.86,
+          "clarte": 4.9
+        },
+        "invente": {
+          "n": 21,
+          "overall": 3.08,
+          "pertinence": 2.57,
+          "fidelite": 1.67,
+          "honnetete": 5.0,
+          "clarte": 1.48
+        }
+      },
+      "detection_rate": {
+        "autre_contexte": 0.95,
+        "invente": 0.86
+      },
+      "false_alarm_on_good": 0.05,
+      "judge_failures": 0
+    }
+  },
+  "within_25_words": "20/21",
+  "agreement_between_judges_spearman": 0.912
+}
