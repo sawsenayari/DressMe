@@ -1,0 +1,93 @@
+{
+  "id": "TN_H_0006",
+  "input": {
+    "image_path": "/content/drive/MyDrive/dressme_obj1/data/tunisian_dataset/images/TN_H_0006.jpg",
+    "crop_path": "/content/drive/MyDrive/dressme_obj1/data/tunisian_dataset/crops/5ae38236ee50_crop.png",
+    "dataset_label": {
+      "category": "traditional_garment",
+      "subtype": "jebba",
+      "colour": "orange",
+      "gender": "male",
+      "season": "all_season",
+      "occasion": "casual"
+    }
+  },
+  "output": {
+    "status": "needs_review",
+    "card": {
+      "id": "TN_H_0006",
+      "name": "Orange traditional garment",
+      "slot": "onepiece",
+      "type": "Jebba",
+      "colour": [
+        "orange"
+      ],
+      "usage": "Casual",
+      "warmth": 2,
+      "formality": 3,
+      "waterproof": false,
+      "open_toe": false,
+      "gender": "Men",
+      "image": "items/TN_H_0006_crop.png",
+      "image_crop": "items/TN_H_0006_crop.png",
+      "embedding": "emb/TN_H_0006.npy",
+      "season": "all",
+      "pattern": "plain",
+      "confidence": {
+        "slot": 0.9946222073735363,
+        "colour": 0.6582016027363999,
+        "type": 0.8951599866361827
+      },
+      "source": "obj1.llm",
+      "price_dt": null,
+      "traditional": true
+    },
+    "category": "traditional_garment",
+    "reasons": [
+      "traditional_subtype_from_neighbours:jebba",
+      "warmth_formality_placeholder",
+      "slot_mapping_unconfirmed:traditional_garment"
+    ],
+    "trace": [
+      "OUTIL knn_search        → traditional_garment (sûr à 100%)",
+      "OUTIL llm_analyze (v1)  → traditional_garment conf=0.90 | précision_ok=True | H=0.00 []",
+      "DÉCISION : LLM fiable → réponse directe"
+    ],
+    "debug": {
+      "source": "llm",
+      "H": 0.0,
+      "flags": [],
+      "llm_calls": 1,
+      "latency_s": 0.006814718246459961,
+      "pixel_colours": [
+        [
+          "multicolor",
+          0.38067276535562755
+        ],
+        [
+          "brown",
+          0.38067276535562755
+        ]
+      ],
+      "crop_quality": {
+        "ok": true,
+        "reasons": [],
+        "coverage": 0.213,
+        "size": [
+          512,
+          512
+        ]
+      },
+      "knn_dist": {
+        "traditional_garment": 0.9999999424035195
+      },
+      "colour_raw": "orange",
+      "confidence_calibrated": false
+    }
+  },
+  "pipeline": {
+    "fashionclip_finetuned": false,
+    "qwen_model": "Qwen/Qwen2.5-VL-7B-Instruct",
+    "fashionclip_model": "patrickjohncyh/fashion-clip"
+  }
+}

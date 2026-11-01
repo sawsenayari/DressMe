@@ -1,0 +1,401 @@
+id,truth,truth_color,truth_gender,final,source,status,confidence,H,calls,latency,color,gender,fp_valid,fp_cat,fp_color,fp_gender,trace
+47427,accessory,purple,female,bag,llm,OK,0.9,0.0,1,5.9510438442230225,black,female,True,bag,black,unknown,"OUTIL knn_search        → bag (sûr à 53%)
+OUTIL llm_analyze (v1)  → bag conf=0.90 | précision_ok=True | H=0.00 []
+DÉCISION : LLM fiable → réponse directe"
+5072,accessory,black,female,accessory,llm,OK,0.9,0.2,1,3.6252338886260986,black,male,True,accessory,black,unisex,"OUTIL knn_search        → accessory (sûr à 100%)
+OUTIL llm_analyze (v1)  → accessory conf=0.90 | précision_ok=True | H=0.20 ['contradicts_neighbors_gender']
+DÉCISION : LLM fiable → réponse directe"
+11485,accessory,black,male,accessory,llm,OK,0.9,0.0,1,3.5118818283081055,black,male,True,accessory,black,unknown,"OUTIL knn_search        → accessory (sûr à 100%)
+OUTIL llm_analyze (v1)  → accessory conf=0.90 | précision_ok=True | H=0.00 []
+DÉCISION : LLM fiable → réponse directe"
+20969,accessory,black,male,accessory,llm,OK,0.95,0.2,1,4.16025185585022,black,male,True,accessory,black,unisex,"OUTIL knn_search        → accessory (sûr à 100%)
+OUTIL llm_analyze (v1)  → accessory conf=0.95 | précision_ok=True | H=0.20 ['contradicts_neighbors_gender']
+DÉCISION : LLM fiable → réponse directe"
+6699,accessory,white,male,accessory,llm+rag,OK,0.9,0.0,2,8.929684400558472,white,female,False,invalid,white,unisex,"OUTIL knn_search        → accessory (sûr à 100%)
+OUTIL llm_analyze (v1)  → invalid conf=0.90 | précision_ok=False | H=1.00 ['invalid_output']
+hallucination élevée → RAG (voisins du catalogue injectés dans le prompt)
+OUTIL llm_analyze (RAG) → accessory conf=0.90 | précision_ok=True | H=0.00 []
+DÉCISION : réponse LLM + RAG validée"
+49860,accessory,purple,unisex,accessory,llm,OK,0.9,0.0,1,4.1016693115234375,purple,unisex,True,accessory,purple,unisex,"OUTIL knn_search        → accessory (sûr à 100%)
+OUTIL llm_analyze (v1)  → accessory conf=0.90 | précision_ok=True | H=0.00 []
+DÉCISION : LLM fiable → réponse directe"
+8131,accessory,black,female,accessory,llm,OK,0.9,0.4,1,4.132629871368408,grey,female,True,accessory,metallic,unisex,"OUTIL knn_search        → accessory (sûr à 100%)
+OUTIL llm_analyze (v1)  → accessory conf=0.90 | précision_ok=True | H=0.40 ['contradicts_neighbors_color', 'contradicts_neighbors_gender']
+DÉCISION : LLM fiable → réponse directe"
+46546,accessory,black,male,accessory,llm,OK,0.9,0.0,1,3.5446555614471436,black,male,True,accessory,black,unknown,"OUTIL knn_search        → accessory (sûr à 100%)
+OUTIL llm_analyze (v1)  → accessory conf=0.90 | précision_ok=True | H=0.00 []
+DÉCISION : LLM fiable → réponse directe"
+21260,bag,brown,unisex,bag,llm,OK,0.9,0.0,1,3.9366469383239746,brown,unisex,True,bag,brown,unisex,"OUTIL knn_search        → bag (sûr à 100%)
+OUTIL llm_analyze (v1)  → bag conf=0.90 | précision_ok=True | H=0.00 []
+DÉCISION : LLM fiable → réponse directe"
+3393,bag,green,female,bag,llm,OK,0.9,0.0,1,3.899036407470703,green,female,True,bag,green,unknown,"OUTIL knn_search        → bag (sûr à 100%)
+OUTIL llm_analyze (v1)  → bag conf=0.90 | précision_ok=True | H=0.00 []
+DÉCISION : LLM fiable → réponse directe"
+49559,bag,purple,female,bag,llm,OK,0.9,0.0,1,4.019862174987793,purple,female,True,bag,purple,unknown,"OUTIL knn_search        → bag (sûr à 100%)
+OUTIL llm_analyze (v1)  → bag conf=0.90 | précision_ok=True | H=0.00 []
+DÉCISION : LLM fiable → réponse directe"
+20458,bag,pink,female,bag,llm,OK,0.9,0.0,1,3.976482391357422,pink,female,True,bag,pink,unknown,"OUTIL knn_search        → bag (sûr à 100%)
+OUTIL llm_analyze (v1)  → bag conf=0.90 | précision_ok=True | H=0.00 []
+DÉCISION : LLM fiable → réponse directe"
+17136,bag,black,female,bag,llm,OK,0.9,0.0,1,3.8917877674102783,black,female,True,bag,black,unknown,"OUTIL knn_search        → bag (sûr à 100%)
+OUTIL llm_analyze (v1)  → bag conf=0.90 | précision_ok=True | H=0.00 []
+DÉCISION : LLM fiable → réponse directe"
+51941,bag,purple,female,bag,llm,OK,0.9,0.0,1,4.146522521972656,purple,female,True,bag,purple,unknown,"OUTIL knn_search        → bag (sûr à 100%)
+OUTIL llm_analyze (v1)  → bag conf=0.90 | précision_ok=True | H=0.00 []
+DÉCISION : LLM fiable → réponse directe"
+8235,bag,black,female,bag,llm,OK,0.9,0.0,1,4.039855003356934,black,female,True,bag,black,unknown,"OUTIL knn_search        → bag (sûr à 100%)
+OUTIL llm_analyze (v1)  → bag conf=0.90 | précision_ok=True | H=0.00 []
+DÉCISION : LLM fiable → réponse directe"
+2653,bag,grey,female,bag,llm,OK,0.9,0.0,1,4.052517414093018,blue,female,True,bag,blue,female,"OUTIL knn_search        → bag (sûr à 100%)
+OUTIL llm_analyze (v1)  → bag conf=0.90 | précision_ok=True | H=0.00 []
+DÉCISION : LLM fiable → réponse directe"
+31733,blazer,black,male,jacket,knn_after_rag,OK,0.6377201415598392,0.6,2,8.333528280258179,grey,male,True,blazer,black,male,"OUTIL knn_search        → jacket (sûr à 64%)
+OUTIL llm_analyze (v1)  → blazer conf=0.90 | précision_ok=True | H=0.60 ['contradicts_knn']
+hallucination élevée → RAG (voisins du catalogue injectés dans le prompt)
+OUTIL llm_analyze (RAG) → blazer conf=0.75 | précision_ok=True | H=0.60 ['contradicts_knn']
+RAG insuffisant, kNN sûr → réponse du kNN"
+27845,blazer,black,female,shirt,llm,OK,0.9,0.2,1,4.124988079071045,blue,female,True,shirt,black,female,"OUTIL knn_search        → sweater (sûr à 52%)
+OUTIL llm_analyze (v1)  → shirt conf=0.90 | précision_ok=True | H=0.20 ['contradicts_neighbors_color']
+DÉCISION : LLM fiable → réponse directe"
+31161,blazer,blue,male,jacket,llm,OK,0.9,0.45,1,4.3121726512908936,blue,male,True,jacket,unknown,unisex,"OUTIL knn_search        → jacket (sûr à 64%)
+OUTIL llm_analyze (v1)  → jacket conf=0.90 | précision_ok=True | H=0.45 ['out_of_vocabulary', 'contradicts_neighbors_gender']
+DÉCISION : LLM fiable → réponse directe"
+31732,blazer,brown,male,jacket,knn_after_rag,OK,0.6020779982209206,0.6,2,9.063448429107666,grey,male,True,sweater,beige,male,"OUTIL knn_search        → jacket (sûr à 60%)
+OUTIL llm_analyze (v1)  → sweater conf=0.90 | précision_ok=True | H=0.60 ['contradicts_knn']
+hallucination élevée → RAG (voisins du catalogue injectés dans le prompt)
+OUTIL llm_analyze (RAG) → blazer conf=0.90 | précision_ok=True | H=0.60 ['contradicts_knn']
+RAG insuffisant, kNN sûr → réponse du kNN"
+31743,blazer,green,male,jacket,knn_after_rag,OK,0.648444876074791,0.6,2,9.053735733032227,grey,male,True,blazer,beige,male,"OUTIL knn_search        → jacket (sûr à 65%)
+OUTIL llm_analyze (v1)  → blazer conf=0.90 | précision_ok=True | H=0.60 ['contradicts_knn']
+hallucination élevée → RAG (voisins du catalogue injectés dans le prompt)
+OUTIL llm_analyze (RAG) → blazer conf=0.90 | précision_ok=True | H=0.60 ['contradicts_knn']
+RAG insuffisant, kNN sûr → réponse du kNN"
+27846,blazer,grey,female,jacket,knn_after_rag,OK,0.7938853874802589,0.6,2,8.633260488510132,black,female,True,blazer,black,female,"OUTIL knn_search        → jacket (sûr à 79%)
+OUTIL llm_analyze (v1)  → blazer conf=0.90 | précision_ok=True | H=0.60 ['contradicts_knn']
+hallucination élevée → RAG (voisins du catalogue injectés dans le prompt)
+OUTIL llm_analyze (RAG) → blazer conf=0.90 | précision_ok=True | H=0.60 ['contradicts_knn']
+RAG insuffisant, kNN sûr → réponse du kNN"
+31742,blazer,black,male,jacket,knn_after_rag,OK,0.8074545301496983,0.6,2,8.665726900100708,black,male,True,blazer,black,male,"OUTIL knn_search        → jacket (sûr à 81%)
+OUTIL llm_analyze (v1)  → blazer conf=0.90 | précision_ok=True | H=0.60 ['contradicts_knn']
+hallucination élevée → RAG (voisins du catalogue injectés dans le prompt)
+OUTIL llm_analyze (RAG) → blazer conf=0.85 | précision_ok=True | H=0.60 ['contradicts_knn']
+RAG insuffisant, kNN sûr → réponse du kNN"
+31729,blazer,blue,male,blazer,llm,OK,0.9,0.25,1,4.225809097290039,grey,male,True,blazer,unknown,male,"OUTIL knn_search        → shirt (sûr à 59%)
+OUTIL llm_analyze (v1)  → blazer conf=0.90 | précision_ok=True | H=0.25 ['out_of_vocabulary']
+DÉCISION : LLM fiable → réponse directe"
+58505,dress,white,female,dress,llm,OK,0.9,0.0,1,4.102605104446411,black,female,True,dress,black,female,"OUTIL knn_search        → dress (sûr à 76%)
+OUTIL llm_analyze (v1)  → dress conf=0.90 | précision_ok=True | H=0.00 []
+DÉCISION : LLM fiable → réponse directe"
+57055,dress,brown,female,dress,llm,OK,0.9,0.0,1,4.392458438873291,brown,female,True,dress,brown,female,"OUTIL knn_search        → dress (sûr à 62%)
+OUTIL llm_analyze (v1)  → dress conf=0.90 | précision_ok=True | H=0.00 []
+DÉCISION : LLM fiable → réponse directe"
+34567,dress,black,female,dress,llm,OK,0.9,0.25,1,4.502434253692627,black,female,True,dress,unknown,female,"OUTIL knn_search        → dress (sûr à 100%)
+OUTIL llm_analyze (v1)  → dress conf=0.90 | précision_ok=True | H=0.25 ['out_of_vocabulary']
+DÉCISION : LLM fiable → réponse directe"
+59980,dress,black,female,dress,llm,OK,0.9,0.0,1,4.191119432449341,black,female,True,dress,black,female,"OUTIL knn_search        → dress (sûr à 100%)
+OUTIL llm_analyze (v1)  → dress conf=0.90 | précision_ok=True | H=0.00 []
+DÉCISION : LLM fiable → réponse directe"
+48084,dress,red,female,dress,llm,OK,0.9,0.0,1,4.350682973861694,red,female,True,dress,red,female,"OUTIL knn_search        → dress (sûr à 94%)
+OUTIL llm_analyze (v1)  → dress conf=0.90 | précision_ok=True | H=0.00 []
+DÉCISION : LLM fiable → réponse directe"
+34065,dress,black,female,dress,llm,OK,0.9,0.0,1,4.127035140991211,black,female,True,dress,black,female,"OUTIL knn_search        → dress (sûr à 100%)
+OUTIL llm_analyze (v1)  → dress conf=0.90 | précision_ok=True | H=0.00 []
+DÉCISION : LLM fiable → réponse directe"
+26355,dress,purple,female,dress,llm,OK,0.9,0.0,1,4.09076452255249,multicolor,female,True,dress,multicolor,female,"OUTIL knn_search        → dress (sûr à 87%)
+OUTIL llm_analyze (v1)  → dress conf=0.90 | précision_ok=True | H=0.00 []
+DÉCISION : LLM fiable → réponse directe"
+4991,dress,white,female,dress,llm,OK,0.9,0.2,1,4.1631715297698975,yellow,female,True,dress,white,female,"OUTIL knn_search        → dress (sûr à 100%)
+OUTIL llm_analyze (v1)  → dress conf=0.90 | précision_ok=True | H=0.20 ['contradicts_neighbors_color']
+DÉCISION : LLM fiable → réponse directe"
+18978,jacket,white,male,jacket,llm,OK,0.9,0.25,1,4.502933025360107,blue,male,True,jacket,unknown,male,"OUTIL knn_search        → jacket (sûr à 61%)
+OUTIL llm_analyze (v1)  → jacket conf=0.90 | précision_ok=True | H=0.25 ['out_of_vocabulary']
+DÉCISION : LLM fiable → réponse directe"
+52042,jacket,black,unisex,jacket,llm,OK,0.9,0.2,1,4.368033170700073,black,unisex,True,jacket,black,male,"OUTIL knn_search        → jacket (sûr à 100%)
+OUTIL llm_analyze (v1)  → jacket conf=0.90 | précision_ok=True | H=0.20 ['contradicts_neighbors_gender']
+DÉCISION : LLM fiable → réponse directe"
+18522,jacket,black,male,jacket,llm,OK,0.9,0.0,1,4.313509464263916,black,male,True,jacket,black,male,"OUTIL knn_search        → jacket (sûr à 100%)
+OUTIL llm_analyze (v1)  → jacket conf=0.90 | précision_ok=True | H=0.00 []
+DÉCISION : LLM fiable → réponse directe"
+59130,jacket,black,male,jacket,llm,OK,0.9,0.0,1,4.314557075500488,black,male,True,jacket,black,male,"OUTIL knn_search        → jacket (sûr à 100%)
+OUTIL llm_analyze (v1)  → jacket conf=0.90 | précision_ok=True | H=0.00 []
+DÉCISION : LLM fiable → réponse directe"
+40051,jacket,blue,male,jacket,llm,OK,0.9,0.25,1,4.523799180984497,blue,male,True,jacket,unknown,male,"OUTIL knn_search        → jacket (sûr à 63%)
+OUTIL llm_analyze (v1)  → jacket conf=0.90 | précision_ok=True | H=0.25 ['out_of_vocabulary']
+DÉCISION : LLM fiable → réponse directe"
+59127,jacket,brown,male,jacket,llm,OK,0.9,0.0,1,4.392309188842773,brown,male,True,jacket,brown,male,"OUTIL knn_search        → jacket (sûr à 100%)
+OUTIL llm_analyze (v1)  → jacket conf=0.90 | précision_ok=True | H=0.00 []
+DÉCISION : LLM fiable → réponse directe"
+1758,jacket,white,male,jacket,llm,OK,0.9,0.0,1,4.473393678665161,white,male,True,jacket,white,male,"OUTIL knn_search        → jacket (sûr à 55%)
+OUTIL llm_analyze (v1)  → jacket conf=0.90 | précision_ok=True | H=0.00 []
+DÉCISION : LLM fiable → réponse directe"
+24136,jacket,blue,male,jacket,llm,OK,0.9,0.25,1,4.528786897659302,blue,male,True,jacket,unknown,male,"OUTIL knn_search        → jacket (sûr à 100%)
+OUTIL llm_analyze (v1)  → jacket conf=0.90 | précision_ok=True | H=0.25 ['out_of_vocabulary']
+DÉCISION : LLM fiable → réponse directe"
+11350,jeans,blue,male,jeans,llm,OK,0.95,0.0,1,4.327098846435547,blue,male,True,jeans,blue,male,"OUTIL knn_search        → jeans (sûr à 100%)
+OUTIL llm_analyze (v1)  → jeans conf=0.95 | précision_ok=True | H=0.00 []
+DÉCISION : LLM fiable → réponse directe"
+11348,jeans,blue,male,jeans,knn_after_rag,OK,0.900848038494587,0.8,2,8.567470073699951,blue,male,True,tshirt,black,female,"OUTIL knn_search        → jeans (sûr à 90%)
+OUTIL llm_analyze (v1)  → tshirt conf=0.90 | précision_ok=True | H=1.00 ['contradicts_knn', 'contradicts_neighbors_color', 'contradicts_neighbors_gender']
+hallucination élevée → RAG (voisins du catalogue injectés dans le prompt)
+OUTIL llm_analyze (RAG) → tshirt conf=0.85 | précision_ok=True | H=0.80 ['contradicts_knn', 'contradicts_neighbors_color']
+RAG insuffisant, kNN sûr → réponse du kNN"
+7185,jeans,blue,female,jeans,llm,OK,0.9,0.0,1,4.15282678604126,blue,female,True,jeans,blue,female,"OUTIL knn_search        → jeans (sûr à 100%)
+OUTIL llm_analyze (v1)  → jeans conf=0.90 | précision_ok=True | H=0.00 []
+DÉCISION : LLM fiable → réponse directe"
+26997,jeans,blue,female,jeans,llm,OK,0.9,0.0,1,4.216131687164307,blue,female,True,jeans,blue,female,"OUTIL knn_search        → jeans (sûr à 91%)
+OUTIL llm_analyze (v1)  → jeans conf=0.90 | précision_ok=True | H=0.00 []
+DÉCISION : LLM fiable → réponse directe"
+26995,jeans,blue,female,jeans,llm,OK,0.9,0.0,1,3.9626052379608154,blue,female,True,jeans,blue,female,"OUTIL knn_search        → jeans (sûr à 81%)
+OUTIL llm_analyze (v1)  → jeans conf=0.90 | précision_ok=True | H=0.00 []
+DÉCISION : LLM fiable → réponse directe"
+12760,jeans,blue,female,jeans,llm,OK,0.9,0.0,1,4.0011091232299805,blue,female,True,jeans,blue,female,"OUTIL knn_search        → jeans (sûr à 100%)
+OUTIL llm_analyze (v1)  → jeans conf=0.90 | précision_ok=True | H=0.00 []
+DÉCISION : LLM fiable → réponse directe"
+11344,jeans,blue,male,jeans,llm,OK,0.9,0.0,1,4.234700918197632,blue,male,True,jeans,blue,male,"OUTIL knn_search        → jeans (sûr à 91%)
+OUTIL llm_analyze (v1)  → jeans conf=0.90 | précision_ok=True | H=0.00 []
+DÉCISION : LLM fiable → réponse directe"
+11354,jeans,blue,male,jeans,llm,OK,0.95,0.0,1,4.1385979652404785,blue,male,True,jeans,blue,male,"OUTIL knn_search        → jeans (sûr à 100%)
+OUTIL llm_analyze (v1)  → jeans conf=0.95 | précision_ok=True | H=0.00 []
+DÉCISION : LLM fiable → réponse directe"
+3918,pants,grey,male,pants,llm,OK,0.9,0.2,1,4.098392486572266,grey,female,True,pants,beige,female,"OUTIL knn_search        → pants (sûr à 94%)
+OUTIL llm_analyze (v1)  → pants conf=0.90 | précision_ok=True | H=0.20 ['contradicts_neighbors_color']
+DÉCISION : LLM fiable → réponse directe"
+15011,pants,black,male,pants,llm,OK,0.9,0.0,1,4.0220677852630615,black,male,True,pants,black,male,"OUTIL knn_search        → pants (sûr à 81%)
+OUTIL llm_analyze (v1)  → pants conf=0.90 | précision_ok=True | H=0.00 []
+DÉCISION : LLM fiable → réponse directe"
+7266,pants,beige,male,pants,llm,OK,0.9,0.2,1,4.12202787399292,beige,male,True,pants,beige,unisex,"OUTIL knn_search        → pants (sûr à 100%)
+OUTIL llm_analyze (v1)  → pants conf=0.90 | précision_ok=True | H=0.20 ['contradicts_neighbors_gender']
+DÉCISION : LLM fiable → réponse directe"
+45499,pants,blue,female,pants,llm+rag,OK,0.85,0.0,2,8.578930854797363,black,female,True,tshirt,pink,female,"OUTIL knn_search        → pants (sûr à 73%)
+OUTIL llm_analyze (v1)  → tshirt conf=0.90 | précision_ok=True | H=0.80 ['contradicts_knn', 'contradicts_neighbors_color']
+hallucination élevée → RAG (voisins du catalogue injectés dans le prompt)
+OUTIL llm_analyze (RAG) → pants conf=0.85 | précision_ok=True | H=0.00 []
+DÉCISION : réponse LLM + RAG validée"
+30815,pants,yellow,female,pants,llm+rag,OK,0.75,0.0,2,8.45008111000061,yellow,female,True,tshirt,white,female,"OUTIL knn_search        → pants (sûr à 100%)
+OUTIL llm_analyze (v1)  → tshirt conf=0.90 | précision_ok=True | H=0.60 ['contradicts_knn']
+hallucination élevée → RAG (voisins du catalogue injectés dans le prompt)
+OUTIL llm_analyze (RAG) → pants conf=0.75 | précision_ok=True | H=0.00 []
+DÉCISION : réponse LLM + RAG validée"
+15678,pants,beige,male,pants,llm,OK,0.9,0.0,1,4.209953784942627,beige,male,True,pants,beige,male,"OUTIL knn_search        → pants (sûr à 100%)
+OUTIL llm_analyze (v1)  → pants conf=0.90 | précision_ok=True | H=0.00 []
+DÉCISION : LLM fiable → réponse directe"
+5017,pants,pink,female,pants,llm,OK,0.9,0.0,1,4.07132887840271,pink,female,True,pants,pink,female,"OUTIL knn_search        → pants (sûr à 90%)
+OUTIL llm_analyze (v1)  → pants conf=0.90 | précision_ok=True | H=0.00 []
+DÉCISION : LLM fiable → réponse directe"
+26163,pants,grey,male,pants,llm+rag,OK,0.75,0.25,2,8.228075742721558,blue,male,True,shirt,grey,male,"OUTIL knn_search        → pants (sûr à 100%)
+OUTIL llm_analyze (v1)  → shirt conf=0.90 | précision_ok=True | H=0.60 ['contradicts_knn']
+hallucination élevée → RAG (voisins du catalogue injectés dans le prompt)
+OUTIL llm_analyze (RAG) → pants conf=0.75 | précision_ok=True | H=0.25 ['out_of_vocabulary']
+DÉCISION : réponse LLM + RAG validée"
+13758,shirt,green,male,shirt,llm,OK,0.9,0.0,1,4.151628255844116,green,male,True,shirt,green,male,"OUTIL knn_search        → shirt (sûr à 100%)
+OUTIL llm_analyze (v1)  → shirt conf=0.90 | précision_ok=True | H=0.00 []
+DÉCISION : LLM fiable → réponse directe"
+8872,shirt,blue,male,shirt,llm,OK,0.9,0.0,1,4.099190950393677,blue,male,True,shirt,blue,male,"OUTIL knn_search        → shirt (sûr à 100%)
+OUTIL llm_analyze (v1)  → shirt conf=0.90 | précision_ok=True | H=0.00 []
+DÉCISION : LLM fiable → réponse directe"
+14768,shirt,white,male,shirt,llm,OK,0.9,0.0,1,4.113883972167969,white,male,True,shirt,white,male,"OUTIL knn_search        → shirt (sûr à 100%)
+OUTIL llm_analyze (v1)  → shirt conf=0.90 | précision_ok=True | H=0.00 []
+DÉCISION : LLM fiable → réponse directe"
+31302,shirt,purple,male,shirt,llm,OK,0.9,0.0,1,4.084779262542725,purple,male,True,shirt,purple,male,"OUTIL knn_search        → shirt (sûr à 100%)
+OUTIL llm_analyze (v1)  → shirt conf=0.90 | précision_ok=True | H=0.00 []
+DÉCISION : LLM fiable → réponse directe"
+18323,shirt,green,male,shirt,llm,OK,0.9,0.0,1,4.1063477993011475,black,male,True,shirt,black,male,"OUTIL knn_search        → shirt (sûr à 100%)
+OUTIL llm_analyze (v1)  → shirt conf=0.90 | précision_ok=True | H=0.00 []
+DÉCISION : LLM fiable → réponse directe"
+6613,shirt,black,male,shirt,llm,OK,0.9,0.0,1,4.337635040283203,blue,male,True,shirt,blue,male,"OUTIL knn_search        → shirt (sûr à 100%)
+OUTIL llm_analyze (v1)  → shirt conf=0.90 | précision_ok=True | H=0.00 []
+DÉCISION : LLM fiable → réponse directe"
+19728,shirt,purple,female,shirt,llm,OK,0.9,0.0,1,4.260489225387573,purple,female,True,shirt,purple,female,"OUTIL knn_search        → sweater (sûr à 38%)
+OUTIL llm_analyze (v1)  → shirt conf=0.90 | précision_ok=True | H=0.00 []
+DÉCISION : LLM fiable → réponse directe"
+8854,shirt,blue,male,shirt,llm,OK,0.9,0.0,1,4.101775169372559,blue,male,True,shirt,blue,male,"OUTIL knn_search        → shirt (sûr à 100%)
+OUTIL llm_analyze (v1)  → shirt conf=0.90 | précision_ok=True | H=0.00 []
+DÉCISION : LLM fiable → réponse directe"
+55642,shoes,black,female,shoes,llm,OK,0.95,0.0,1,4.151921510696411,black,female,True,shoes,black,female,"OUTIL knn_search        → shoes (sûr à 100%)
+OUTIL llm_analyze (v1)  → shoes conf=0.95 | précision_ok=True | H=0.00 []
+DÉCISION : LLM fiable → réponse directe"
+35690,shoes,blue,male,shoes,llm,OK,0.9,0.2,1,4.0612170696258545,black,male,True,shoes,black,unisex,"OUTIL knn_search        → shoes (sûr à 100%)
+OUTIL llm_analyze (v1)  → shoes conf=0.90 | précision_ok=True | H=0.20 ['contradicts_neighbors_gender']
+DÉCISION : LLM fiable → réponse directe"
+29120,shoes,black,male,shoes,llm,OK,0.9,0.2,1,4.328564405441284,black,male,True,shoes,black,unisex,"OUTIL knn_search        → shoes (sûr à 100%)
+OUTIL llm_analyze (v1)  → shoes conf=0.90 | précision_ok=True | H=0.20 ['contradicts_neighbors_gender']
+DÉCISION : LLM fiable → réponse directe"
+15240,shoes,black,male,shoes,llm,OK,0.9,0.2,1,4.292170524597168,grey,male,True,shoes,grey,unisex,"OUTIL knn_search        → shoes (sûr à 100%)
+OUTIL llm_analyze (v1)  → shoes conf=0.90 | précision_ok=True | H=0.20 ['contradicts_neighbors_gender']
+DÉCISION : LLM fiable → réponse directe"
+15864,shoes,blue,unisex,shoes,llm,OK,0.9,0.0,1,3.9813082218170166,green,male,True,shoes,green,male,"OUTIL knn_search        → shoes (sûr à 100%)
+OUTIL llm_analyze (v1)  → shoes conf=0.90 | précision_ok=True | H=0.00 []
+DÉCISION : LLM fiable → réponse directe"
+2544,shoes,blue,male,shoes,llm,OK,0.9,0.0,1,4.145190238952637,blue,unisex,True,shoes,blue,unisex,"OUTIL knn_search        → shoes (sûr à 100%)
+OUTIL llm_analyze (v1)  → shoes conf=0.90 | précision_ok=True | H=0.00 []
+DÉCISION : LLM fiable → réponse directe"
+37959,shoes,black,male,shoes,llm,OK,0.9,0.2,1,3.9846537113189697,black,male,True,shoes,black,unisex,"OUTIL knn_search        → shoes (sûr à 100%)
+OUTIL llm_analyze (v1)  → shoes conf=0.90 | précision_ok=True | H=0.20 ['contradicts_neighbors_gender']
+DÉCISION : LLM fiable → réponse directe"
+15888,shoes,green,female,shoes,llm,OK,0.9,0.0,1,4.156803846359253,green,unisex,True,shoes,green,unisex,"OUTIL knn_search        → shoes (sûr à 100%)
+OUTIL llm_analyze (v1)  → shoes conf=0.90 | précision_ok=True | H=0.00 []
+DÉCISION : LLM fiable → réponse directe"
+10778,shorts,blue,male,shorts,llm,OK,0.9,0.25,1,4.159856081008911,black,male,True,shorts,unknown,male,"OUTIL knn_search        → shorts (sûr à 100%)
+OUTIL llm_analyze (v1)  → shorts conf=0.90 | précision_ok=True | H=0.25 ['out_of_vocabulary']
+DÉCISION : LLM fiable → réponse directe"
+14933,shorts,blue,male,shorts,llm,OK,0.9,0.0,1,4.344813585281372,blue,male,True,shorts,blue,male,"OUTIL knn_search        → shorts (sûr à 100%)
+OUTIL llm_analyze (v1)  → shorts conf=0.90 | précision_ok=True | H=0.00 []
+DÉCISION : LLM fiable → réponse directe"
+51379,shorts,grey,male,shorts,llm,OK,0.9,0.0,1,4.01370096206665,green,male,True,shorts,green,male,"OUTIL knn_search        → shorts (sûr à 100%)
+OUTIL llm_analyze (v1)  → shorts conf=0.90 | précision_ok=True | H=0.00 []
+DÉCISION : LLM fiable → réponse directe"
+24308,shorts,white,male,shorts,llm,OK,0.9,0.0,1,4.155611753463745,white,male,True,shorts,white,male,"OUTIL knn_search        → shorts (sûr à 100%)
+OUTIL llm_analyze (v1)  → shorts conf=0.90 | précision_ok=True | H=0.00 []
+DÉCISION : LLM fiable → réponse directe"
+28506,shorts,black,male,shorts,llm,OK,0.9,0.0,1,4.1900904178619385,black,male,True,shorts,black,male,"OUTIL knn_search        → shorts (sûr à 100%)
+OUTIL llm_analyze (v1)  → shorts conf=0.90 | précision_ok=True | H=0.00 []
+DÉCISION : LLM fiable → réponse directe"
+7533,shorts,black,male,shorts,llm,OK,0.9,0.0,1,3.983516216278076,black,male,True,shorts,black,male,"OUTIL knn_search        → shorts (sûr à 100%)
+OUTIL llm_analyze (v1)  → shorts conf=0.90 | précision_ok=True | H=0.00 []
+DÉCISION : LLM fiable → réponse directe"
+14021,shorts,black,male,shorts,llm,OK,0.9,0.0,1,4.054075479507446,black,male,True,shorts,black,male,"OUTIL knn_search        → shorts (sûr à 100%)
+OUTIL llm_analyze (v1)  → shorts conf=0.90 | précision_ok=True | H=0.00 []
+DÉCISION : LLM fiable → réponse directe"
+25039,shorts,black,male,shorts,llm+rag,OK,0.85,0.0,2,8.109610557556152,black,male,True,pants,black,unisex,"OUTIL knn_search        → shorts (sûr à 100%)
+OUTIL llm_analyze (v1)  → pants conf=0.90 | précision_ok=True | H=0.80 ['contradicts_knn', 'contradicts_neighbors_gender']
+hallucination élevée → RAG (voisins du catalogue injectés dans le prompt)
+OUTIL llm_analyze (RAG) → shorts conf=0.85 | précision_ok=True | H=0.00 []
+DÉCISION : réponse LLM + RAG validée"
+12839,skirt,black,female,skirt,llm,OK,0.9,0.0,1,4.03321647644043,pink,female,True,skirt,pink,female,"OUTIL knn_search        → skirt (sûr à 100%)
+OUTIL llm_analyze (v1)  → skirt conf=0.90 | précision_ok=True | H=0.00 []
+DÉCISION : LLM fiable → réponse directe"
+13304,skirt,red,female,skirt,llm,OK,0.9,0.0,1,4.090427398681641,red,female,True,skirt,red,female,"OUTIL knn_search        → skirt (sûr à 100%)
+OUTIL llm_analyze (v1)  → skirt conf=0.90 | précision_ok=True | H=0.00 []
+DÉCISION : LLM fiable → réponse directe"
+30926,skirt,blue,female,skirt,llm,OK,0.9,0.0,1,4.1400206089019775,multicolor,female,True,skirt,multicolor,female,"OUTIL knn_search        → skirt (sûr à 91%)
+OUTIL llm_analyze (v1)  → skirt conf=0.90 | précision_ok=True | H=0.00 []
+DÉCISION : LLM fiable → réponse directe"
+13264,skirt,pink,female,skirt,llm,OK,0.9,0.0,1,3.9634931087493896,pink,female,True,skirt,pink,female,"OUTIL knn_search        → skirt (sûr à 82%)
+OUTIL llm_analyze (v1)  → skirt conf=0.90 | précision_ok=True | H=0.00 []
+DÉCISION : LLM fiable → réponse directe"
+29171,skirt,blue,female,skirt,llm,OK,0.9,0.0,1,4.273422956466675,blue,female,True,skirt,blue,female,"OUTIL knn_search        → skirt (sûr à 100%)
+OUTIL llm_analyze (v1)  → skirt conf=0.90 | précision_ok=True | H=0.00 []
+DÉCISION : LLM fiable → réponse directe"
+38504,skirt,blue,female,skirt,llm,OK,0.9,0.0,1,4.227297306060791,blue,female,True,skirt,blue,female,"OUTIL knn_search        → skirt (sûr à 100%)
+OUTIL llm_analyze (v1)  → skirt conf=0.90 | précision_ok=True | H=0.00 []
+DÉCISION : LLM fiable → réponse directe"
+8501,skirt,blue,female,skirt,llm+rag,OK,0.9,0.25,2,8.775917530059814,beige,female,True,top,unknown,female,"OUTIL knn_search        → skirt (sûr à 81%)
+OUTIL llm_analyze (v1)  → top conf=0.90 | précision_ok=True | H=0.85 ['out_of_vocabulary', 'contradicts_knn']
+hallucination élevée → RAG (voisins du catalogue injectés dans le prompt)
+OUTIL llm_analyze (RAG) → skirt conf=0.90 | précision_ok=True | H=0.25 ['out_of_vocabulary']
+DÉCISION : réponse LLM + RAG validée"
+30929,skirt,grey,female,skirt,llm,OK,0.9,0.0,1,4.246620416641235,grey,female,True,skirt,grey,female,"OUTIL knn_search        → skirt (sûr à 100%)
+OUTIL llm_analyze (v1)  → skirt conf=0.90 | précision_ok=True | H=0.00 []
+DÉCISION : LLM fiable → réponse directe"
+15026,sweater,purple,female,sweater,llm,OK,0.9,0.0,1,4.325090169906616,purple,female,True,sweater,purple,female,"OUTIL knn_search        → sweater (sûr à 66%)
+OUTIL llm_analyze (v1)  → sweater conf=0.90 | précision_ok=True | H=0.00 []
+DÉCISION : LLM fiable → réponse directe"
+20788,sweater,red,male,sweater,llm,OK,0.9,0.25,1,4.40003514289856,grey,male,True,sweater,unknown,male,"OUTIL knn_search        → sweater (sûr à 100%)
+OUTIL llm_analyze (v1)  → sweater conf=0.90 | précision_ok=True | H=0.25 ['out_of_vocabulary']
+DÉCISION : LLM fiable → réponse directe"
+8833,sweater,black,male,sweater,llm,OK,0.9,0.0,1,4.202807903289795,green,male,True,sweater,green,male,"OUTIL knn_search        → sweater (sûr à 100%)
+OUTIL llm_analyze (v1)  → sweater conf=0.90 | précision_ok=True | H=0.00 []
+DÉCISION : LLM fiable → réponse directe"
+15328,sweater,blue,male,sweater,knn_after_rag,OK,0.6149106100201607,0.8,2,8.900742292404175,blue,male,True,top,blue,unisex,"OUTIL knn_search        → sweater (sûr à 61%)
+OUTIL llm_analyze (v1)  → top conf=0.90 | précision_ok=True | H=0.80 ['contradicts_knn', 'contradicts_neighbors_gender']
+hallucination élevée → RAG (voisins du catalogue injectés dans le prompt)
+OUTIL llm_analyze (RAG) → top conf=0.75 | précision_ok=True | H=0.80 ['contradicts_knn', 'contradicts_neighbors_gender']
+RAG insuffisant, kNN sûr → réponse du kNN"
+18624,sweater,beige,male,sweater,llm,OK,0.9,0.0,1,4.65948486328125,white,male,True,sweater,white,male,"OUTIL knn_search        → sweater (sûr à 78%)
+OUTIL llm_analyze (v1)  → sweater conf=0.90 | précision_ok=True | H=0.00 []
+DÉCISION : LLM fiable → réponse directe"
+20197,sweater,grey,male,sweater,llm,OK,0.9,0.0,1,4.29773211479187,grey,male,True,sweater,grey,male,"OUTIL knn_search        → sweater (sûr à 100%)
+OUTIL llm_analyze (v1)  → sweater conf=0.90 | précision_ok=True | H=0.00 []
+DÉCISION : LLM fiable → réponse directe"
+16202,sweater,black,male,sweater,llm,OK,0.9,0.0,1,4.420927286148071,black,male,True,sweater,black,male,"OUTIL knn_search        → sweater (sûr à 100%)
+OUTIL llm_analyze (v1)  → sweater conf=0.90 | précision_ok=True | H=0.00 []
+DÉCISION : LLM fiable → réponse directe"
+14089,sweater,black,male,sweater,llm,OK,0.9,0.0,1,4.235252857208252,black,male,True,sweater,black,male,"OUTIL knn_search        → sweater (sûr à 95%)
+OUTIL llm_analyze (v1)  → sweater conf=0.90 | précision_ok=True | H=0.00 []
+DÉCISION : LLM fiable → réponse directe"
+5776,top,green,female,top,llm,OK,0.9,0.0,1,4.01528525352478,multicolor,female,True,top,multicolor,female,"OUTIL knn_search        → dress (sûr à 58%)
+OUTIL llm_analyze (v1)  → top conf=0.90 | précision_ok=True | H=0.00 []
+DÉCISION : LLM fiable → réponse directe"
+24547,top,blue,female,top,llm+rag,OK,0.85,0.0,2,8.525163412094116,blue,female,True,shirt,blue,female,"OUTIL knn_search        → top (sûr à 93%)
+OUTIL llm_analyze (v1)  → shirt conf=0.90 | précision_ok=True | H=0.60 ['contradicts_knn']
+hallucination élevée → RAG (voisins du catalogue injectés dans le prompt)
+OUTIL llm_analyze (RAG) → top conf=0.85 | précision_ok=True | H=0.00 []
+DÉCISION : réponse LLM + RAG validée"
+21167,top,black,female,dress,knn_after_rag,OK,0.6046007946133614,0.6,2,8.40766453742981,black,female,True,top,black,female,"OUTIL knn_search        → dress (sûr à 60%)
+OUTIL llm_analyze (v1)  → top conf=0.90 | précision_ok=True | H=0.60 ['contradicts_knn']
+hallucination élevée → RAG (voisins du catalogue injectés dans le prompt)
+OUTIL llm_analyze (RAG) → top conf=0.85 | précision_ok=True | H=0.60 ['contradicts_knn']
+RAG insuffisant, kNN sûr → réponse du kNN"
+42224,top,white,female,top,llm,OK,0.9,0.0,1,4.174786329269409,white,female,True,top,white,female,"OUTIL knn_search        → top (sûr à 57%)
+OUTIL llm_analyze (v1)  → top conf=0.90 | précision_ok=True | H=0.00 []
+DÉCISION : LLM fiable → réponse directe"
+45969,top,grey,female,top,knn_after_rag,OK,1.0000000596046448,0.6,2,8.587803602218628,grey,female,True,tshirt,grey,female,"OUTIL knn_search        → top (sûr à 100%)
+OUTIL llm_analyze (v1)  → tshirt conf=0.90 | précision_ok=True | H=0.60 ['contradicts_knn']
+hallucination élevée → RAG (voisins du catalogue injectés dans le prompt)
+OUTIL llm_analyze (RAG) → tshirt conf=0.90 | précision_ok=True | H=0.60 ['contradicts_knn']
+RAG insuffisant, kNN sûr → réponse du kNN"
+19624,top,green,female,shirt,llm,OK,0.9,0.25,1,4.307331800460815,blue,female,True,shirt,unknown,female,"OUTIL knn_search        → sweater (sûr à 50%)
+OUTIL llm_analyze (v1)  → shirt conf=0.90 | précision_ok=True | H=0.25 ['out_of_vocabulary']
+DÉCISION : LLM fiable → réponse directe"
+42202,top,yellow,female,top,knn_after_rag,OK,0.9176987782120705,0.6,2,8.494035005569458,yellow,female,True,shirt,yellow,female,"OUTIL knn_search        → top (sûr à 92%)
+OUTIL llm_analyze (v1)  → shirt conf=0.90 | précision_ok=True | H=0.60 ['contradicts_knn']
+hallucination élevée → RAG (voisins du catalogue injectés dans le prompt)
+OUTIL llm_analyze (RAG) → shirt conf=0.85 | précision_ok=True | H=0.60 ['contradicts_knn']
+RAG insuffisant, kNN sûr → réponse du kNN"
+42204,top,pink,female,top,llm,OK,0.9,0.25,1,4.262324333190918,purple,female,True,top,unknown,female,"OUTIL knn_search        → top (sûr à 80%)
+OUTIL llm_analyze (v1)  → top conf=0.90 | précision_ok=True | H=0.25 ['out_of_vocabulary']
+DÉCISION : LLM fiable → réponse directe"
+4033,tshirt,black,male,tshirt,llm,OK,0.9,0.0,1,4.08768367767334,black,male,True,tshirt,black,male,"OUTIL knn_search        → tshirt (sûr à 100%)
+OUTIL llm_analyze (v1)  → tshirt conf=0.90 | précision_ok=True | H=0.00 []
+DÉCISION : LLM fiable → réponse directe"
+6589,tshirt,black,male,tshirt,llm,OK,0.9,0.0,1,4.304479598999023,black,male,True,tshirt,black,male,"OUTIL knn_search        → tshirt (sûr à 100%)
+OUTIL llm_analyze (v1)  → tshirt conf=0.90 | précision_ok=True | H=0.00 []
+DÉCISION : LLM fiable → réponse directe"
+3984,tshirt,blue,male,tshirt,llm,OK,0.9,0.0,1,4.023946762084961,blue,male,True,tshirt,blue,male,"OUTIL knn_search        → tshirt (sûr à 100%)
+OUTIL llm_analyze (v1)  → tshirt conf=0.90 | précision_ok=True | H=0.00 []
+DÉCISION : LLM fiable → réponse directe"
+44634,tshirt,black,male,tshirt,llm,OK,0.9,0.0,1,4.306835651397705,black,male,True,tshirt,black,male,"OUTIL knn_search        → tshirt (sûr à 100%)
+OUTIL llm_analyze (v1)  → tshirt conf=0.90 | précision_ok=True | H=0.00 []
+DÉCISION : LLM fiable → réponse directe"
+7747,tshirt,green,male,tshirt,llm,OK,0.9,0.0,1,4.31433629989624,green,male,True,tshirt,green,male,"OUTIL knn_search        → tshirt (sûr à 100%)
+OUTIL llm_analyze (v1)  → tshirt conf=0.90 | précision_ok=True | H=0.00 []
+DÉCISION : LLM fiable → réponse directe"
+22620,tshirt,blue,male,tshirt,llm,OK,0.9,0.2,1,4.3449602127075195,blue,male,True,tshirt,blue,unisex,"OUTIL knn_search        → tshirt (sûr à 85%)
+OUTIL llm_analyze (v1)  → tshirt conf=0.90 | précision_ok=True | H=0.20 ['contradicts_neighbors_gender']
+DÉCISION : LLM fiable → réponse directe"
+6934,tshirt,white,male,tshirt,llm,OK,0.9,0.0,1,4.304842233657837,white,male,True,tshirt,white,male,"OUTIL knn_search        → tshirt (sûr à 91%)
+OUTIL llm_analyze (v1)  → tshirt conf=0.90 | précision_ok=True | H=0.00 []
+DÉCISION : LLM fiable → réponse directe"
+2299,tshirt,purple,female,tshirt,llm,OK,0.9,0.2,1,4.089128017425537,blue,female,True,tshirt,purple,female,"OUTIL knn_search        → tshirt (sûr à 89%)
+OUTIL llm_analyze (v1)  → tshirt conf=0.90 | précision_ok=True | H=0.20 ['contradicts_neighbors_color']
+DÉCISION : LLM fiable → réponse directe"
+50985,underwear,white,female,underwear,llm,OK,0.95,0.0,1,4.04202127456665,white,female,True,underwear,white,female,"OUTIL knn_search        → underwear (sûr à 92%)
+OUTIL llm_analyze (v1)  → underwear conf=0.95 | précision_ok=True | H=0.00 []
+DÉCISION : LLM fiable → réponse directe"
+28137,underwear,green,male,underwear,llm,OK,0.95,0.0,1,4.225651264190674,green,male,True,underwear,green,male,"OUTIL knn_search        → underwear (sûr à 100%)
+OUTIL llm_analyze (v1)  → underwear conf=0.95 | précision_ok=True | H=0.00 []
+DÉCISION : LLM fiable → réponse directe"
+51015,underwear,white,female,underwear,llm,OK,0.9,0.0,1,4.001444578170776,beige,female,True,underwear,beige,female,"OUTIL knn_search        → underwear (sûr à 100%)
+OUTIL llm_analyze (v1)  → underwear conf=0.90 | précision_ok=True | H=0.00 []
+DÉCISION : LLM fiable → réponse directe"
+50562,underwear,brown,male,underwear,llm,OK,0.9,0.0,1,4.033611059188843,brown,male,True,underwear,brown,male,"OUTIL knn_search        → underwear (sûr à 100%)
+OUTIL llm_analyze (v1)  → underwear conf=0.90 | précision_ok=True | H=0.00 []
+DÉCISION : LLM fiable → réponse directe"
+42822,underwear,black,female,underwear,knn_after_rag,OK,0.9594372287392616,0.8,2,8.657833337783813,metallic,female,True,top,metallic,female,"OUTIL knn_search        → underwear (sûr à 96%)
+OUTIL llm_analyze (v1)  → top conf=0.90 | précision_ok=True | H=0.80 ['contradicts_knn', 'contradicts_neighbors_color']
+hallucination élevée → RAG (voisins du catalogue injectés dans le prompt)
+OUTIL llm_analyze (RAG) → top conf=0.90 | précision_ok=True | H=0.80 ['contradicts_knn', 'contradicts_neighbors_color']
+RAG insuffisant, kNN sûr → réponse du kNN"
+25368,underwear,blue,male,underwear,knn_after_rag,OK,0.7994123473763466,0.6,2,8.651469945907593,blue,male,True,tshirt,unknown,male,"OUTIL knn_search        → underwear (sûr à 80%)
+OUTIL llm_analyze (v1)  → tshirt conf=0.90 | précision_ok=True | H=0.85 ['out_of_vocabulary', 'contradicts_knn']
+hallucination élevée → RAG (voisins du catalogue injectés dans le prompt)
+OUTIL llm_analyze (RAG) → tshirt conf=0.85 | précision_ok=True | H=0.60 ['contradicts_knn']
+RAG insuffisant, kNN sûr → réponse du kNN"
+17887,underwear,grey,male,underwear,knn_after_rag,OK,1.0000000074505806,0.6,2,8.287086963653564,white,male,True,top,white,male,"OUTIL knn_search        → underwear (sûr à 100%)
+OUTIL llm_analyze (v1)  → top conf=0.90 | précision_ok=True | H=0.60 ['contradicts_knn']
+hallucination élevée → RAG (voisins du catalogue injectés dans le prompt)
+OUTIL llm_analyze (RAG) → top conf=0.90 | précision_ok=True | H=0.60 ['contradicts_knn']
+RAG insuffisant, kNN sûr → réponse du kNN"
+57350,underwear,black,female,underwear,llm,OK,0.95,0.0,1,4.33857274055481,black,female,True,underwear,black,female,"OUTIL knn_search        → underwear (sûr à 100%)
+OUTIL llm_analyze (v1)  → underwear conf=0.95 | précision_ok=True | H=0.00 []
+DÉCISION : LLM fiable → réponse directe"

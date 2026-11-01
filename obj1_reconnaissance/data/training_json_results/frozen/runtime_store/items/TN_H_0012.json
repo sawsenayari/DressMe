@@ -1,0 +1,28 @@
+{
+  "id": "TN_H_0012",
+  "name": "Brown jacket",
+  "slot": "outer",
+  "type": "Jackets",
+  "colour": [
+    "brown"
+  ],
+  "usage": "Casual",
+  "warmth": 2,
+  "formality": 1,
+  "waterproof": false,
+  "open_toe": false,
+  "gender": "Men",
+  "image": "items/TN_H_0012_crop.png",
+  "image_crop": "items/TN_H_0012_crop.png",
+  "embedding": "emb/TN_H_0012.npy",
+  "season": "all",
+  "pattern": "plain",
+  "confidence": {
+    "slot": 0.6943649533204734,
+    "colour": 0.5846593840669609,
+    "type": 0.6943649533204734
+  },
+  "source": "obj1.knn",
+  "price_dt": null,
+  "traditional": false
+}

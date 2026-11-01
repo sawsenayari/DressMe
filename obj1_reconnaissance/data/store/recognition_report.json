@@ -1,0 +1,235 @@
+{
+  "version": "itemcard_v1",
+  "items": [
+    {
+      "source_key": "0-4 - Copie.jpg#item",
+      "source_file": "0-4 - Copie.jpg",
+      "crop_piece": "item",
+      "id": "it_0001",
+      "category": "shirt",
+      "hint": null,
+      "area": 0.6221,
+      "status": "ok",
+      "reasons": [
+        "warmth_formality_placeholder"
+      ],
+      "json": "items/it_0001.json",
+      "source": "llm",
+      "H": 0.0,
+      "confidence_calibrated": false
+    },
+    {
+      "source_key": "01 - Copie.jpg#item",
+      "source_file": "01 - Copie.jpg",
+      "crop_piece": "item",
+      "id": "it_0002",
+      "category": "shorts",
+      "hint": null,
+      "area": 0.5048,
+      "status": "ok",
+      "reasons": [
+        "warmth_formality_placeholder"
+      ],
+      "json": "items/it_0002.json",
+      "source": "llm",
+      "H": 0.2,
+      "confidence_calibrated": false
+    },
+    {
+      "source_key": "01.jpg#item",
+      "source_file": "01.jpg",
+      "crop_piece": "item",
+      "id": "it_0003",
+      "category": "pants",
+      "hint": null,
+      "area": 0.2378,
+      "status": "ok",
+      "reasons": [
+        "warmth_formality_placeholder"
+      ],
+      "json": "items/it_0003.json",
+      "source": "llm",
+      "H": 0.0,
+      "confidence_calibrated": false
+    },
+    {
+      "source_key": "02 - Copie.jpg#item",
+      "source_file": "02 - Copie.jpg",
+      "crop_piece": "item",
+      "id": "it_0004",
+      "category": "shorts",
+      "hint": null,
+      "area": 0.5048,
+      "status": "ok",
+      "reasons": [
+        "warmth_formality_placeholder"
+      ],
+      "json": "items/it_0004.json",
+      "source": "llm",
+      "H": 0.0,
+      "confidence_calibrated": false
+    },
+    {
+      "source_key": "02.jpg#item",
+      "source_file": "02.jpg",
+      "crop_piece": "item",
+      "id": "it_0005",
+      "category": "pants",
+      "hint": null,
+      "area": 0.2416,
+      "status": "needs_review",
+      "reasons": [
+        "warmth_formality_placeholder",
+        "low_confidence"
+      ],
+      "json": "items/it_0005.json",
+      "source": "llm",
+      "H": 0.0,
+      "confidence_calibrated": false
+    },
+    {
+      "source_key": "03 - Copie.jpg#item",
+      "source_file": "03 - Copie.jpg",
+      "crop_piece": "item",
+      "id": "it_0006",
+      "category": "shorts",
+      "hint": null,
+      "area": 0.3518,
+      "status": "ok",
+      "reasons": [
+        "warmth_formality_placeholder"
+      ],
+      "json": "items/it_0006.json",
+      "source": "llm",
+      "H": 0.45,
+      "confidence_calibrated": false
+    },
+    {
+      "source_key": "04 - Copie.jpg#item",
+      "source_file": "04 - Copie.jpg",
+      "crop_piece": "item",
+      "id": "it_0007",
+      "category": "shorts",
+      "hint": null,
+      "area": 0.3922,
+      "status": "ok",
+      "reasons": [
+        "warmth_formality_placeholder"
+      ],
+      "json": "items/it_0007.json",
+      "source": "llm",
+      "H": 0.0,
+      "confidence_calibrated": false
+    },
+    {
+      "source_key": "04.jpg#item",
+      "source_file": "04.jpg",
+      "crop_piece": "item",
+      "id": "it_0008",
+      "category": "shirt",
+      "hint": null,
+      "area": 0.6221,
+      "status": "ok",
+      "reasons": [
+        "warmth_formality_placeholder"
+      ],
+      "json": "items/it_0008.json",
+      "source": "llm",
+      "H": 0.0,
+      "confidence_calibrated": false
+    },
+    {
+      "source_key": "05 - Copie.jpg#top",
+      "source_file": "05 - Copie.jpg",
+      "crop_piece": "top",
+      "id": "it_0009",
+      "category": "shoes",
+      "hint": "top",
+      "area": 0.2901,
+      "status": "needs_review",
+      "reasons": [
+        "warmth_formality_placeholder",
+        "low_confidence",
+        "slot_disagrees_with_segmentation:top->footwear"
+      ],
+      "json": "items/it_0009.json",
+      "source": "llm",
+      "H": 0.0,
+      "confidence_calibrated": false
+    },
+    {
+      "source_key": "05 - Copie.jpg#bottom",
+      "source_file": "05 - Copie.jpg",
+      "crop_piece": "bottom",
+      "id": "it_0010",
+      "category": "traditional_garment",
+      "hint": "bottom",
+      "area": 0.1292,
+      "status": "needs_review",
+      "reasons": [
+        "traditional_subtype_from_neighbours:other",
+        "warmth_formality_placeholder",
+        "slot_mapping_unconfirmed:traditional_garment"
+      ],
+      "json": "items/it_0010.json",
+      "source": "llm+rag",
+      "H": 0.0,
+      "confidence_calibrated": false
+    },
+    {
+      "source_key": "05 - Copie.jpg#hat",
+      "source_file": "05 - Copie.jpg",
+      "crop_piece": "hat",
+      "id": "it_0011",
+      "category": "traditional_garment",
+      "hint": "accessory",
+      "area": 0.0358,
+      "status": "discarded",
+      "reasons": [
+        "traditional_subtype_from_neighbours:other",
+        "warmth_formality_placeholder",
+        "slot_mapping_unconfirmed:traditional_garment",
+        "crop:garment_too_small_or_empty",
+        "fragment_of_other_garment:accessory->onepiece"
+      ],
+      "json": null,
+      "discard_reason": "fragment"
+    },
+    {
+      "source_key": "05 - Copie.jpg#scarf",
+      "source_file": "05 - Copie.jpg",
+      "crop_piece": "scarf",
+      "id": "it_0012",
+      "category": "traditional_garment",
+      "hint": "accessory",
+      "area": 0.0127,
+      "status": "discarded",
+      "reasons": [
+        "traditional_subtype_from_neighbours:other",
+        "warmth_formality_placeholder",
+        "slot_mapping_unconfirmed:traditional_garment",
+        "crop:garment_too_small_or_empty",
+        "fragment_of_other_garment:accessory->onepiece"
+      ],
+      "json": null,
+      "discard_reason": "fragment"
+    },
+    {
+      "source_key": "05.jpg#item",
+      "source_file": "05.jpg",
+      "crop_piece": "item",
+      "id": "it_0013",
+      "category": "shorts",
+      "hint": null,
+      "area": 0.3251,
+      "status": "ok",
+      "reasons": [
+        "warmth_formality_placeholder"
+      ],
+      "json": "items/it_0013.json",
+      "source": "knn_after_rag",
+      "H": 0.8,
+      "confidence_calibrated": false
+    }
+  ]
+}

@@ -1,0 +1,310 @@
+[
+  {
+    "id": "it_0001",
+    "name": "Blue shirt",
+    "slot": "top",
+    "type": "Shirts",
+    "colour": [
+      "blue"
+    ],
+    "usage": "Formal",
+    "warmth": 1,
+    "formality": 2,
+    "waterproof": false,
+    "open_toe": false,
+    "gender": "Men",
+    "image": "items/it_0001_raw.jpg",
+    "image_crop": "items/it_0001_crop.png",
+    "embedding": "emb/it_0001.npy",
+    "season": "fall",
+    "pattern": "plain",
+    "confidence": {
+      "slot": 1.0,
+      "colour": 0.8152972330853756,
+      "type": 0.9
+    },
+    "source": "obj1.llm",
+    "price_dt": null,
+    "traditional": false
+  },
+  {
+    "id": "it_0002",
+    "name": "Black shorts",
+    "slot": "bottom",
+    "type": "Shorts",
+    "colour": [
+      "black"
+    ],
+    "usage": "Casual",
+    "warmth": 0,
+    "formality": 0,
+    "waterproof": false,
+    "open_toe": false,
+    "gender": "Men",
+    "image": "items/it_0002_raw.jpg",
+    "image_crop": "items/it_0002_crop.png",
+    "embedding": "emb/it_0002.npy",
+    "season": "summer",
+    "pattern": "plain",
+    "confidence": {
+      "slot": 1.0,
+      "colour": 0.7820410786690586,
+      "type": 0.9
+    },
+    "source": "obj1.llm",
+    "price_dt": null,
+    "traditional": false
+  },
+  {
+    "id": "it_0003",
+    "name": "Grey pants",
+    "slot": "bottom",
+    "type": "Track Pants",
+    "colour": [
+      "grey"
+    ],
+    "usage": "Sports",
+    "warmth": 2,
+    "formality": 2,
+    "waterproof": false,
+    "open_toe": false,
+    "gender": "Men",
+    "image": "items/it_0003_raw.jpg",
+    "image_crop": "items/it_0003_crop.png",
+    "embedding": "emb/it_0003.npy",
+    "season": "fall",
+    "pattern": "plain",
+    "confidence": {
+      "slot": 1.0,
+      "colour": 0.7749416575230041,
+      "type": 0.7445698289360915
+    },
+    "source": "obj1.llm",
+    "price_dt": null,
+    "traditional": false
+  },
+  {
+    "id": "it_0004",
+    "name": "Black shorts",
+    "slot": "bottom",
+    "type": "Shorts",
+    "colour": [
+      "black"
+    ],
+    "usage": "Casual",
+    "warmth": 0,
+    "formality": 0,
+    "waterproof": false,
+    "open_toe": false,
+    "gender": "Men",
+    "image": "items/it_0004_raw.jpg",
+    "image_crop": "items/it_0004_crop.png",
+    "embedding": "emb/it_0004.npy",
+    "season": "summer",
+    "pattern": "plain",
+    "confidence": {
+      "slot": 1.0,
+      "colour": 0.8338429485837189,
+      "type": 0.9
+    },
+    "source": "obj1.llm",
+    "price_dt": null,
+    "traditional": false
+  },
+  {
+    "id": "it_0005",
+    "name": "Grey pants",
+    "slot": "bottom",
+    "type": "Track Pants",
+    "colour": [
+      "grey"
+    ],
+    "usage": "Sports",
+    "warmth": 2,
+    "formality": 2,
+    "waterproof": false,
+    "open_toe": false,
+    "gender": "Men",
+    "image": "items/it_0005_raw.jpg",
+    "image_crop": "items/it_0005_crop.png",
+    "embedding": "emb/it_0005.npy",
+    "season": "summer",
+    "pattern": "plain",
+    "confidence": {
+      "slot": 0.9999999739229679,
+      "colour": 0.8134232391937177,
+      "type": 0.5962723429274052
+    },
+    "source": "obj1.llm",
+    "price_dt": null,
+    "traditional": false
+  },
+  {
+    "id": "it_0006",
+    "name": "Beige shorts",
+    "slot": "bottom",
+    "type": "Shorts",
+    "colour": [
+      "beige"
+    ],
+    "usage": "Casual",
+    "warmth": 0,
+    "formality": 0,
+    "waterproof": false,
+    "open_toe": false,
+    "gender": "Men",
+    "image": "items/it_0006_raw.jpg",
+    "image_crop": "items/it_0006_crop.png",
+    "embedding": "emb/it_0006.npy",
+    "season": "summer",
+    "pattern": "plain",
+    "confidence": {
+      "slot": 0.999999962747097,
+      "colour": 0.47882203812979307,
+      "type": 0.9
+    },
+    "source": "obj1.llm",
+    "price_dt": null,
+    "traditional": false
+  },
+  {
+    "id": "it_0007",
+    "name": "Blue shorts",
+    "slot": "bottom",
+    "type": "Shorts",
+    "colour": [
+      "blue"
+    ],
+    "usage": "Sports",
+    "warmth": 0,
+    "formality": 0,
+    "waterproof": false,
+    "open_toe": false,
+    "gender": "Men",
+    "image": "items/it_0007_raw.jpg",
+    "image_crop": "items/it_0007_crop.png",
+    "embedding": "emb/it_0007.npy",
+    "season": "summer",
+    "pattern": "plain",
+    "confidence": {
+      "slot": 0.9034377038478851,
+      "colour": 0.9247971097110184,
+      "type": 0.9
+    },
+    "source": "obj1.llm",
+    "price_dt": null,
+    "traditional": false
+  },
+  {
+    "id": "it_0008",
+    "name": "Blue shirt",
+    "slot": "top",
+    "type": "Shirts",
+    "colour": [
+      "blue"
+    ],
+    "usage": "Formal",
+    "warmth": 1,
+    "formality": 2,
+    "waterproof": false,
+    "open_toe": false,
+    "gender": "Men",
+    "image": "items/it_0008_raw.jpg",
+    "image_crop": "items/it_0008_crop.png",
+    "embedding": "emb/it_0008.npy",
+    "season": "fall",
+    "pattern": "plain",
+    "confidence": {
+      "slot": 1.0,
+      "colour": 0.8152972330853756,
+      "type": 0.9
+    },
+    "source": "obj1.llm",
+    "price_dt": null,
+    "traditional": false
+  },
+  {
+    "id": "it_0009",
+    "name": "White shoes",
+    "slot": "footwear",
+    "type": "Heels",
+    "colour": [
+      "white"
+    ],
+    "usage": "Casual",
+    "warmth": 2,
+    "formality": 1,
+    "waterproof": false,
+    "open_toe": true,
+    "gender": "Unisex",
+    "image": "items/it_0009_raw.jpg",
+    "image_crop": "items/it_0009_crop.png",
+    "embedding": "emb/it_0009.npy",
+    "season": "all",
+    "pattern": "plain",
+    "confidence": {
+      "slot": 1.0,
+      "colour": 0.7124390799697532,
+      "type": 0.34372220596071057
+    },
+    "source": "obj1.llm",
+    "price_dt": null,
+    "traditional": false
+  },
+  {
+    "id": "it_0010",
+    "name": "White traditional garment",
+    "slot": "onepiece",
+    "type": "Other",
+    "colour": [
+      "white"
+    ],
+    "usage": "Ethnic",
+    "warmth": 2,
+    "formality": 3,
+    "waterproof": false,
+    "open_toe": false,
+    "gender": "Men",
+    "image": "items/it_0010_raw.jpg",
+    "image_crop": "items/it_0010_crop.png",
+    "embedding": "emb/it_0010.npy",
+    "season": "all",
+    "pattern": "plain",
+    "confidence": {
+      "slot": 0.9552672390565717,
+      "colour": 0.8610438775488947,
+      "type": 0.8119771531980859
+    },
+    "source": "obj1.llm",
+    "price_dt": null,
+    "traditional": true
+  },
+  {
+    "id": "it_0013",
+    "name": "Beige shorts",
+    "slot": "bottom",
+    "type": "Shorts",
+    "colour": [
+      "beige"
+    ],
+    "usage": "Casual",
+    "warmth": 0,
+    "formality": 0,
+    "waterproof": false,
+    "open_toe": false,
+    "gender": "Men",
+    "image": "items/it_0013_raw.jpg",
+    "image_crop": "items/it_0013_crop.png",
+    "embedding": "emb/it_0013.npy",
+    "season": "summer",
+    "pattern": "plain",
+    "confidence": {
+      "slot": 0.9999999701976776,
+      "colour": 0.5018172345608031,
+      "type": 0.7932208254933357
+    },
+    "source": "obj1.knn",
+    "price_dt": null,
+    "traditional": false
+  }
+]

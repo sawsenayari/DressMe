@@ -1,0 +1,28 @@
+{
+  "id": "it_0010",
+  "name": "White traditional garment",
+  "slot": "onepiece",
+  "type": "Other",
+  "colour": [
+    "white"
+  ],
+  "usage": "Ethnic",
+  "warmth": 2,
+  "formality": 3,
+  "waterproof": false,
+  "open_toe": false,
+  "gender": "Men",
+  "image": "items/it_0010_raw.jpg",
+  "image_crop": "items/it_0010_crop.png",
+  "embedding": "emb/it_0010.npy",
+  "season": "all",
+  "pattern": "plain",
+  "confidence": {
+    "slot": 0.9552672390565717,
+    "colour": 0.8610438775488947,
+    "type": 0.8119771531980859
+  },
+  "source": "obj1.llm",
+  "price_dt": null,
+  "traditional": true
+}

@@ -1,0 +1,13 @@
+torch
+transformers>=4.45
+accelerate
+bitsandbytes
+kagglehub
+pydantic>=2
+numpy
+pandas
+pillow
+scikit-learn
+matplotlib
+tqdm
+pytest

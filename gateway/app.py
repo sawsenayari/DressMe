@@ -3,7 +3,7 @@
 Routes attendues par le front (frontend/src/services) :
   GET  /health
   GET  /wardrobe/items            -> fiches du catalogue (ItemCard -> ClothingItem)         [Obj1 : lecture seule]
-  POST /wardrobe/items            -> 501 tant que l'objectif 1 (classification d'une photo) n'est pas branché
+  POST /wardrobe/items            -> photo -> Obj1 (crop + ItemCard v1 + emb/<id>.npy) -> ajout au catalogue ; 501 si l'Obj1 n'est pas lançable
   POST /compatibility/score       -> photo (+ champ facultatif `category`) -> embedding FashionCLIP -> Obj2 /compat
   GET  /gaps                      -> rapport de l'objectif 4 (gap_report.json)
   GET/PUT /profile                -> profil de style de l'objectif 5
@@ -14,11 +14,15 @@ Dossiers (variables d'environnement, défauts relatifs à la racine du dépôt) 
   DRESSME_STORE  fiches + images + emb/*.npy      (défaut : obj5_profil/data)
   DRESSME_OBJ2   dossier du service de compatibilité (défaut : obj2_compat)
   DRESSME_GAPS   rapport de manques               (défaut : obj4_manques/gap_report.json)
+  DRESSME_OBJ1   dossier de la reconnaissance     (défaut : obj1_reconnaissance)
+  DRESSME_OBJ1_MODE  full (Qwen si DRESSME_OBJ1_LLM=1, sinon kNN FashionCLIP seul) | mock (fiches factices, embedding ALÉATOIRE : tests seulement)
 """
 import io
 import json
 import os
 import sys
+import tempfile
+import threading
 from pathlib import Path
 from typing import Optional
 
@@ -31,6 +35,8 @@ REPO = Path(__file__).resolve().parent.parent
 STORE = Path(os.environ.get("DRESSME_STORE", REPO / "obj5_profil" / "data"))
 OBJ2 = Path(os.environ.get("DRESSME_OBJ2", REPO / "obj2_compat"))
 GAPS = Path(os.environ.get("DRESSME_GAPS", REPO / "obj4_manques" / "gap_report.json"))
+OBJ1 = Path(os.environ.get("DRESSME_OBJ1", REPO / "obj1_reconnaissance"))
+os.environ.setdefault("DRESSME_ROOT", str(OBJ1 / "data"))          # base kNN de l'Obj1 (data/agent_final)
 os.environ.setdefault("DRESSME_STORE", str(STORE))
 os.environ.setdefault("DRESSME_CATALOG", str(STORE / "wardrobe.json"))
 os.environ.setdefault("DRESSME_ASSETS_DIR", str(STORE))
@@ -150,9 +156,84 @@ def list_items():
     return [to_front_item(c) for c in catalog()]
 
 
+# ---------------------------------------------------------------- objectif 1 : photo -> fiche
+_write_lock = threading.Lock()
+
+
+def recognizer():
+    """Service de reconnaissance de l'Obj1, chargé une fois. Toute erreur de chargement -> 501 (Obj1 non lançable)."""
+    mode = os.environ.get("DRESSME_OBJ1_MODE", "full")
+    if ("obj1", mode) not in _cache:
+        try:
+            if not (OBJ1 / "recognition").is_dir():
+                raise FileNotFoundError(f"dossier introuvable : {OBJ1 / 'recognition'}")
+            if str(OBJ1) not in sys.path:
+                sys.path.append(str(OBJ1))
+            if mode == "mock":
+                from recognition.mock import MockRecognizer
+                svc = MockRecognizer()
+            else:
+                from recognition.config import CFG
+                from recognition.service import RecognitionService
+                svc = RecognitionService.from_config(CFG, load_llm=os.environ.get("DRESSME_OBJ1_LLM") == "1")
+            _cache[("obj1", mode)] = (svc, None)
+        except Exception as e:  # dépendances (torch, transformers, kagglehub…), modèles ou base kNN absents
+            _cache[("obj1", mode)] = (None, f"{type(e).__name__}: {e}")
+    svc, err = _cache[("obj1", mode)]
+    if svc is None:
+        raise HTTPException(501, f"Objectif 1 non lançable ({err}).")
+    return svc
+
+
+def _next_id():
+    used = {c["id"] for c in catalog()}
+    n = 1 + max([int(i[3:]) for i in used if i.startswith("it_") and i[3:].isdigit()] or [0])
+    while f"it_{n:04d}" in used:
+        n += 1
+    return f"it_{n:04d}"
+
+
+def _append_to_catalog(card):
+    p = STORE / "wardrobe.json"
+    d = json.load(open(p, encoding="utf-8"))
+    (d if isinstance(d, list) else d.setdefault("items", [])).append(card)
+    tmp = p.with_suffix(".json.tmp")
+    tmp.write_text(json.dumps(d, indent=2, ensure_ascii=False), encoding="utf-8")
+    os.replace(tmp, p)
+    for k in ("c", "p"):  # catalogue relu ; profil Obj5 reconstruit (il refuse les identifiants inconnus)
+        _cache.pop(k, None)
+
+
 @app.post("/wardrobe/items")
-async def add_item(image: UploadFile = File(...)):
-    raise HTTPException(501, "Classification d'une photo = objectif 1, pas encore branché.")
+def add_item(image: UploadFile = File(...)):
+    svc = recognizer()
+    data = image.file.read()
+    suffix = Path(image.filename or "photo.jpg").suffix.lower() or ".jpg"
+    with _write_lock, tempfile.TemporaryDirectory() as tmp:
+        raw = Path(tmp) / f"photo{suffix}"
+        raw.write_bytes(data)
+        item_id = _next_id()
+        src, kw = raw, {}
+        cropper = getattr(svc, "cropper", None)
+        if cropper is not None:  # vrai service : une seule pièce par photo (la plus grande)
+            piece = cropper.crop(raw, strategy="main")[0]
+            src = Path(tmp) / "piece.png"
+            piece.image.save(src)
+            kw = dict(crop_reasons=(piece.quality or {}).get("reasons"), slot_hint=piece.slot_hint)
+        try:
+            r = svc.recognize(src, item_id=item_id, raw_path=str(raw), out_dir=STORE, **kw)
+        except Exception as e:
+            raise HTTPException(500, f"Reconnaissance (Obj1) en échec : {type(e).__name__}: {e}")
+        if r.card is None:
+            raise HTTPException(422, f"Aucune fiche produite ({r.status}) : {', '.join(r.reasons) or r.category}")
+        card = r.card.model_dump()
+        for rel in (card["image"], card["image_crop"]):  # le mock n'écrit pas les images
+            if not (STORE / rel).exists():
+                (STORE / rel).parent.mkdir(parents=True, exist_ok=True)
+                from PIL import Image
+                Image.open(io.BytesIO(data)).convert("RGB").save(STORE / rel)
+        _append_to_catalog(card)
+    return {**to_front_item(card), "status": r.status, "reasons": r.reasons}
 
 
 @app.post("/compatibility/score")
@@ -197,7 +278,7 @@ _prefs = {"axis": None, "budgetMode": False}
 def _profile_service():
     if "p" not in _cache:
         from dressme_profile import ProfileService
-        _cache["p"] = ProfileService()
+        _cache["p"] = ProfileService(catalog_path=STORE / "wardrobe.json", assets_dir=STORE)
     return _cache["p"]
 
 

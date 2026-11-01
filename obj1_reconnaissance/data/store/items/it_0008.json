@@ -1,0 +1,28 @@
+{
+  "id": "it_0008",
+  "name": "Blue shirt",
+  "slot": "top",
+  "type": "Shirts",
+  "colour": [
+    "blue"
+  ],
+  "usage": "Formal",
+  "warmth": 1,
+  "formality": 2,
+  "waterproof": false,
+  "open_toe": false,
+  "gender": "Men",
+  "image": "items/it_0008_raw.jpg",
+  "image_crop": "items/it_0008_crop.png",
+  "embedding": "emb/it_0008.npy",
+  "season": "fall",
+  "pattern": "plain",
+  "confidence": {
+    "slot": 1.0,
+    "colour": 0.8152972330853756,
+    "type": 0.9
+  },
+  "source": "obj1.llm",
+  "price_dt": null,
+  "traditional": false
+}

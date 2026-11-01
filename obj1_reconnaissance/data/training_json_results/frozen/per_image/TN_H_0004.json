@@ -1,0 +1,95 @@
+{
+  "id": "TN_H_0004",
+  "input": {
+    "image_path": "/content/drive/MyDrive/dressme_obj1/data/tunisian_dataset/images/TN_H_0004.jpg",
+    "crop_path": "/content/drive/MyDrive/dressme_obj1/data/tunisian_dataset/crops/368b760da8e4_crop.png",
+    "dataset_label": {
+      "category": "jacket",
+      "subtype": "",
+      "colour": "black",
+      "gender": "male",
+      "season": "all_season",
+      "occasion": "casual"
+    }
+  },
+  "output": {
+    "status": "ok",
+    "card": {
+      "id": "TN_H_0004",
+      "name": "Black jacket",
+      "slot": "outer",
+      "type": "Jackets",
+      "colour": [
+        "black"
+      ],
+      "usage": "Casual",
+      "warmth": 2,
+      "formality": 1,
+      "waterproof": false,
+      "open_toe": false,
+      "gender": "Men",
+      "image": "items/TN_H_0004_crop.png",
+      "image_crop": "items/TN_H_0004_crop.png",
+      "embedding": "emb/TN_H_0004.npy",
+      "season": "all",
+      "pattern": "plain",
+      "confidence": {
+        "slot": 0.9877564422786236,
+        "colour": 0.96,
+        "type": 0.9
+      },
+      "source": "obj1.llm",
+      "price_dt": null,
+      "traditional": false
+    },
+    "category": "jacket",
+    "reasons": [
+      "warmth_formality_placeholder"
+    ],
+    "trace": [
+      "OUTIL knn_search        → jacket (sûr à 98%)",
+      "OUTIL llm_analyze (v1)  → jacket conf=0.90 | précision_ok=True | H=0.00 []",
+      "DÉCISION : LLM fiable → réponse directe"
+    ],
+    "debug": {
+      "source": "llm",
+      "H": 0.0,
+      "flags": [],
+      "llm_calls": 1,
+      "latency_s": 4.444048881530762,
+      "pixel_colours": [
+        [
+          "black",
+          0.5641350270993072
+        ],
+        [
+          "beige",
+          0.1329715350583951
+        ]
+      ],
+      "crop_quality": {
+        "ok": true,
+        "reasons": [],
+        "coverage": 0.536,
+        "size": [
+          512,
+          512
+        ]
+      },
+      "knn_dist": {
+        "jacket": 0.9791000485420227,
+        "blazer": 0.008656393736600876,
+        "traditional_garment": 0.005856923526152968,
+        "dress": 0.0033948058262467384,
+        "shirt": 0.0029919068329036236
+      },
+      "colour_raw": "black",
+      "confidence_calibrated": false
+    }
+  },
+  "pipeline": {
+    "fashionclip_finetuned": false,
+    "qwen_model": "Qwen/Qwen2.5-VL-7B-Instruct",
+    "fashionclip_model": "patrickjohncyh/fashion-clip"
+  }
+}

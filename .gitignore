@@ -10,3 +10,14 @@ node_modules/
 node_modules/
 dist/
 frontend/.env
+
+# Obj1 : données lourdes / régénérables / photos personnelles
+obj1_reconnaissance/data/inbox/
+obj1_reconnaissance/data/tunisian/
+obj1_reconnaissance/data/tunisian_dataset/
+obj1_reconnaissance/data/database/
+obj1_reconnaissance/data/general_training_items/
+obj1_reconnaissance/data/store/_tmp/
+obj1_reconnaissance/data/agent_final/kb_emb.npy
+obj1_reconnaissance/data/agent_final/tn_refs_*.npy
+obj1_reconnaissance/data/agent_final/llm_calls.jsonl

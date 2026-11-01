@@ -1,0 +1,96 @@
+{
+  "id": "TN_H_0002",
+  "input": {
+    "image_path": "/content/drive/MyDrive/dressme_obj1/data/tunisian_dataset/images/TN_H_0002.jpg",
+    "crop_path": "/content/drive/MyDrive/dressme_obj1/data/tunisian_dataset/crops/69fae5e5ceea_crop.png",
+    "dataset_label": {
+      "category": "traditional_garment",
+      "subtype": "farmla",
+      "colour": "white",
+      "gender": "male",
+      "season": "all_season",
+      "occasion": "traditional"
+    }
+  },
+  "output": {
+    "status": "needs_review",
+    "card": {
+      "id": "TN_H_0002",
+      "name": "White traditional garment",
+      "slot": "onepiece",
+      "type": "Jebba",
+      "colour": [
+        "white"
+      ],
+      "usage": "Ethnic",
+      "warmth": 2,
+      "formality": 3,
+      "waterproof": false,
+      "open_toe": false,
+      "gender": "Men",
+      "image": "items/TN_H_0002_crop.png",
+      "image_crop": "items/TN_H_0002_crop.png",
+      "embedding": "emb/TN_H_0002.npy",
+      "season": "all",
+      "pattern": "plain",
+      "confidence": {
+        "slot": 0.5270893805367411,
+        "colour": 0.6760742571291154,
+        "type": 0.500734911509904
+      },
+      "source": "obj1.llm",
+      "price_dt": null,
+      "traditional": true
+    },
+    "category": "traditional_garment",
+    "reasons": [
+      "traditional_subtype_from_neighbours:jebba",
+      "warmth_formality_placeholder",
+      "slot_mapping_unconfirmed:traditional_garment"
+    ],
+    "trace": [
+      "OUTIL knn_search        → traditional_garment (sûr à 100%)",
+      "OUTIL llm_analyze (v1)  → shirt conf=0.90 | précision_ok=True | H=1.00 ['contradicts_knn', 'contradicts_neighbors_color', 'contradicts_neighbors_gender']",
+      "hallucination élevée → RAG (voisins du catalogue injectés dans le prompt)",
+      "OUTIL llm_analyze (RAG) → traditional_garment conf=0.95 | précision_ok=True | H=0.00 []",
+      "DÉCISION : réponse LLM + RAG validée"
+    ],
+    "debug": {
+      "source": "llm+rag",
+      "H": 0.0,
+      "flags": [],
+      "llm_calls": 2,
+      "latency_s": 0.011743307113647461,
+      "pixel_colours": [
+        [
+          "grey",
+          0.5908009743516263
+        ],
+        [
+          "brown",
+          0.26753116492334145
+        ]
+      ],
+      "crop_quality": {
+        "ok": true,
+        "reasons": [],
+        "coverage": 0.266,
+        "size": [
+          512,
+          512
+        ]
+      },
+      "knn_dist": {
+        "traditional_garment": 0.9967016754671931,
+        "top": 0.0032982658594846725
+      },
+      "colour_raw": "white",
+      "confidence_calibrated": false
+    }
+  },
+  "pipeline": {
+    "fashionclip_finetuned": false,
+    "qwen_model": "Qwen/Qwen2.5-VL-7B-Instruct",
+    "fashionclip_model": "patrickjohncyh/fashion-clip"
+  }
+}

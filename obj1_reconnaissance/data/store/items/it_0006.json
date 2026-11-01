@@ -1,0 +1,28 @@
+{
+  "id": "it_0006",
+  "name": "Beige shorts",
+  "slot": "bottom",
+  "type": "Shorts",
+  "colour": [
+    "beige"
+  ],
+  "usage": "Casual",
+  "warmth": 0,
+  "formality": 0,
+  "waterproof": false,
+  "open_toe": false,
+  "gender": "Men",
+  "image": "items/it_0006_raw.jpg",
+  "image_crop": "items/it_0006_crop.png",
+  "embedding": "emb/it_0006.npy",
+  "season": "summer",
+  "pattern": "plain",
+  "confidence": {
+    "slot": 0.999999962747097,
+    "colour": 0.47882203812979307,
+    "type": 0.9
+  },
+  "source": "obj1.llm",
+  "price_dt": null,
+  "traditional": false
+}

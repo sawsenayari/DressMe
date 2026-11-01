@@ -1,0 +1,183 @@
+{
+  "$defs": {
+    "Confidence": {
+      "properties": {
+        "slot": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Slot",
+          "type": "number"
+        },
+        "colour": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Colour",
+          "type": "number"
+        },
+        "type": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Type",
+          "type": "number"
+        }
+      },
+      "required": [
+        "slot",
+        "colour",
+        "type"
+      ],
+      "title": "Confidence",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "name": {
+      "title": "Name",
+      "type": "string"
+    },
+    "slot": {
+      "enum": [
+        "top",
+        "bottom",
+        "onepiece",
+        "outer",
+        "footwear",
+        "bag",
+        "accessory"
+      ],
+      "title": "Slot",
+      "type": "string"
+    },
+    "type": {
+      "title": "Type",
+      "type": "string"
+    },
+    "colour": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 2,
+      "minItems": 1,
+      "title": "Colour",
+      "type": "array"
+    },
+    "usage": {
+      "enum": [
+        "Casual",
+        "Smart Casual",
+        "Formal",
+        "Sports",
+        "Ethnic",
+        "Party"
+      ],
+      "title": "Usage",
+      "type": "string"
+    },
+    "warmth": {
+      "maximum": 4,
+      "minimum": 0,
+      "title": "Warmth",
+      "type": "integer"
+    },
+    "formality": {
+      "maximum": 3,
+      "minimum": 0,
+      "title": "Formality",
+      "type": "integer"
+    },
+    "waterproof": {
+      "default": false,
+      "title": "Waterproof",
+      "type": "boolean"
+    },
+    "open_toe": {
+      "default": false,
+      "title": "Open Toe",
+      "type": "boolean"
+    },
+    "gender": {
+      "default": "Unisex",
+      "title": "Gender",
+      "type": "string"
+    },
+    "image": {
+      "title": "Image",
+      "type": "string"
+    },
+    "image_crop": {
+      "title": "Image Crop",
+      "type": "string"
+    },
+    "embedding": {
+      "title": "Embedding",
+      "type": "string"
+    },
+    "season": {
+      "default": "all",
+      "title": "Season",
+      "type": "string"
+    },
+    "pattern": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": "plain",
+      "title": "Pattern"
+    },
+    "confidence": {
+      "$ref": "#/$defs/Confidence"
+    },
+    "source": {
+      "enum": [
+        "obj1.llm",
+        "obj1.knn",
+        "user_corrected"
+      ],
+      "title": "Source",
+      "type": "string"
+    },
+    "price_dt": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Price Dt"
+    },
+    "traditional": {
+      "default": false,
+      "title": "Traditional",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "id",
+    "name",
+    "slot",
+    "type",
+    "colour",
+    "usage",
+    "warmth",
+    "formality",
+    "image",
+    "image_crop",
+    "embedding",
+    "confidence",
+    "source"
+  ],
+  "title": "ItemCard",
+  "type": "object"
+}

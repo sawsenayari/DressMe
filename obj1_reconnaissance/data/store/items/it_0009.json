@@ -1,0 +1,28 @@
+{
+  "id": "it_0009",
+  "name": "White shoes",
+  "slot": "footwear",
+  "type": "Heels",
+  "colour": [
+    "white"
+  ],
+  "usage": "Casual",
+  "warmth": 2,
+  "formality": 1,
+  "waterproof": false,
+  "open_toe": true,
+  "gender": "Unisex",
+  "image": "items/it_0009_raw.jpg",
+  "image_crop": "items/it_0009_crop.png",
+  "embedding": "emb/it_0009.npy",
+  "season": "all",
+  "pattern": "plain",
+  "confidence": {
+    "slot": 1.0,
+    "colour": 0.7124390799697532,
+    "type": 0.34372220596071057
+  },
+  "source": "obj1.llm",
+  "price_dt": null,
+  "traditional": false
+}

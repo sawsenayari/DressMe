@@ -1,0 +1,28 @@
+{
+  "id": "it_0003",
+  "name": "Grey pants",
+  "slot": "bottom",
+  "type": "Track Pants",
+  "colour": [
+    "grey"
+  ],
+  "usage": "Sports",
+  "warmth": 2,
+  "formality": 2,
+  "waterproof": false,
+  "open_toe": false,
+  "gender": "Men",
+  "image": "items/it_0003_raw.jpg",
+  "image_crop": "items/it_0003_crop.png",
+  "embedding": "emb/it_0003.npy",
+  "season": "fall",
+  "pattern": "plain",
+  "confidence": {
+    "slot": 1.0,
+    "colour": 0.7749416575230041,
+    "type": 0.7445698289360915
+  },
+  "source": "obj1.llm",
+  "price_dt": null,
+  "traditional": false
+}

@@ -1,0 +1,241 @@
+id,truth,truth_color,truth_gender,final,source,status,confidence,H,calls,latency,color,gender,fp_valid,fp_cat,fp_color,fp_gender,trace
+47427,accessory,purple,female,bag,knn_only,OK,0.529040589928627,0.0,0,0.07651400566101074,purple,female,False,invalid,unknown,unknown,"OUTIL knn_search        → bag (sûr à 53%)
+MODE knn_only"
+5072,accessory,black,female,accessory,knn_only,OK,1.0000000298023224,0.0,0,0.07151222229003906,black,male,False,invalid,unknown,unknown,"OUTIL knn_search        → accessory (sûr à 100%)
+MODE knn_only"
+11485,accessory,black,male,accessory,knn_only,OK,1.0000000223517418,0.0,0,0.055243492126464844,black,male,False,invalid,unknown,unknown,"OUTIL knn_search        → accessory (sûr à 100%)
+MODE knn_only"
+20969,accessory,black,male,accessory,knn_only,OK,0.9999999757856131,0.0,0,0.05005145072937012,black,male,False,invalid,unknown,unknown,"OUTIL knn_search        → accessory (sûr à 100%)
+MODE knn_only"
+6699,accessory,white,male,accessory,knn_only,OK,1.0000000074505806,0.0,0,0.06868147850036621,black,male,False,invalid,unknown,unknown,"OUTIL knn_search        → accessory (sûr à 100%)
+MODE knn_only"
+49860,accessory,purple,unisex,accessory,knn_only,OK,0.9999999706633389,0.0,0,0.024766206741333008,purple,unisex,False,invalid,unknown,unknown,"OUTIL knn_search        → accessory (sûr à 100%)
+MODE knn_only"
+8131,accessory,black,female,accessory,knn_only,OK,1.000000011175871,0.0,0,0.04334449768066406,grey,female,False,invalid,unknown,unknown,"OUTIL knn_search        → accessory (sûr à 100%)
+MODE knn_only"
+46546,accessory,black,male,accessory,knn_only,OK,1.000000026077032,0.0,0,0.044703006744384766,black,male,False,invalid,unknown,unknown,"OUTIL knn_search        → accessory (sûr à 100%)
+MODE knn_only"
+21260,bag,brown,unisex,bag,knn_only,OK,0.9999999888241291,0.0,0,0.04893207550048828,brown,unisex,False,invalid,unknown,unknown,"OUTIL knn_search        → bag (sûr à 100%)
+MODE knn_only"
+3393,bag,green,female,bag,knn_only,OK,1.0000000596046448,0.0,0,0.04309844970703125,red,female,False,invalid,unknown,unknown,"OUTIL knn_search        → bag (sûr à 100%)
+MODE knn_only"
+49559,bag,purple,female,bag,knn_only,OK,0.999999862164259,0.0,0,0.02135181427001953,brown,female,False,invalid,unknown,unknown,"OUTIL knn_search        → bag (sûr à 100%)
+MODE knn_only"
+20458,bag,pink,female,bag,knn_only,OK,0.9999999329447746,0.0,0,0.02510976791381836,green,female,False,invalid,unknown,unknown,"OUTIL knn_search        → bag (sûr à 100%)
+MODE knn_only"
+17136,bag,black,female,bag,knn_only,OK,0.9999999925494194,0.0,0,0.04540061950683594,black,female,False,invalid,unknown,unknown,"OUTIL knn_search        → bag (sûr à 100%)
+MODE knn_only"
+51941,bag,purple,female,bag,knn_only,OK,1.0,0.0,0,0.03935360908508301,blue,female,False,invalid,unknown,unknown,"OUTIL knn_search        → bag (sûr à 100%)
+MODE knn_only"
+8235,bag,black,female,bag,knn_only,OK,0.9999999552965164,0.0,0,0.0552678108215332,black,female,False,invalid,unknown,unknown,"OUTIL knn_search        → bag (sûr à 100%)
+MODE knn_only"
+2653,bag,grey,female,bag,knn_only,OK,1.0000000596046448,0.0,0,0.02473592758178711,blue,female,False,invalid,unknown,unknown,"OUTIL knn_search        → bag (sûr à 100%)
+MODE knn_only"
+31733,blazer,black,male,jacket,knn_only,OK,0.6377201415598392,0.0,0,0.04895973205566406,grey,male,False,invalid,unknown,unknown,"OUTIL knn_search        → jacket (sûr à 64%)
+MODE knn_only"
+27845,blazer,black,female,sweater,knn_only,OK,0.5151123106479645,0.0,0,0.02275228500366211,black,female,False,invalid,unknown,unknown,"OUTIL knn_search        → sweater (sûr à 52%)
+MODE knn_only"
+31161,blazer,blue,male,jacket,knn_only,OK,0.6447463929653168,0.0,0,0.04066038131713867,blue,male,False,invalid,unknown,unknown,"OUTIL knn_search        → jacket (sûr à 64%)
+MODE knn_only"
+31732,blazer,brown,male,jacket,knn_only,OK,0.6020779982209206,0.0,0,0.04640913009643555,grey,male,False,invalid,unknown,unknown,"OUTIL knn_search        → jacket (sûr à 60%)
+MODE knn_only"
+31743,blazer,green,male,jacket,knn_only,OK,0.648444876074791,0.0,0,0.023201942443847656,grey,male,False,invalid,unknown,unknown,"OUTIL knn_search        → jacket (sûr à 65%)
+MODE knn_only"
+27846,blazer,grey,female,jacket,knn_only,OK,0.7938853874802589,0.0,0,0.0415043830871582,black,female,False,invalid,unknown,unknown,"OUTIL knn_search        → jacket (sûr à 79%)
+MODE knn_only"
+31742,blazer,black,male,jacket,knn_only,OK,0.8074545301496983,0.0,0,0.024599313735961914,beige,male,False,invalid,unknown,unknown,"OUTIL knn_search        → jacket (sûr à 81%)
+MODE knn_only"
+31729,blazer,blue,male,shirt,knn_only,OK,0.5910373702645302,0.0,0,0.04218626022338867,blue,male,False,invalid,unknown,unknown,"OUTIL knn_search        → shirt (sûr à 59%)
+MODE knn_only"
+58505,dress,white,female,dress,knn_only,OK,0.7581548020243645,0.0,0,0.0447840690612793,black,female,False,invalid,unknown,unknown,"OUTIL knn_search        → dress (sûr à 76%)
+MODE knn_only"
+57055,dress,brown,female,dress,knn_only,OK,0.6209307163953781,0.0,0,0.062241315841674805,black,female,False,invalid,unknown,unknown,"OUTIL knn_search        → dress (sûr à 62%)
+MODE knn_only"
+34567,dress,black,female,dress,knn_only,OK,1.000000011175871,0.0,0,0.04429006576538086,black,female,False,invalid,unknown,unknown,"OUTIL knn_search        → dress (sûr à 100%)
+MODE knn_only"
+59980,dress,black,female,dress,knn_only,OK,0.9999999776482582,0.0,0,0.0473790168762207,black,female,False,invalid,unknown,unknown,"OUTIL knn_search        → dress (sûr à 100%)
+MODE knn_only"
+48084,dress,red,female,dress,knn_only,OK,0.9352211132645607,0.0,0,0.047672271728515625,pink,female,False,invalid,unknown,unknown,"OUTIL knn_search        → dress (sûr à 94%)
+MODE knn_only"
+34065,dress,black,female,dress,knn_only,OK,1.0000001154839993,0.0,0,0.04867243766784668,blue,female,False,invalid,unknown,unknown,"OUTIL knn_search        → dress (sûr à 100%)
+MODE knn_only"
+26355,dress,purple,female,dress,knn_only,OK,0.873706765472889,0.0,0,0.04785037040710449,blue,female,False,invalid,unknown,unknown,"OUTIL knn_search        → dress (sûr à 87%)
+MODE knn_only"
+4991,dress,white,female,dress,knn_only,OK,1.0000000800937414,0.0,0,0.04685664176940918,yellow,female,False,invalid,unknown,unknown,"OUTIL knn_search        → dress (sûr à 100%)
+MODE knn_only"
+18978,jacket,white,male,jacket,knn_only,OK,0.6141691096127033,0.0,0,0.04789566993713379,blue,male,False,invalid,unknown,unknown,"OUTIL knn_search        → jacket (sûr à 61%)
+MODE knn_only"
+52042,jacket,black,unisex,jacket,knn_only,OK,0.9999999850988388,0.0,0,0.05035257339477539,blue,unisex,False,invalid,unknown,unknown,"OUTIL knn_search        → jacket (sûr à 100%)
+MODE knn_only"
+18522,jacket,black,male,jacket,knn_only,OK,0.9999999292194843,0.0,0,0.051711320877075195,black,male,False,invalid,unknown,unknown,"OUTIL knn_search        → jacket (sûr à 100%)
+MODE knn_only"
+59130,jacket,black,male,jacket,knn_only,OK,0.9999999701976776,0.0,0,0.048317909240722656,black,male,False,invalid,unknown,unknown,"OUTIL knn_search        → jacket (sûr à 100%)
+MODE knn_only"
+40051,jacket,blue,male,jacket,knn_only,OK,0.6301897764205933,0.0,0,0.048009634017944336,blue,male,False,invalid,unknown,unknown,"OUTIL knn_search        → jacket (sûr à 63%)
+MODE knn_only"
+59127,jacket,brown,male,jacket,knn_only,OK,1.0,0.0,0,0.059031009674072266,green,male,False,invalid,unknown,unknown,"OUTIL knn_search        → jacket (sûr à 100%)
+MODE knn_only"
+1758,jacket,white,male,jacket,knn_only,OK,0.5510521680116653,0.0,0,0.048070669174194336,black,male,False,invalid,unknown,unknown,"OUTIL knn_search        → jacket (sûr à 55%)
+MODE knn_only"
+24136,jacket,blue,male,jacket,knn_only,OK,1.0,0.0,0,0.07043862342834473,blue,male,False,invalid,unknown,unknown,"OUTIL knn_search        → jacket (sûr à 100%)
+MODE knn_only"
+11350,jeans,blue,male,jeans,knn_only,OK,1.0000000149011612,0.0,0,0.06323885917663574,blue,male,False,invalid,unknown,unknown,"OUTIL knn_search        → jeans (sûr à 100%)
+MODE knn_only"
+11348,jeans,blue,male,jeans,knn_only,OK,0.900848038494587,0.0,0,0.04999208450317383,blue,male,False,invalid,unknown,unknown,"OUTIL knn_search        → jeans (sûr à 90%)
+MODE knn_only"
+7185,jeans,blue,female,jeans,knn_only,OK,1.0000000223517418,0.0,0,0.04802656173706055,blue,female,False,invalid,unknown,unknown,"OUTIL knn_search        → jeans (sûr à 100%)
+MODE knn_only"
+26997,jeans,blue,female,jeans,knn_only,OK,0.9065853282809258,0.0,0,0.022068023681640625,blue,female,False,invalid,unknown,unknown,"OUTIL knn_search        → jeans (sûr à 91%)
+MODE knn_only"
+26995,jeans,blue,female,jeans,knn_only,OK,0.805909126996994,0.0,0,0.021034955978393555,blue,female,False,invalid,unknown,unknown,"OUTIL knn_search        → jeans (sûr à 81%)
+MODE knn_only"
+12760,jeans,blue,female,jeans,knn_only,OK,1.0,0.0,0,0.020815372467041016,blue,female,False,invalid,unknown,unknown,"OUTIL knn_search        → jeans (sûr à 100%)
+MODE knn_only"
+11344,jeans,blue,male,jeans,knn_only,OK,0.912529781460762,0.0,0,0.020880937576293945,blue,male,False,invalid,unknown,unknown,"OUTIL knn_search        → jeans (sûr à 91%)
+MODE knn_only"
+11354,jeans,blue,male,jeans,knn_only,OK,0.999999962747097,0.0,0,0.04437756538391113,blue,male,False,invalid,unknown,unknown,"OUTIL knn_search        → jeans (sûr à 100%)
+MODE knn_only"
+3918,pants,grey,male,pants,knn_only,OK,0.9444173872470856,0.0,0,0.0244443416595459,grey,female,False,invalid,unknown,unknown,"OUTIL knn_search        → pants (sûr à 94%)
+MODE knn_only"
+15011,pants,black,male,pants,knn_only,OK,0.8135933950543404,0.0,0,0.02607131004333496,black,male,False,invalid,unknown,unknown,"OUTIL knn_search        → pants (sûr à 81%)
+MODE knn_only"
+7266,pants,beige,male,pants,knn_only,OK,0.9999999925494194,0.0,0,0.04179072380065918,beige,male,False,invalid,unknown,unknown,"OUTIL knn_search        → pants (sûr à 100%)
+MODE knn_only"
+45499,pants,blue,female,pants,knn_only,OK,0.7257952801883221,0.0,0,0.03939557075500488,black,female,False,invalid,unknown,unknown,"OUTIL knn_search        → pants (sûr à 73%)
+MODE knn_only"
+30815,pants,yellow,female,pants,knn_only,OK,0.9999999925494194,0.0,0,0.05839419364929199,pink,female,False,invalid,unknown,unknown,"OUTIL knn_search        → pants (sûr à 100%)
+MODE knn_only"
+15678,pants,beige,male,pants,knn_only,OK,0.9999999031424522,0.0,0,0.0445101261138916,beige,male,False,invalid,unknown,unknown,"OUTIL knn_search        → pants (sûr à 100%)
+MODE knn_only"
+5017,pants,pink,female,pants,knn_only,OK,0.8977320194244385,0.0,0,0.04720878601074219,pink,female,False,invalid,unknown,unknown,"OUTIL knn_search        → pants (sûr à 90%)
+MODE knn_only"
+26163,pants,grey,male,pants,knn_only,OK,0.9999999701976776,0.0,0,0.044930219650268555,blue,male,False,invalid,unknown,unknown,"OUTIL knn_search        → pants (sûr à 100%)
+MODE knn_only"
+13758,shirt,green,male,shirt,knn_only,OK,1.0000000521540642,0.0,0,0.046154022216796875,blue,male,False,invalid,unknown,unknown,"OUTIL knn_search        → shirt (sûr à 100%)
+MODE knn_only"
+8872,shirt,blue,male,shirt,knn_only,OK,1.0000000074505806,0.0,0,0.04957461357116699,blue,male,False,invalid,unknown,unknown,"OUTIL knn_search        → shirt (sûr à 100%)
+MODE knn_only"
+14768,shirt,white,male,shirt,knn_only,OK,0.9999999776482582,0.0,0,0.04769754409790039,white,male,False,invalid,unknown,unknown,"OUTIL knn_search        → shirt (sûr à 100%)
+MODE knn_only"
+31302,shirt,purple,male,shirt,knn_only,OK,1.0000000074505806,0.0,0,0.047211408615112305,purple,male,False,invalid,unknown,unknown,"OUTIL knn_search        → shirt (sûr à 100%)
+MODE knn_only"
+18323,shirt,green,male,shirt,knn_only,OK,0.9999999850988388,0.0,0,0.04822397232055664,green,male,False,invalid,unknown,unknown,"OUTIL knn_search        → shirt (sûr à 100%)
+MODE knn_only"
+6613,shirt,black,male,shirt,knn_only,OK,0.9999999925494194,0.0,0,0.04822874069213867,red,male,False,invalid,unknown,unknown,"OUTIL knn_search        → shirt (sûr à 100%)
+MODE knn_only"
+19728,shirt,purple,female,sweater,knn_only,OK,0.37919192016124725,0.0,0,0.04740333557128906,pink,female,False,invalid,unknown,unknown,"OUTIL knn_search        → sweater (sûr à 38%)
+MODE knn_only"
+8854,shirt,blue,male,shirt,knn_only,OK,0.9999999701976776,0.0,0,0.044677019119262695,blue,male,False,invalid,unknown,unknown,"OUTIL knn_search        → shirt (sûr à 100%)
+MODE knn_only"
+55642,shoes,black,female,shoes,knn_only,OK,0.9999999906867743,0.0,0,0.0465550422668457,black,female,False,invalid,unknown,unknown,"OUTIL knn_search        → shoes (sûr à 100%)
+MODE knn_only"
+35690,shoes,blue,male,shoes,knn_only,OK,0.9999999552965164,0.0,0,0.04999828338623047,black,male,False,invalid,unknown,unknown,"OUTIL knn_search        → shoes (sûr à 100%)
+MODE knn_only"
+29120,shoes,black,male,shoes,knn_only,OK,0.9999999403953552,0.0,0,0.04723715782165527,black,male,False,invalid,unknown,unknown,"OUTIL knn_search        → shoes (sûr à 100%)
+MODE knn_only"
+15240,shoes,black,male,shoes,knn_only,OK,1.000000026077032,0.0,0,0.04510617256164551,black,male,False,invalid,unknown,unknown,"OUTIL knn_search        → shoes (sûr à 100%)
+MODE knn_only"
+15864,shoes,blue,unisex,shoes,knn_only,OK,1.0000000074505806,0.0,0,0.04391908645629883,green,unisex,False,invalid,unknown,unknown,"OUTIL knn_search        → shoes (sûr à 100%)
+MODE knn_only"
+2544,shoes,blue,male,shoes,knn_only,OK,1.0000000447034836,0.0,0,0.04354667663574219,red,male,False,invalid,unknown,unknown,"OUTIL knn_search        → shoes (sûr à 100%)
+MODE knn_only"
+37959,shoes,black,male,shoes,knn_only,OK,0.9999999552965164,0.0,0,0.0432581901550293,black,male,False,invalid,unknown,unknown,"OUTIL knn_search        → shoes (sûr à 100%)
+MODE knn_only"
+15888,shoes,green,female,shoes,knn_only,OK,1.0000000749714673,0.0,0,0.024547815322875977,green,unisex,False,invalid,unknown,unknown,"OUTIL knn_search        → shoes (sûr à 100%)
+MODE knn_only"
+10778,shorts,blue,male,shorts,knn_only,OK,1.000000074505806,0.0,0,0.03765749931335449,black,male,False,invalid,unknown,unknown,"OUTIL knn_search        → shorts (sûr à 100%)
+MODE knn_only"
+14933,shorts,blue,male,shorts,knn_only,OK,0.9999999850988388,0.0,0,0.04353761672973633,blue,male,False,invalid,unknown,unknown,"OUTIL knn_search        → shorts (sûr à 100%)
+MODE knn_only"
+51379,shorts,grey,male,shorts,knn_only,OK,1.0000000223517418,0.0,0,0.044172048568725586,blue,male,False,invalid,unknown,unknown,"OUTIL knn_search        → shorts (sûr à 100%)
+MODE knn_only"
+24308,shorts,white,male,shorts,knn_only,OK,1.0000000521540642,0.0,0,0.03137683868408203,white,male,False,invalid,unknown,unknown,"OUTIL knn_search        → shorts (sûr à 100%)
+MODE knn_only"
+28506,shorts,black,male,shorts,knn_only,OK,1.0000000521540642,0.0,0,0.025667428970336914,black,male,False,invalid,unknown,unknown,"OUTIL knn_search        → shorts (sûr à 100%)
+MODE knn_only"
+7533,shorts,black,male,shorts,knn_only,OK,0.9999999478459358,0.0,0,0.04114580154418945,black,male,False,invalid,unknown,unknown,"OUTIL knn_search        → shorts (sûr à 100%)
+MODE knn_only"
+14021,shorts,black,male,shorts,knn_only,OK,0.9999999478459358,0.0,0,0.04270744323730469,black,male,False,invalid,unknown,unknown,"OUTIL knn_search        → shorts (sûr à 100%)
+MODE knn_only"
+25039,shorts,black,male,shorts,knn_only,OK,0.9999999813735485,0.0,0,0.04456281661987305,black,male,False,invalid,unknown,unknown,"OUTIL knn_search        → shorts (sûr à 100%)
+MODE knn_only"
+12839,skirt,black,female,skirt,knn_only,OK,0.999999962747097,0.0,0,0.04335188865661621,blue,female,False,invalid,unknown,unknown,"OUTIL knn_search        → skirt (sûr à 100%)
+MODE knn_only"
+13304,skirt,red,female,skirt,knn_only,OK,1.0000000670552254,0.0,0,0.0241243839263916,black,female,False,invalid,unknown,unknown,"OUTIL knn_search        → skirt (sûr à 100%)
+MODE knn_only"
+30926,skirt,blue,female,skirt,knn_only,OK,0.9125200845301151,0.0,0,0.04209136962890625,red,female,False,invalid,unknown,unknown,"OUTIL knn_search        → skirt (sûr à 91%)
+MODE knn_only"
+13264,skirt,pink,female,skirt,knn_only,OK,0.823983445763588,0.0,0,0.04355001449584961,blue,female,False,invalid,unknown,unknown,"OUTIL knn_search        → skirt (sûr à 82%)
+MODE knn_only"
+29171,skirt,blue,female,skirt,knn_only,OK,0.9999999403953552,0.0,0,0.04060006141662598,blue,female,False,invalid,unknown,unknown,"OUTIL knn_search        → skirt (sûr à 100%)
+MODE knn_only"
+38504,skirt,blue,female,skirt,knn_only,OK,1.0000000074505806,0.0,0,0.04342174530029297,blue,female,False,invalid,unknown,unknown,"OUTIL knn_search        → skirt (sûr à 100%)
+MODE knn_only"
+8501,skirt,blue,female,skirt,knn_only,OK,0.812695600092411,0.0,0,0.0436251163482666,beige,female,False,invalid,unknown,unknown,"OUTIL knn_search        → skirt (sûr à 81%)
+MODE knn_only"
+30929,skirt,grey,female,skirt,knn_only,OK,0.9999999329447746,0.0,0,0.0226290225982666,black,female,False,invalid,unknown,unknown,"OUTIL knn_search        → skirt (sûr à 100%)
+MODE knn_only"
+15026,sweater,purple,female,sweater,knn_only,OK,0.6638447493314743,0.0,0,0.020396947860717773,blue,female,False,invalid,unknown,unknown,"OUTIL knn_search        → sweater (sûr à 66%)
+MODE knn_only"
+20788,sweater,red,male,sweater,knn_only,OK,1.0000000596046448,0.0,0,0.0245969295501709,grey,male,False,invalid,unknown,unknown,"OUTIL knn_search        → sweater (sûr à 100%)
+MODE knn_only"
+8833,sweater,black,male,sweater,knn_only,OK,0.9999999552965164,0.0,0,0.042650699615478516,black,male,False,invalid,unknown,unknown,"OUTIL knn_search        → sweater (sûr à 100%)
+MODE knn_only"
+15328,sweater,blue,male,sweater,knn_only,OK,0.6149106100201607,0.0,0,0.043593406677246094,green,male,False,invalid,unknown,unknown,"OUTIL knn_search        → sweater (sûr à 61%)
+MODE knn_only"
+18624,sweater,beige,male,sweater,knn_only,OK,0.7826069705188274,0.0,0,0.04378366470336914,white,male,False,invalid,unknown,unknown,"OUTIL knn_search        → sweater (sûr à 78%)
+MODE knn_only"
+20197,sweater,grey,male,sweater,knn_only,OK,0.9999999925494194,0.0,0,0.04322457313537598,blue,male,False,invalid,unknown,unknown,"OUTIL knn_search        → sweater (sûr à 100%)
+MODE knn_only"
+16202,sweater,black,male,sweater,knn_only,OK,1.0000000298023224,0.0,0,0.04396247863769531,grey,male,False,invalid,unknown,unknown,"OUTIL knn_search        → sweater (sûr à 100%)
+MODE knn_only"
+14089,sweater,black,male,sweater,knn_only,OK,0.9496345520019531,0.0,0,0.042481422424316406,black,male,False,invalid,unknown,unknown,"OUTIL knn_search        → sweater (sûr à 95%)
+MODE knn_only"
+5776,top,green,female,dress,knn_only,OK,0.5826101005077362,0.0,0,0.04883265495300293,white,female,False,invalid,unknown,unknown,"OUTIL knn_search        → dress (sûr à 58%)
+MODE knn_only"
+24547,top,blue,female,top,knn_only,OK,0.9287681207060814,0.0,0,0.042437076568603516,grey,female,False,invalid,unknown,unknown,"OUTIL knn_search        → top (sûr à 93%)
+MODE knn_only"
+21167,top,black,female,dress,knn_only,OK,0.6046007946133614,0.0,0,0.024533748626708984,black,female,False,invalid,unknown,unknown,"OUTIL knn_search        → dress (sûr à 60%)
+MODE knn_only"
+42224,top,white,female,top,knn_only,OK,0.5677558034658432,0.0,0,0.042353153228759766,white,female,False,invalid,unknown,unknown,"OUTIL knn_search        → top (sûr à 57%)
+MODE knn_only"
+45969,top,grey,female,top,knn_only,OK,1.0000000596046448,0.0,0,0.04185628890991211,grey,female,False,invalid,unknown,unknown,"OUTIL knn_search        → top (sûr à 100%)
+MODE knn_only"
+19624,top,green,female,sweater,knn_only,OK,0.4972810447216034,0.0,0,0.04207301139831543,red,female,False,invalid,unknown,unknown,"OUTIL knn_search        → sweater (sûr à 50%)
+MODE knn_only"
+42202,top,yellow,female,top,knn_only,OK,0.9176987782120705,0.0,0,0.043074607849121094,yellow,female,False,invalid,unknown,unknown,"OUTIL knn_search        → top (sûr à 92%)
+MODE knn_only"
+42204,top,pink,female,top,knn_only,OK,0.7989689186215401,0.0,0,0.04287600517272949,purple,female,False,invalid,unknown,unknown,"OUTIL knn_search        → top (sûr à 80%)
+MODE knn_only"
+4033,tshirt,black,male,tshirt,knn_only,OK,1.0000000596046448,0.0,0,0.037557363510131836,black,male,False,invalid,unknown,unknown,"OUTIL knn_search        → tshirt (sûr à 100%)
+MODE knn_only"
+6589,tshirt,black,male,tshirt,knn_only,OK,0.999999962747097,0.0,0,0.043630361557006836,black,male,False,invalid,unknown,unknown,"OUTIL knn_search        → tshirt (sûr à 100%)
+MODE knn_only"
+3984,tshirt,blue,male,tshirt,knn_only,OK,1.000000074505806,0.0,0,0.053344011306762695,blue,male,False,invalid,unknown,unknown,"OUTIL knn_search        → tshirt (sûr à 100%)
+MODE knn_only"
+44634,tshirt,black,male,tshirt,knn_only,OK,1.0000000298023224,0.0,0,0.044098854064941406,black,male,False,invalid,unknown,unknown,"OUTIL knn_search        → tshirt (sûr à 100%)
+MODE knn_only"
+7747,tshirt,green,male,tshirt,knn_only,OK,1.0000000670552254,0.0,0,0.04207801818847656,blue,male,False,invalid,unknown,unknown,"OUTIL knn_search        → tshirt (sûr à 100%)
+MODE knn_only"
+22620,tshirt,blue,male,tshirt,knn_only,OK,0.8508300855755806,0.0,0,0.04245448112487793,blue,male,False,invalid,unknown,unknown,"OUTIL knn_search        → tshirt (sûr à 85%)
+MODE knn_only"
+6934,tshirt,white,male,tshirt,knn_only,OK,0.9081661179661751,0.0,0,0.04377484321594238,white,male,False,invalid,unknown,unknown,"OUTIL knn_search        → tshirt (sûr à 91%)
+MODE knn_only"
+2299,tshirt,purple,female,tshirt,knn_only,OK,0.8906640484929085,0.0,0,0.04388856887817383,blue,female,False,invalid,unknown,unknown,"OUTIL knn_search        → tshirt (sûr à 89%)
+MODE knn_only"
+50985,underwear,white,female,underwear,knn_only,OK,0.9212920069694519,0.0,0,0.042432546615600586,beige,female,False,invalid,unknown,unknown,"OUTIL knn_search        → underwear (sûr à 92%)
+MODE knn_only"
+28137,underwear,green,male,underwear,knn_only,OK,1.0000000093132257,0.0,0,0.031225204467773438,grey,male,False,invalid,unknown,unknown,"OUTIL knn_search        → underwear (sûr à 100%)
+MODE knn_only"
+51015,underwear,white,female,underwear,knn_only,OK,0.9999999552965164,0.0,0,0.04013538360595703,pink,female,False,invalid,unknown,unknown,"OUTIL knn_search        → underwear (sûr à 100%)
+MODE knn_only"
+50562,underwear,brown,male,underwear,knn_only,OK,0.9999999925494194,0.0,0,0.02242588996887207,grey,male,False,invalid,unknown,unknown,"OUTIL knn_search        → underwear (sûr à 100%)
+MODE knn_only"
+42822,underwear,black,female,underwear,knn_only,OK,0.9594372287392616,0.0,0,0.021901369094848633,black,female,False,invalid,unknown,unknown,"OUTIL knn_search        → underwear (sûr à 96%)
+MODE knn_only"
+25368,underwear,blue,male,underwear,knn_only,OK,0.7994123473763466,0.0,0,0.04575657844543457,red,male,False,invalid,unknown,unknown,"OUTIL knn_search        → underwear (sûr à 80%)
+MODE knn_only"
+17887,underwear,grey,male,underwear,knn_only,OK,1.0000000074505806,0.0,0,0.04902768135070801,grey,male,False,invalid,unknown,unknown,"OUTIL knn_search        → underwear (sûr à 100%)
+MODE knn_only"
+57350,underwear,black,female,underwear,knn_only,OK,0.9999999925494194,0.0,0,0.049033164978027344,black,female,False,invalid,unknown,unknown,"OUTIL knn_search        → underwear (sûr à 100%)
+MODE knn_only"

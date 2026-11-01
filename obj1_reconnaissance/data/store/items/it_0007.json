@@ -1,0 +1,28 @@
+{
+  "id": "it_0007",
+  "name": "Blue shorts",
+  "slot": "bottom",
+  "type": "Shorts",
+  "colour": [
+    "blue"
+  ],
+  "usage": "Sports",
+  "warmth": 0,
+  "formality": 0,
+  "waterproof": false,
+  "open_toe": false,
+  "gender": "Men",
+  "image": "items/it_0007_raw.jpg",
+  "image_crop": "items/it_0007_crop.png",
+  "embedding": "emb/it_0007.npy",
+  "season": "summer",
+  "pattern": "plain",
+  "confidence": {
+    "slot": 0.9034377038478851,
+    "colour": 0.9247971097110184,
+    "type": 0.9
+  },
+  "source": "obj1.llm",
+  "price_dt": null,
+  "traditional": false
+}

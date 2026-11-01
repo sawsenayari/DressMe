@@ -1,0 +1,28 @@
+{
+  "id": "TN_H_0004",
+  "name": "Black jacket",
+  "slot": "outer",
+  "type": "Jackets",
+  "colour": [
+    "black"
+  ],
+  "usage": "Casual",
+  "warmth": 2,
+  "formality": 1,
+  "waterproof": false,
+  "open_toe": false,
+  "gender": "Men",
+  "image": "items/TN_H_0004_crop.png",
+  "image_crop": "items/TN_H_0004_crop.png",
+  "embedding": "emb/TN_H_0004.npy",
+  "season": "all",
+  "pattern": "plain",
+  "confidence": {
+    "slot": 0.9877564422786236,
+    "colour": 0.96,
+    "type": 0.9
+  },
+  "source": "obj1.llm",
+  "price_dt": null,
+  "traditional": false
+}

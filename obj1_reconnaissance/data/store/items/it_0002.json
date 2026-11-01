@@ -1,0 +1,28 @@
+{
+  "id": "it_0002",
+  "name": "Black shorts",
+  "slot": "bottom",
+  "type": "Shorts",
+  "colour": [
+    "black"
+  ],
+  "usage": "Casual",
+  "warmth": 0,
+  "formality": 0,
+  "waterproof": false,
+  "open_toe": false,
+  "gender": "Men",
+  "image": "items/it_0002_raw.jpg",
+  "image_crop": "items/it_0002_crop.png",
+  "embedding": "emb/it_0002.npy",
+  "season": "summer",
+  "pattern": "plain",
+  "confidence": {
+    "slot": 1.0,
+    "colour": 0.7820410786690586,
+    "type": 0.9
+  },
+  "source": "obj1.llm",
+  "price_dt": null,
+  "traditional": false
+}

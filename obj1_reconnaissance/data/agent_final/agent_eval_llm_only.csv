@@ -1,0 +1,361 @@
+id,truth,truth_color,truth_gender,final,source,status,confidence,H,calls,latency,color,gender,fp_valid,fp_cat,fp_color,fp_gender,trace
+47427,accessory,purple,female,bag,llm_only,OK,0.9,0.0,1,0.017508506774902344,black,unknown,True,bag,black,unknown,"OUTIL knn_search        → bag (sûr à 53%)
+OUTIL llm_analyze (v1)  → bag conf=0.90 | précision_ok=True | H=0.00 []
+MODE llm_only"
+5072,accessory,black,female,accessory,llm_only,OK,0.9,0.2,1,0.025835275650024414,black,unisex,True,accessory,black,unisex,"OUTIL knn_search        → accessory (sûr à 100%)
+OUTIL llm_analyze (v1)  → accessory conf=0.90 | précision_ok=True | H=0.20 ['contradicts_neighbors_gender']
+MODE llm_only"
+11485,accessory,black,male,accessory,llm_only,OK,0.9,0.0,1,0.022316694259643555,black,unknown,True,accessory,black,unknown,"OUTIL knn_search        → accessory (sûr à 100%)
+OUTIL llm_analyze (v1)  → accessory conf=0.90 | précision_ok=True | H=0.00 []
+MODE llm_only"
+20969,accessory,black,male,accessory,llm_only,OK,0.95,0.2,1,0.025139331817626953,black,unisex,True,accessory,black,unisex,"OUTIL knn_search        → accessory (sûr à 100%)
+OUTIL llm_analyze (v1)  → accessory conf=0.95 | précision_ok=True | H=0.20 ['contradicts_neighbors_gender']
+MODE llm_only"
+6699,accessory,white,male,unknown,llm_only,REVIEW,0.0,1.0,1,0.04568314552307129,black,male,False,invalid,white,unisex,"OUTIL knn_search        → accessory (sûr à 100%)
+OUTIL llm_analyze (v1)  → invalid conf=0.90 | précision_ok=False | H=1.00 ['invalid_output']
+MODE llm_only"
+49860,accessory,purple,unisex,accessory,llm_only,OK,0.9,0.0,1,0.046761512756347656,purple,unisex,True,accessory,purple,unisex,"OUTIL knn_search        → accessory (sûr à 100%)
+OUTIL llm_analyze (v1)  → accessory conf=0.90 | précision_ok=True | H=0.00 []
+MODE llm_only"
+8131,accessory,black,female,accessory,llm_only,OK,0.9,0.4,1,0.048039913177490234,metallic,unisex,True,accessory,metallic,unisex,"OUTIL knn_search        → accessory (sûr à 100%)
+OUTIL llm_analyze (v1)  → accessory conf=0.90 | précision_ok=True | H=0.40 ['contradicts_neighbors_color', 'contradicts_neighbors_gender']
+MODE llm_only"
+46546,accessory,black,male,accessory,llm_only,OK,0.9,0.0,1,0.04281497001647949,black,unknown,True,accessory,black,unknown,"OUTIL knn_search        → accessory (sûr à 100%)
+OUTIL llm_analyze (v1)  → accessory conf=0.90 | précision_ok=True | H=0.00 []
+MODE llm_only"
+21260,bag,brown,unisex,bag,llm_only,OK,0.9,0.0,1,0.04724526405334473,brown,unisex,True,bag,brown,unisex,"OUTIL knn_search        → bag (sûr à 100%)
+OUTIL llm_analyze (v1)  → bag conf=0.90 | précision_ok=True | H=0.00 []
+MODE llm_only"
+3393,bag,green,female,bag,llm_only,OK,0.9,0.0,1,0.025609254837036133,green,unknown,True,bag,green,unknown,"OUTIL knn_search        → bag (sûr à 100%)
+OUTIL llm_analyze (v1)  → bag conf=0.90 | précision_ok=True | H=0.00 []
+MODE llm_only"
+49559,bag,purple,female,bag,llm_only,OK,0.9,0.0,1,0.046044349670410156,purple,unknown,True,bag,purple,unknown,"OUTIL knn_search        → bag (sûr à 100%)
+OUTIL llm_analyze (v1)  → bag conf=0.90 | précision_ok=True | H=0.00 []
+MODE llm_only"
+20458,bag,pink,female,bag,llm_only,OK,0.9,0.0,1,0.04834938049316406,pink,unknown,True,bag,pink,unknown,"OUTIL knn_search        → bag (sûr à 100%)
+OUTIL llm_analyze (v1)  → bag conf=0.90 | précision_ok=True | H=0.00 []
+MODE llm_only"
+17136,bag,black,female,bag,llm_only,OK,0.9,0.0,1,0.05097842216491699,black,unknown,True,bag,black,unknown,"OUTIL knn_search        → bag (sûr à 100%)
+OUTIL llm_analyze (v1)  → bag conf=0.90 | précision_ok=True | H=0.00 []
+MODE llm_only"
+51941,bag,purple,female,bag,llm_only,OK,0.9,0.0,1,0.04631853103637695,purple,unknown,True,bag,purple,unknown,"OUTIL knn_search        → bag (sûr à 100%)
+OUTIL llm_analyze (v1)  → bag conf=0.90 | précision_ok=True | H=0.00 []
+MODE llm_only"
+8235,bag,black,female,bag,llm_only,OK,0.9,0.0,1,0.02581000328063965,black,unknown,True,bag,black,unknown,"OUTIL knn_search        → bag (sûr à 100%)
+OUTIL llm_analyze (v1)  → bag conf=0.90 | précision_ok=True | H=0.00 []
+MODE llm_only"
+2653,bag,grey,female,bag,llm_only,OK,0.9,0.0,1,0.027416467666625977,blue,female,True,bag,blue,female,"OUTIL knn_search        → bag (sûr à 100%)
+OUTIL llm_analyze (v1)  → bag conf=0.90 | précision_ok=True | H=0.00 []
+MODE llm_only"
+31733,blazer,black,male,blazer,llm_only,OK,0.9,0.6,1,0.034631967544555664,black,male,True,blazer,black,male,"OUTIL knn_search        → jacket (sûr à 64%)
+OUTIL llm_analyze (v1)  → blazer conf=0.90 | précision_ok=True | H=0.60 ['contradicts_knn']
+MODE llm_only"
+27845,blazer,black,female,shirt,llm_only,OK,0.9,0.2,1,0.04588055610656738,black,female,True,shirt,black,female,"OUTIL knn_search        → sweater (sûr à 52%)
+OUTIL llm_analyze (v1)  → shirt conf=0.90 | précision_ok=True | H=0.20 ['contradicts_neighbors_color']
+MODE llm_only"
+31161,blazer,blue,male,jacket,llm_only,OK,0.9,0.45,1,0.045244693756103516,unknown,unisex,True,jacket,unknown,unisex,"OUTIL knn_search        → jacket (sûr à 64%)
+OUTIL llm_analyze (v1)  → jacket conf=0.90 | précision_ok=True | H=0.45 ['out_of_vocabulary', 'contradicts_neighbors_gender']
+MODE llm_only"
+31732,blazer,brown,male,sweater,llm_only,OK,0.9,0.6,1,0.03267693519592285,beige,male,True,sweater,beige,male,"OUTIL knn_search        → jacket (sûr à 60%)
+OUTIL llm_analyze (v1)  → sweater conf=0.90 | précision_ok=True | H=0.60 ['contradicts_knn']
+MODE llm_only"
+31743,blazer,green,male,blazer,llm_only,OK,0.9,0.6,1,0.026210308074951172,beige,male,True,blazer,beige,male,"OUTIL knn_search        → jacket (sûr à 65%)
+OUTIL llm_analyze (v1)  → blazer conf=0.90 | précision_ok=True | H=0.60 ['contradicts_knn']
+MODE llm_only"
+27846,blazer,grey,female,blazer,llm_only,OK,0.9,0.6,1,0.022952556610107422,black,female,True,blazer,black,female,"OUTIL knn_search        → jacket (sûr à 79%)
+OUTIL llm_analyze (v1)  → blazer conf=0.90 | précision_ok=True | H=0.60 ['contradicts_knn']
+MODE llm_only"
+31742,blazer,black,male,blazer,llm_only,OK,0.9,0.6,1,0.04449176788330078,black,male,True,blazer,black,male,"OUTIL knn_search        → jacket (sûr à 81%)
+OUTIL llm_analyze (v1)  → blazer conf=0.90 | précision_ok=True | H=0.60 ['contradicts_knn']
+MODE llm_only"
+31729,blazer,blue,male,blazer,llm_only,OK,0.9,0.25,1,0.04796719551086426,unknown,male,True,blazer,unknown,male,"OUTIL knn_search        → shirt (sûr à 59%)
+OUTIL llm_analyze (v1)  → blazer conf=0.90 | précision_ok=True | H=0.25 ['out_of_vocabulary']
+MODE llm_only"
+58505,dress,white,female,dress,llm_only,OK,0.9,0.0,1,0.046915292739868164,black,female,True,dress,black,female,"OUTIL knn_search        → dress (sûr à 76%)
+OUTIL llm_analyze (v1)  → dress conf=0.90 | précision_ok=True | H=0.00 []
+MODE llm_only"
+57055,dress,brown,female,dress,llm_only,OK,0.9,0.0,1,0.025867700576782227,brown,female,True,dress,brown,female,"OUTIL knn_search        → dress (sûr à 62%)
+OUTIL llm_analyze (v1)  → dress conf=0.90 | précision_ok=True | H=0.00 []
+MODE llm_only"
+34567,dress,black,female,dress,llm_only,OK,0.9,0.25,1,0.024389028549194336,unknown,female,True,dress,unknown,female,"OUTIL knn_search        → dress (sûr à 100%)
+OUTIL llm_analyze (v1)  → dress conf=0.90 | précision_ok=True | H=0.25 ['out_of_vocabulary']
+MODE llm_only"
+59980,dress,black,female,dress,llm_only,OK,0.9,0.0,1,0.030155658721923828,black,female,True,dress,black,female,"OUTIL knn_search        → dress (sûr à 100%)
+OUTIL llm_analyze (v1)  → dress conf=0.90 | précision_ok=True | H=0.00 []
+MODE llm_only"
+48084,dress,red,female,dress,llm_only,OK,0.9,0.0,1,0.04678678512573242,red,female,True,dress,red,female,"OUTIL knn_search        → dress (sûr à 94%)
+OUTIL llm_analyze (v1)  → dress conf=0.90 | précision_ok=True | H=0.00 []
+MODE llm_only"
+34065,dress,black,female,dress,llm_only,OK,0.9,0.0,1,0.04668855667114258,black,female,True,dress,black,female,"OUTIL knn_search        → dress (sûr à 100%)
+OUTIL llm_analyze (v1)  → dress conf=0.90 | précision_ok=True | H=0.00 []
+MODE llm_only"
+26355,dress,purple,female,dress,llm_only,OK,0.9,0.0,1,0.02866649627685547,multicolor,female,True,dress,multicolor,female,"OUTIL knn_search        → dress (sûr à 87%)
+OUTIL llm_analyze (v1)  → dress conf=0.90 | précision_ok=True | H=0.00 []
+MODE llm_only"
+4991,dress,white,female,dress,llm_only,OK,0.9,0.2,1,0.046445608139038086,white,female,True,dress,white,female,"OUTIL knn_search        → dress (sûr à 100%)
+OUTIL llm_analyze (v1)  → dress conf=0.90 | précision_ok=True | H=0.20 ['contradicts_neighbors_color']
+MODE llm_only"
+18978,jacket,white,male,jacket,llm_only,OK,0.9,0.25,1,0.030827999114990234,unknown,male,True,jacket,unknown,male,"OUTIL knn_search        → jacket (sûr à 61%)
+OUTIL llm_analyze (v1)  → jacket conf=0.90 | précision_ok=True | H=0.25 ['out_of_vocabulary']
+MODE llm_only"
+52042,jacket,black,unisex,jacket,llm_only,OK,0.9,0.2,1,0.023882389068603516,black,male,True,jacket,black,male,"OUTIL knn_search        → jacket (sûr à 100%)
+OUTIL llm_analyze (v1)  → jacket conf=0.90 | précision_ok=True | H=0.20 ['contradicts_neighbors_gender']
+MODE llm_only"
+18522,jacket,black,male,jacket,llm_only,OK,0.9,0.0,1,0.047095298767089844,black,male,True,jacket,black,male,"OUTIL knn_search        → jacket (sûr à 100%)
+OUTIL llm_analyze (v1)  → jacket conf=0.90 | précision_ok=True | H=0.00 []
+MODE llm_only"
+59130,jacket,black,male,jacket,llm_only,OK,0.9,0.0,1,0.048293113708496094,black,male,True,jacket,black,male,"OUTIL knn_search        → jacket (sûr à 100%)
+OUTIL llm_analyze (v1)  → jacket conf=0.90 | précision_ok=True | H=0.00 []
+MODE llm_only"
+40051,jacket,blue,male,jacket,llm_only,OK,0.9,0.25,1,0.07871603965759277,unknown,male,True,jacket,unknown,male,"OUTIL knn_search        → jacket (sûr à 63%)
+OUTIL llm_analyze (v1)  → jacket conf=0.90 | précision_ok=True | H=0.25 ['out_of_vocabulary']
+MODE llm_only"
+59127,jacket,brown,male,jacket,llm_only,OK,0.9,0.0,1,0.06815624237060547,brown,male,True,jacket,brown,male,"OUTIL knn_search        → jacket (sûr à 100%)
+OUTIL llm_analyze (v1)  → jacket conf=0.90 | précision_ok=True | H=0.00 []
+MODE llm_only"
+1758,jacket,white,male,jacket,llm_only,OK,0.9,0.0,1,0.07797956466674805,white,male,True,jacket,white,male,"OUTIL knn_search        → jacket (sûr à 55%)
+OUTIL llm_analyze (v1)  → jacket conf=0.90 | précision_ok=True | H=0.00 []
+MODE llm_only"
+24136,jacket,blue,male,jacket,llm_only,OK,0.9,0.25,1,0.06553006172180176,unknown,male,True,jacket,unknown,male,"OUTIL knn_search        → jacket (sûr à 100%)
+OUTIL llm_analyze (v1)  → jacket conf=0.90 | précision_ok=True | H=0.25 ['out_of_vocabulary']
+MODE llm_only"
+11350,jeans,blue,male,jeans,llm_only,OK,0.95,0.0,1,0.05557370185852051,blue,male,True,jeans,blue,male,"OUTIL knn_search        → jeans (sûr à 100%)
+OUTIL llm_analyze (v1)  → jeans conf=0.95 | précision_ok=True | H=0.00 []
+MODE llm_only"
+11348,jeans,blue,male,tshirt,llm_only,OK,0.9,1.0,1,0.049518585205078125,black,female,True,tshirt,black,female,"OUTIL knn_search        → jeans (sûr à 90%)
+OUTIL llm_analyze (v1)  → tshirt conf=0.90 | précision_ok=True | H=1.00 ['contradicts_knn', 'contradicts_neighbors_color', 'contradicts_neighbors_gender']
+MODE llm_only"
+7185,jeans,blue,female,jeans,llm_only,OK,0.9,0.0,1,0.05223488807678223,blue,female,True,jeans,blue,female,"OUTIL knn_search        → jeans (sûr à 100%)
+OUTIL llm_analyze (v1)  → jeans conf=0.90 | précision_ok=True | H=0.00 []
+MODE llm_only"
+26997,jeans,blue,female,jeans,llm_only,OK,0.9,0.0,1,0.05291318893432617,blue,female,True,jeans,blue,female,"OUTIL knn_search        → jeans (sûr à 91%)
+OUTIL llm_analyze (v1)  → jeans conf=0.90 | précision_ok=True | H=0.00 []
+MODE llm_only"
+26995,jeans,blue,female,jeans,llm_only,OK,0.9,0.0,1,0.05254197120666504,blue,female,True,jeans,blue,female,"OUTIL knn_search        → jeans (sûr à 81%)
+OUTIL llm_analyze (v1)  → jeans conf=0.90 | précision_ok=True | H=0.00 []
+MODE llm_only"
+12760,jeans,blue,female,jeans,llm_only,OK,0.9,0.0,1,0.04893016815185547,blue,female,True,jeans,blue,female,"OUTIL knn_search        → jeans (sûr à 100%)
+OUTIL llm_analyze (v1)  → jeans conf=0.90 | précision_ok=True | H=0.00 []
+MODE llm_only"
+11344,jeans,blue,male,jeans,llm_only,OK,0.9,0.0,1,0.04876089096069336,blue,male,True,jeans,blue,male,"OUTIL knn_search        → jeans (sûr à 91%)
+OUTIL llm_analyze (v1)  → jeans conf=0.90 | précision_ok=True | H=0.00 []
+MODE llm_only"
+11354,jeans,blue,male,jeans,llm_only,OK,0.95,0.0,1,0.04807424545288086,blue,male,True,jeans,blue,male,"OUTIL knn_search        → jeans (sûr à 100%)
+OUTIL llm_analyze (v1)  → jeans conf=0.95 | précision_ok=True | H=0.00 []
+MODE llm_only"
+3918,pants,grey,male,pants,llm_only,OK,0.9,0.2,1,0.04862213134765625,beige,female,True,pants,beige,female,"OUTIL knn_search        → pants (sûr à 94%)
+OUTIL llm_analyze (v1)  → pants conf=0.90 | précision_ok=True | H=0.20 ['contradicts_neighbors_color']
+MODE llm_only"
+15011,pants,black,male,pants,llm_only,OK,0.9,0.0,1,0.05168771743774414,black,male,True,pants,black,male,"OUTIL knn_search        → pants (sûr à 81%)
+OUTIL llm_analyze (v1)  → pants conf=0.90 | précision_ok=True | H=0.00 []
+MODE llm_only"
+7266,pants,beige,male,pants,llm_only,OK,0.9,0.2,1,0.05202937126159668,beige,unisex,True,pants,beige,unisex,"OUTIL knn_search        → pants (sûr à 100%)
+OUTIL llm_analyze (v1)  → pants conf=0.90 | précision_ok=True | H=0.20 ['contradicts_neighbors_gender']
+MODE llm_only"
+45499,pants,blue,female,tshirt,llm_only,OK,0.9,0.8,1,0.05338883399963379,pink,female,True,tshirt,pink,female,"OUTIL knn_search        → pants (sûr à 73%)
+OUTIL llm_analyze (v1)  → tshirt conf=0.90 | précision_ok=True | H=0.80 ['contradicts_knn', 'contradicts_neighbors_color']
+MODE llm_only"
+30815,pants,yellow,female,tshirt,llm_only,OK,0.9,0.6,1,0.051343679428100586,white,female,True,tshirt,white,female,"OUTIL knn_search        → pants (sûr à 100%)
+OUTIL llm_analyze (v1)  → tshirt conf=0.90 | précision_ok=True | H=0.60 ['contradicts_knn']
+MODE llm_only"
+15678,pants,beige,male,pants,llm_only,OK,0.9,0.0,1,0.05216050148010254,beige,male,True,pants,beige,male,"OUTIL knn_search        → pants (sûr à 100%)
+OUTIL llm_analyze (v1)  → pants conf=0.90 | précision_ok=True | H=0.00 []
+MODE llm_only"
+5017,pants,pink,female,pants,llm_only,OK,0.9,0.0,1,0.050771474838256836,pink,female,True,pants,pink,female,"OUTIL knn_search        → pants (sûr à 90%)
+OUTIL llm_analyze (v1)  → pants conf=0.90 | précision_ok=True | H=0.00 []
+MODE llm_only"
+26163,pants,grey,male,shirt,llm_only,OK,0.9,0.6,1,0.04980731010437012,grey,male,True,shirt,grey,male,"OUTIL knn_search        → pants (sûr à 100%)
+OUTIL llm_analyze (v1)  → shirt conf=0.90 | précision_ok=True | H=0.60 ['contradicts_knn']
+MODE llm_only"
+13758,shirt,green,male,shirt,llm_only,OK,0.9,0.0,1,0.05463719367980957,green,male,True,shirt,green,male,"OUTIL knn_search        → shirt (sûr à 100%)
+OUTIL llm_analyze (v1)  → shirt conf=0.90 | précision_ok=True | H=0.00 []
+MODE llm_only"
+8872,shirt,blue,male,shirt,llm_only,OK,0.9,0.0,1,0.05208754539489746,blue,male,True,shirt,blue,male,"OUTIL knn_search        → shirt (sûr à 100%)
+OUTIL llm_analyze (v1)  → shirt conf=0.90 | précision_ok=True | H=0.00 []
+MODE llm_only"
+14768,shirt,white,male,shirt,llm_only,OK,0.9,0.0,1,0.05013394355773926,white,male,True,shirt,white,male,"OUTIL knn_search        → shirt (sûr à 100%)
+OUTIL llm_analyze (v1)  → shirt conf=0.90 | précision_ok=True | H=0.00 []
+MODE llm_only"
+31302,shirt,purple,male,shirt,llm_only,OK,0.9,0.0,1,0.04872608184814453,purple,male,True,shirt,purple,male,"OUTIL knn_search        → shirt (sûr à 100%)
+OUTIL llm_analyze (v1)  → shirt conf=0.90 | précision_ok=True | H=0.00 []
+MODE llm_only"
+18323,shirt,green,male,shirt,llm_only,OK,0.9,0.0,1,0.05165886878967285,black,male,True,shirt,black,male,"OUTIL knn_search        → shirt (sûr à 100%)
+OUTIL llm_analyze (v1)  → shirt conf=0.90 | précision_ok=True | H=0.00 []
+MODE llm_only"
+6613,shirt,black,male,shirt,llm_only,OK,0.9,0.0,1,0.05030536651611328,blue,male,True,shirt,blue,male,"OUTIL knn_search        → shirt (sûr à 100%)
+OUTIL llm_analyze (v1)  → shirt conf=0.90 | précision_ok=True | H=0.00 []
+MODE llm_only"
+19728,shirt,purple,female,shirt,llm_only,OK,0.9,0.0,1,0.0518794059753418,purple,female,True,shirt,purple,female,"OUTIL knn_search        → sweater (sûr à 38%)
+OUTIL llm_analyze (v1)  → shirt conf=0.90 | précision_ok=True | H=0.00 []
+MODE llm_only"
+8854,shirt,blue,male,shirt,llm_only,OK,0.9,0.0,1,0.04710650444030762,blue,male,True,shirt,blue,male,"OUTIL knn_search        → shirt (sûr à 100%)
+OUTIL llm_analyze (v1)  → shirt conf=0.90 | précision_ok=True | H=0.00 []
+MODE llm_only"
+55642,shoes,black,female,shoes,llm_only,OK,0.95,0.0,1,0.05783653259277344,black,female,True,shoes,black,female,"OUTIL knn_search        → shoes (sûr à 100%)
+OUTIL llm_analyze (v1)  → shoes conf=0.95 | précision_ok=True | H=0.00 []
+MODE llm_only"
+35690,shoes,blue,male,shoes,llm_only,OK,0.9,0.2,1,0.05156850814819336,black,unisex,True,shoes,black,unisex,"OUTIL knn_search        → shoes (sûr à 100%)
+OUTIL llm_analyze (v1)  → shoes conf=0.90 | précision_ok=True | H=0.20 ['contradicts_neighbors_gender']
+MODE llm_only"
+29120,shoes,black,male,shoes,llm_only,OK,0.9,0.2,1,0.057166099548339844,black,unisex,True,shoes,black,unisex,"OUTIL knn_search        → shoes (sûr à 100%)
+OUTIL llm_analyze (v1)  → shoes conf=0.90 | précision_ok=True | H=0.20 ['contradicts_neighbors_gender']
+MODE llm_only"
+15240,shoes,black,male,shoes,llm_only,OK,0.9,0.2,1,0.049970149993896484,grey,unisex,True,shoes,grey,unisex,"OUTIL knn_search        → shoes (sûr à 100%)
+OUTIL llm_analyze (v1)  → shoes conf=0.90 | précision_ok=True | H=0.20 ['contradicts_neighbors_gender']
+MODE llm_only"
+15864,shoes,blue,unisex,shoes,llm_only,OK,0.9,0.0,1,0.04867148399353027,green,male,True,shoes,green,male,"OUTIL knn_search        → shoes (sûr à 100%)
+OUTIL llm_analyze (v1)  → shoes conf=0.90 | précision_ok=True | H=0.00 []
+MODE llm_only"
+2544,shoes,blue,male,shoes,llm_only,OK,0.9,0.0,1,0.052097320556640625,blue,unisex,True,shoes,blue,unisex,"OUTIL knn_search        → shoes (sûr à 100%)
+OUTIL llm_analyze (v1)  → shoes conf=0.90 | précision_ok=True | H=0.00 []
+MODE llm_only"
+37959,shoes,black,male,shoes,llm_only,OK,0.9,0.2,1,0.053050994873046875,black,unisex,True,shoes,black,unisex,"OUTIL knn_search        → shoes (sûr à 100%)
+OUTIL llm_analyze (v1)  → shoes conf=0.90 | précision_ok=True | H=0.20 ['contradicts_neighbors_gender']
+MODE llm_only"
+15888,shoes,green,female,shoes,llm_only,OK,0.9,0.0,1,0.0514068603515625,green,unisex,True,shoes,green,unisex,"OUTIL knn_search        → shoes (sûr à 100%)
+OUTIL llm_analyze (v1)  → shoes conf=0.90 | précision_ok=True | H=0.00 []
+MODE llm_only"
+10778,shorts,blue,male,shorts,llm_only,OK,0.9,0.25,1,0.05008077621459961,unknown,male,True,shorts,unknown,male,"OUTIL knn_search        → shorts (sûr à 100%)
+OUTIL llm_analyze (v1)  → shorts conf=0.90 | précision_ok=True | H=0.25 ['out_of_vocabulary']
+MODE llm_only"
+14933,shorts,blue,male,shorts,llm_only,OK,0.9,0.0,1,0.06281042098999023,blue,male,True,shorts,blue,male,"OUTIL knn_search        → shorts (sûr à 100%)
+OUTIL llm_analyze (v1)  → shorts conf=0.90 | précision_ok=True | H=0.00 []
+MODE llm_only"
+51379,shorts,grey,male,shorts,llm_only,OK,0.9,0.0,1,0.0614466667175293,green,male,True,shorts,green,male,"OUTIL knn_search        → shorts (sûr à 100%)
+OUTIL llm_analyze (v1)  → shorts conf=0.90 | précision_ok=True | H=0.00 []
+MODE llm_only"
+24308,shorts,white,male,shorts,llm_only,OK,0.9,0.0,1,0.05151844024658203,white,male,True,shorts,white,male,"OUTIL knn_search        → shorts (sûr à 100%)
+OUTIL llm_analyze (v1)  → shorts conf=0.90 | précision_ok=True | H=0.00 []
+MODE llm_only"
+28506,shorts,black,male,shorts,llm_only,OK,0.9,0.0,1,0.04754352569580078,black,male,True,shorts,black,male,"OUTIL knn_search        → shorts (sûr à 100%)
+OUTIL llm_analyze (v1)  → shorts conf=0.90 | précision_ok=True | H=0.00 []
+MODE llm_only"
+7533,shorts,black,male,shorts,llm_only,OK,0.9,0.0,1,0.04690670967102051,black,male,True,shorts,black,male,"OUTIL knn_search        → shorts (sûr à 100%)
+OUTIL llm_analyze (v1)  → shorts conf=0.90 | précision_ok=True | H=0.00 []
+MODE llm_only"
+14021,shorts,black,male,shorts,llm_only,OK,0.9,0.0,1,0.048203229904174805,black,male,True,shorts,black,male,"OUTIL knn_search        → shorts (sûr à 100%)
+OUTIL llm_analyze (v1)  → shorts conf=0.90 | précision_ok=True | H=0.00 []
+MODE llm_only"
+25039,shorts,black,male,pants,llm_only,OK,0.9,0.8,1,0.05314350128173828,black,unisex,True,pants,black,unisex,"OUTIL knn_search        → shorts (sûr à 100%)
+OUTIL llm_analyze (v1)  → pants conf=0.90 | précision_ok=True | H=0.80 ['contradicts_knn', 'contradicts_neighbors_gender']
+MODE llm_only"
+12839,skirt,black,female,skirt,llm_only,OK,0.9,0.0,1,0.049765825271606445,pink,female,True,skirt,pink,female,"OUTIL knn_search        → skirt (sûr à 100%)
+OUTIL llm_analyze (v1)  → skirt conf=0.90 | précision_ok=True | H=0.00 []
+MODE llm_only"
+13304,skirt,red,female,skirt,llm_only,OK,0.9,0.0,1,0.05019092559814453,red,female,True,skirt,red,female,"OUTIL knn_search        → skirt (sûr à 100%)
+OUTIL llm_analyze (v1)  → skirt conf=0.90 | précision_ok=True | H=0.00 []
+MODE llm_only"
+30926,skirt,blue,female,skirt,llm_only,OK,0.9,0.0,1,0.0513148307800293,multicolor,female,True,skirt,multicolor,female,"OUTIL knn_search        → skirt (sûr à 91%)
+OUTIL llm_analyze (v1)  → skirt conf=0.90 | précision_ok=True | H=0.00 []
+MODE llm_only"
+13264,skirt,pink,female,skirt,llm_only,OK,0.9,0.0,1,0.05387139320373535,pink,female,True,skirt,pink,female,"OUTIL knn_search        → skirt (sûr à 82%)
+OUTIL llm_analyze (v1)  → skirt conf=0.90 | précision_ok=True | H=0.00 []
+MODE llm_only"
+29171,skirt,blue,female,skirt,llm_only,OK,0.9,0.0,1,0.05501413345336914,blue,female,True,skirt,blue,female,"OUTIL knn_search        → skirt (sûr à 100%)
+OUTIL llm_analyze (v1)  → skirt conf=0.90 | précision_ok=True | H=0.00 []
+MODE llm_only"
+38504,skirt,blue,female,skirt,llm_only,OK,0.9,0.0,1,0.06111931800842285,blue,female,True,skirt,blue,female,"OUTIL knn_search        → skirt (sûr à 100%)
+OUTIL llm_analyze (v1)  → skirt conf=0.90 | précision_ok=True | H=0.00 []
+MODE llm_only"
+8501,skirt,blue,female,top,llm_only,OK,0.9,0.85,1,0.05202960968017578,unknown,female,True,top,unknown,female,"OUTIL knn_search        → skirt (sûr à 81%)
+OUTIL llm_analyze (v1)  → top conf=0.90 | précision_ok=True | H=0.85 ['out_of_vocabulary', 'contradicts_knn']
+MODE llm_only"
+30929,skirt,grey,female,skirt,llm_only,OK,0.9,0.0,1,0.053251028060913086,grey,female,True,skirt,grey,female,"OUTIL knn_search        → skirt (sûr à 100%)
+OUTIL llm_analyze (v1)  → skirt conf=0.90 | précision_ok=True | H=0.00 []
+MODE llm_only"
+15026,sweater,purple,female,sweater,llm_only,OK,0.9,0.0,1,0.051512718200683594,purple,female,True,sweater,purple,female,"OUTIL knn_search        → sweater (sûr à 66%)
+OUTIL llm_analyze (v1)  → sweater conf=0.90 | précision_ok=True | H=0.00 []
+MODE llm_only"
+20788,sweater,red,male,sweater,llm_only,OK,0.9,0.25,1,0.046347856521606445,unknown,male,True,sweater,unknown,male,"OUTIL knn_search        → sweater (sûr à 100%)
+OUTIL llm_analyze (v1)  → sweater conf=0.90 | précision_ok=True | H=0.25 ['out_of_vocabulary']
+MODE llm_only"
+8833,sweater,black,male,sweater,llm_only,OK,0.9,0.0,1,0.052983999252319336,green,male,True,sweater,green,male,"OUTIL knn_search        → sweater (sûr à 100%)
+OUTIL llm_analyze (v1)  → sweater conf=0.90 | précision_ok=True | H=0.00 []
+MODE llm_only"
+15328,sweater,blue,male,top,llm_only,OK,0.9,0.8,1,0.048445940017700195,blue,unisex,True,top,blue,unisex,"OUTIL knn_search        → sweater (sûr à 61%)
+OUTIL llm_analyze (v1)  → top conf=0.90 | précision_ok=True | H=0.80 ['contradicts_knn', 'contradicts_neighbors_gender']
+MODE llm_only"
+18624,sweater,beige,male,sweater,llm_only,OK,0.9,0.0,1,0.025275468826293945,white,male,True,sweater,white,male,"OUTIL knn_search        → sweater (sûr à 78%)
+OUTIL llm_analyze (v1)  → sweater conf=0.90 | précision_ok=True | H=0.00 []
+MODE llm_only"
+20197,sweater,grey,male,sweater,llm_only,OK,0.9,0.0,1,0.024968862533569336,grey,male,True,sweater,grey,male,"OUTIL knn_search        → sweater (sûr à 100%)
+OUTIL llm_analyze (v1)  → sweater conf=0.90 | précision_ok=True | H=0.00 []
+MODE llm_only"
+16202,sweater,black,male,sweater,llm_only,OK,0.9,0.0,1,0.023059844970703125,black,male,True,sweater,black,male,"OUTIL knn_search        → sweater (sûr à 100%)
+OUTIL llm_analyze (v1)  → sweater conf=0.90 | précision_ok=True | H=0.00 []
+MODE llm_only"
+14089,sweater,black,male,sweater,llm_only,OK,0.9,0.0,1,0.030943870544433594,black,male,True,sweater,black,male,"OUTIL knn_search        → sweater (sûr à 95%)
+OUTIL llm_analyze (v1)  → sweater conf=0.90 | précision_ok=True | H=0.00 []
+MODE llm_only"
+5776,top,green,female,top,llm_only,OK,0.9,0.0,1,0.0230867862701416,multicolor,female,True,top,multicolor,female,"OUTIL knn_search        → dress (sûr à 58%)
+OUTIL llm_analyze (v1)  → top conf=0.90 | précision_ok=True | H=0.00 []
+MODE llm_only"
+24547,top,blue,female,shirt,llm_only,OK,0.9,0.6,1,0.04726409912109375,blue,female,True,shirt,blue,female,"OUTIL knn_search        → top (sûr à 93%)
+OUTIL llm_analyze (v1)  → shirt conf=0.90 | précision_ok=True | H=0.60 ['contradicts_knn']
+MODE llm_only"
+21167,top,black,female,top,llm_only,OK,0.9,0.6,1,0.054001569747924805,black,female,True,top,black,female,"OUTIL knn_search        → dress (sûr à 60%)
+OUTIL llm_analyze (v1)  → top conf=0.90 | précision_ok=True | H=0.60 ['contradicts_knn']
+MODE llm_only"
+42224,top,white,female,top,llm_only,OK,0.9,0.0,1,0.06010699272155762,white,female,True,top,white,female,"OUTIL knn_search        → top (sûr à 57%)
+OUTIL llm_analyze (v1)  → top conf=0.90 | précision_ok=True | H=0.00 []
+MODE llm_only"
+45969,top,grey,female,tshirt,llm_only,OK,0.9,0.6,1,0.04818272590637207,grey,female,True,tshirt,grey,female,"OUTIL knn_search        → top (sûr à 100%)
+OUTIL llm_analyze (v1)  → tshirt conf=0.90 | précision_ok=True | H=0.60 ['contradicts_knn']
+MODE llm_only"
+19624,top,green,female,shirt,llm_only,OK,0.9,0.25,1,0.046285390853881836,unknown,female,True,shirt,unknown,female,"OUTIL knn_search        → sweater (sûr à 50%)
+OUTIL llm_analyze (v1)  → shirt conf=0.90 | précision_ok=True | H=0.25 ['out_of_vocabulary']
+MODE llm_only"
+42202,top,yellow,female,shirt,llm_only,OK,0.9,0.6,1,0.04693770408630371,yellow,female,True,shirt,yellow,female,"OUTIL knn_search        → top (sûr à 92%)
+OUTIL llm_analyze (v1)  → shirt conf=0.90 | précision_ok=True | H=0.60 ['contradicts_knn']
+MODE llm_only"
+42204,top,pink,female,top,llm_only,OK,0.9,0.25,1,0.02655482292175293,unknown,female,True,top,unknown,female,"OUTIL knn_search        → top (sûr à 80%)
+OUTIL llm_analyze (v1)  → top conf=0.90 | précision_ok=True | H=0.25 ['out_of_vocabulary']
+MODE llm_only"
+4033,tshirt,black,male,tshirt,llm_only,OK,0.9,0.0,1,0.025972843170166016,black,male,True,tshirt,black,male,"OUTIL knn_search        → tshirt (sûr à 100%)
+OUTIL llm_analyze (v1)  → tshirt conf=0.90 | précision_ok=True | H=0.00 []
+MODE llm_only"
+6589,tshirt,black,male,tshirt,llm_only,OK,0.9,0.0,1,0.03057241439819336,black,male,True,tshirt,black,male,"OUTIL knn_search        → tshirt (sûr à 100%)
+OUTIL llm_analyze (v1)  → tshirt conf=0.90 | précision_ok=True | H=0.00 []
+MODE llm_only"
+3984,tshirt,blue,male,tshirt,llm_only,OK,0.9,0.0,1,0.025875091552734375,blue,male,True,tshirt,blue,male,"OUTIL knn_search        → tshirt (sûr à 100%)
+OUTIL llm_analyze (v1)  → tshirt conf=0.90 | précision_ok=True | H=0.00 []
+MODE llm_only"
+44634,tshirt,black,male,tshirt,llm_only,OK,0.9,0.0,1,0.045911312103271484,black,male,True,tshirt,black,male,"OUTIL knn_search        → tshirt (sûr à 100%)
+OUTIL llm_analyze (v1)  → tshirt conf=0.90 | précision_ok=True | H=0.00 []
+MODE llm_only"
+7747,tshirt,green,male,tshirt,llm_only,OK,0.9,0.0,1,0.049130916595458984,green,male,True,tshirt,green,male,"OUTIL knn_search        → tshirt (sûr à 100%)
+OUTIL llm_analyze (v1)  → tshirt conf=0.90 | précision_ok=True | H=0.00 []
+MODE llm_only"
+22620,tshirt,blue,male,tshirt,llm_only,OK,0.9,0.2,1,0.027820825576782227,blue,unisex,True,tshirt,blue,unisex,"OUTIL knn_search        → tshirt (sûr à 85%)
+OUTIL llm_analyze (v1)  → tshirt conf=0.90 | précision_ok=True | H=0.20 ['contradicts_neighbors_gender']
+MODE llm_only"
+6934,tshirt,white,male,tshirt,llm_only,OK,0.9,0.0,1,0.04998445510864258,white,male,True,tshirt,white,male,"OUTIL knn_search        → tshirt (sûr à 91%)
+OUTIL llm_analyze (v1)  → tshirt conf=0.90 | précision_ok=True | H=0.00 []
+MODE llm_only"
+2299,tshirt,purple,female,tshirt,llm_only,OK,0.9,0.2,1,0.07855606079101562,purple,female,True,tshirt,purple,female,"OUTIL knn_search        → tshirt (sûr à 89%)
+OUTIL llm_analyze (v1)  → tshirt conf=0.90 | précision_ok=True | H=0.20 ['contradicts_neighbors_color']
+MODE llm_only"
+50985,underwear,white,female,underwear,llm_only,OK,0.95,0.0,1,0.05218076705932617,white,female,True,underwear,white,female,"OUTIL knn_search        → underwear (sûr à 92%)
+OUTIL llm_analyze (v1)  → underwear conf=0.95 | précision_ok=True | H=0.00 []
+MODE llm_only"
+28137,underwear,green,male,underwear,llm_only,OK,0.95,0.0,1,0.05188298225402832,green,male,True,underwear,green,male,"OUTIL knn_search        → underwear (sûr à 100%)
+OUTIL llm_analyze (v1)  → underwear conf=0.95 | précision_ok=True | H=0.00 []
+MODE llm_only"
+51015,underwear,white,female,underwear,llm_only,OK,0.9,0.0,1,0.05141496658325195,beige,female,True,underwear,beige,female,"OUTIL knn_search        → underwear (sûr à 100%)
+OUTIL llm_analyze (v1)  → underwear conf=0.90 | précision_ok=True | H=0.00 []
+MODE llm_only"
+50562,underwear,brown,male,underwear,llm_only,OK,0.9,0.0,1,0.05284571647644043,brown,male,True,underwear,brown,male,"OUTIL knn_search        → underwear (sûr à 100%)
+OUTIL llm_analyze (v1)  → underwear conf=0.90 | précision_ok=True | H=0.00 []
+MODE llm_only"
+42822,underwear,black,female,top,llm_only,OK,0.9,0.8,1,0.05063772201538086,metallic,female,True,top,metallic,female,"OUTIL knn_search        → underwear (sûr à 96%)
+OUTIL llm_analyze (v1)  → top conf=0.90 | précision_ok=True | H=0.80 ['contradicts_knn', 'contradicts_neighbors_color']
+MODE llm_only"
+25368,underwear,blue,male,tshirt,llm_only,OK,0.9,0.85,1,0.04781198501586914,unknown,male,True,tshirt,unknown,male,"OUTIL knn_search        → underwear (sûr à 80%)
+OUTIL llm_analyze (v1)  → tshirt conf=0.90 | précision_ok=True | H=0.85 ['out_of_vocabulary', 'contradicts_knn']
+MODE llm_only"
+17887,underwear,grey,male,top,llm_only,OK,0.9,0.6,1,0.0528264045715332,white,male,True,top,white,male,"OUTIL knn_search        → underwear (sûr à 100%)
+OUTIL llm_analyze (v1)  → top conf=0.90 | précision_ok=True | H=0.60 ['contradicts_knn']
+MODE llm_only"
+57350,underwear,black,female,underwear,llm_only,OK,0.95,0.0,1,0.052028656005859375,black,female,True,underwear,black,female,"OUTIL knn_search        → underwear (sûr à 100%)
+OUTIL llm_analyze (v1)  → underwear conf=0.95 | précision_ok=True | H=0.00 []
+MODE llm_only"

@@ -1,0 +1,98 @@
+{
+  "id": "TN_H_0012",
+  "input": {
+    "image_path": "/content/drive/MyDrive/dressme_obj1/data/tunisian_dataset/images/TN_H_0012.jpg",
+    "crop_path": "/content/drive/MyDrive/dressme_obj1/data/tunisian_dataset/crops/5ce4e889c9bd_crop.png",
+    "dataset_label": {
+      "category": "jacket",
+      "subtype": "",
+      "colour": "brown",
+      "gender": "male",
+      "season": "all_season",
+      "occasion": "casual"
+    }
+  },
+  "output": {
+    "status": "ok",
+    "card": {
+      "id": "TN_H_0012",
+      "name": "Brown jacket",
+      "slot": "outer",
+      "type": "Jackets",
+      "colour": [
+        "brown"
+      ],
+      "usage": "Casual",
+      "warmth": 2,
+      "formality": 1,
+      "waterproof": false,
+      "open_toe": false,
+      "gender": "Men",
+      "image": "items/TN_H_0012_crop.png",
+      "image_crop": "items/TN_H_0012_crop.png",
+      "embedding": "emb/TN_H_0012.npy",
+      "season": "all",
+      "pattern": "plain",
+      "confidence": {
+        "slot": 0.6943649533204734,
+        "colour": 0.5846593840669609,
+        "type": 0.6943649533204734
+      },
+      "source": "obj1.knn",
+      "price_dt": null,
+      "traditional": false
+    },
+    "category": "jacket",
+    "reasons": [
+      "warmth_formality_placeholder"
+    ],
+    "trace": [
+      "OUTIL knn_search        → jacket (sûr à 69%)",
+      "OUTIL llm_analyze (v1)  → shirt conf=0.90 | précision_ok=True | H=0.60 ['contradicts_knn']",
+      "hallucination élevée → RAG (voisins du catalogue injectés dans le prompt)",
+      "OUTIL llm_analyze (RAG) → shirt conf=0.72 | précision_ok=True | H=0.60 ['contradicts_knn']",
+      "RAG insuffisant, kNN sûr → réponse du kNN"
+    ],
+    "debug": {
+      "source": "knn_after_rag",
+      "H": 0.6,
+      "flags": [
+        "contradicts_knn"
+      ],
+      "llm_calls": 2,
+      "latency_s": 8.668379068374634,
+      "pixel_colours": [
+        [
+          "multicolor",
+          0.2773948039528212
+        ],
+        [
+          "grey",
+          0.2773948039528212
+        ]
+      ],
+      "crop_quality": {
+        "ok": true,
+        "reasons": [],
+        "coverage": 0.766,
+        "size": [
+          512,
+          512
+        ]
+      },
+      "knn_dist": {
+        "jacket": 0.6943649533204734,
+        "shirt": 0.3002888262271881,
+        "traditional_garment": 0.0033491720678284764,
+        "dress": 0.00199709041044116
+      },
+      "colour_raw": "brown",
+      "confidence_calibrated": false
+    }
+  },
+  "pipeline": {
+    "fashionclip_finetuned": false,
+    "qwen_model": "Qwen/Qwen2.5-VL-7B-Instruct",
+    "fashionclip_model": "patrickjohncyh/fashion-clip"
+  }
+}

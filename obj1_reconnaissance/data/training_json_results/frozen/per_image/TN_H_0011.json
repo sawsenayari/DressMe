@@ -1,0 +1,94 @@
+{
+  "id": "TN_H_0011",
+  "input": {
+    "image_path": "/content/drive/MyDrive/dressme_obj1/data/tunisian_dataset/images/TN_H_0011.jpg",
+    "crop_path": "/content/drive/MyDrive/dressme_obj1/data/tunisian_dataset/crops/6695dbd64038_crop.png",
+    "dataset_label": {
+      "category": "traditional_garment",
+      "subtype": "other",
+      "colour": "white",
+      "gender": "male",
+      "season": "all_season",
+      "occasion": "traditional"
+    }
+  },
+  "output": {
+    "status": "needs_review",
+    "card": {
+      "id": "TN_H_0011",
+      "name": "White traditional garment",
+      "slot": "onepiece",
+      "type": "Other",
+      "colour": [
+        "white"
+      ],
+      "usage": "Ethnic",
+      "warmth": 2,
+      "formality": 3,
+      "waterproof": false,
+      "open_toe": false,
+      "gender": "Men",
+      "image": "items/TN_H_0011_crop.png",
+      "image_crop": "items/TN_H_0011_crop.png",
+      "embedding": "emb/TN_H_0011.npy",
+      "season": "all",
+      "pattern": "plain",
+      "confidence": {
+        "slot": 0.9548544539390343,
+        "colour": 0.6285153608670841,
+        "type": 0.8593690085451309
+      },
+      "source": "obj1.llm",
+      "price_dt": null,
+      "traditional": true
+    },
+    "category": "traditional_garment",
+    "reasons": [
+      "traditional_subtype_from_neighbours:other",
+      "warmth_formality_placeholder",
+      "slot_mapping_unconfirmed:traditional_garment"
+    ],
+    "trace": [
+      "OUTIL knn_search        → traditional_garment (sûr à 98%)",
+      "OUTIL llm_analyze (v1)  → traditional_garment conf=0.90 | précision_ok=True | H=0.00 []",
+      "DÉCISION : LLM fiable → réponse directe"
+    ],
+    "debug": {
+      "source": "llm",
+      "H": 0.0,
+      "flags": [],
+      "llm_calls": 1,
+      "latency_s": 0.006712198257446289,
+      "pixel_colours": [
+        [
+          "grey",
+          0.8815133455464601
+        ],
+        [
+          "brown",
+          0.09149409827702154
+        ]
+      ],
+      "crop_quality": {
+        "ok": true,
+        "reasons": [],
+        "coverage": 0.329,
+        "size": [
+          512,
+          512
+        ]
+      },
+      "knn_dist": {
+        "traditional_garment": 0.9788612658157945,
+        "dress": 0.021138646639883518
+      },
+      "colour_raw": "white",
+      "confidence_calibrated": false
+    }
+  },
+  "pipeline": {
+    "fashionclip_finetuned": false,
+    "qwen_model": "Qwen/Qwen2.5-VL-7B-Instruct",
+    "fashionclip_model": "patrickjohncyh/fashion-clip"
+  }
+}

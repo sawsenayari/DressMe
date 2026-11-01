@@ -1,0 +1,28 @@
+{
+  "id": "TN_H_0006",
+  "name": "Orange traditional garment",
+  "slot": "onepiece",
+  "type": "Jebba",
+  "colour": [
+    "orange"
+  ],
+  "usage": "Casual",
+  "warmth": 2,
+  "formality": 3,
+  "waterproof": false,
+  "open_toe": false,
+  "gender": "Men",
+  "image": "items/TN_H_0006_crop.png",
+  "image_crop": "items/TN_H_0006_crop.png",
+  "embedding": "emb/TN_H_0006.npy",
+  "season": "all",
+  "pattern": "plain",
+  "confidence": {
+    "slot": 0.9946222073735363,
+    "colour": 0.6582016027363999,
+    "type": 0.8951599866361827
+  },
+  "source": "obj1.llm",
+  "price_dt": null,
+  "traditional": true
+}

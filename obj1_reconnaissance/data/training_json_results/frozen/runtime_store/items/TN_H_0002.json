@@ -1,0 +1,28 @@
+{
+  "id": "TN_H_0002",
+  "name": "White traditional garment",
+  "slot": "onepiece",
+  "type": "Jebba",
+  "colour": [
+    "white"
+  ],
+  "usage": "Ethnic",
+  "warmth": 2,
+  "formality": 3,
+  "waterproof": false,
+  "open_toe": false,
+  "gender": "Men",
+  "image": "items/TN_H_0002_crop.png",
+  "image_crop": "items/TN_H_0002_crop.png",
+  "embedding": "emb/TN_H_0002.npy",
+  "season": "all",
+  "pattern": "plain",
+  "confidence": {
+    "slot": 0.5270893805367411,
+    "colour": 0.6760742571291154,
+    "type": 0.500734911509904
+  },
+  "source": "obj1.llm",
+  "price_dt": null,
+  "traditional": true
+}

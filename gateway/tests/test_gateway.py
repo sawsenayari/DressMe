@@ -36,4 +36,28 @@ def test_routes(tmp_path, monkeypatch):
     gp = c.get("/gaps"); assert gp.status_code in (200, 503)
     if gp.status_code == 200:
         assert all(g["slot"] == g["category"] and g["slot"] in ("top", "bottom", "onepiece", "outer", "footwear", "bag", "accessory") for g in gp.json())
-    assert c.get("/outfits/today").status_code == 501 and c.post("/wardrobe/items", files={"image": ("x.jpg", b"x")}).status_code == 501
+    assert c.get("/outfits/today").status_code == 501
+    monkeypatch.setattr(g, "OBJ1", tmp_path / "absent")                              # Obj1 non lançable -> 501
+    r = c.post("/wardrobe/items", files={"image": ("x.jpg", b"x")}); assert r.status_code == 501 and "Objectif 1" in r.json()["detail"]
+
+
+def test_add_item_with_obj1_mock(tmp_path, monkeypatch):
+    """photo -> Obj1 (mock : fiche valide, embedding factice) -> fiche + .npy + images ajoutées au catalogue, puis /compat et /profile."""
+    import io
+    from PIL import Image
+    store = make_store(tmp_path)
+    monkeypatch.setenv("DRESSME_OBJ1_MODE", "mock")
+    monkeypatch.setenv("DRESSME_PROFILE_MODEL", str(store / "style_model.joblib"))
+    sys.path.insert(0, str(REPO / "gateway"))
+    import app as g
+    from fastapi.testclient import TestClient
+    monkeypatch.setattr(g, "STORE", store); monkeypatch.setattr(g, "_cache", {})
+    monkeypatch.setenv("DRESSME_CATALOG", str(store / "wardrobe.json")); monkeypatch.setenv("DRESSME_ASSETS_DIR", str(store))
+    c = TestClient(g.app); n0 = len(c.get("/wardrobe/items").json())
+    buf = io.BytesIO(); Image.new("RGB", (64, 64), (200, 30, 30)).save(buf, "JPEG")
+    r = c.post("/wardrobe/items", files={"image": ("veste.jpg", buf.getvalue(), "image/jpeg")}); assert r.status_code == 200, r.text
+    it = r.json(); assert it["id"].startswith("it_") and it["status"] == "ok" and it["imageUrl"].startswith("/files/items/")
+    card = next(x for x in json.load(open(store / "wardrobe.json", encoding="utf-8")) if x["id"] == it["id"])
+    assert card["embedding"] == f"emb/{it['id']}.npy" and np.load(store / card["embedding"]).shape == (512,)
+    assert (store / card["image"]).exists() and (store / card["image_crop"]).exists()
+    assert len(c.get("/wardrobe/items").json()) == n0 + 1 and c.get("/profile").status_code == 200
