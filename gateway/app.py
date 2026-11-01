@@ -502,7 +502,19 @@ def gaps():
 
 
 AXIS = {"efficacite": "efficiency", "economie": "economy", "image": "brand", "mixte": "mixte"}
-_prefs = {"axis": None, "budgetMode": False}
+AXIS_OBJ5 = {v: k for k, v in AXIS.items()}   # choix du front -> persona de l'Obj5
+
+
+def _prefs_path():
+    return STORE / "profile_prefs.json"
+
+
+def _load_prefs():
+    """Orientation choisie par l'utilisateur (None = celle calculée par l'Obj5), gardée à côté du catalogue."""
+    try:
+        return {"axis": json.loads(_prefs_path().read_text(encoding="utf-8")).get("axis")}
+    except Exception:
+        return {"axis": None}
 
 
 OBJ5_REF_MODEL = REPO / "obj5_profil" / "models" / "style_model.joblib"   # modèle de référence versionné (423 fiches, attributs)
@@ -539,25 +551,108 @@ def _obj5_profile(ids):
         raise HTTPException(503, "Votre profil de style n'est pas encore disponible.")
 
 
+def _profile_notes(p):
+    """Avertissements de l'Obj5 reformulés pour l'utilisateur (les détails techniques vont dans le journal)."""
+    notes, ignored = [], p["n_items"] - p["n_items_used"]
+    if ignored:
+        notes.append(f"{ignored} pièce(s) non prise(s) en compte (doublon ou catégorie incertaine).")
+    if p["scores"]["economie"] is None:
+        notes.append("Score Économie non calculable : indiquez le prix de vos pièces (Wardrobe → ✏️ Modifier).")
+    if p["n_items_used"] < 10:
+        notes.append(f"Seulement {p['n_items_used']} pièces analysées : profil encore peu stable.")
+    for w in p.get("warnings") or []:
+        if "homme et femme" in w:
+            notes.append("Votre garde-robe mélange des pièces homme et femme.")
+        elif "traditionnelles" in w:
+            notes.append("Beaucoup de pièces traditionnelles : profil à interpréter avec prudence.")
+        elif w not in _cache.setdefault("obj5_logged", set()):   # une seule fois par message
+            _cache["obj5_logged"].add(w); log(f"Obj5 : {w}")
+    return notes
+
+
 @app.get("/profile")
 def get_profile():
     ids = [c["id"] for c in catalog()]
+    if not ids:
+        raise HTTPException(422, "Ajoutez des pièces à votre garde-robe pour calculer votre profil de style.")
     p, model = _obj5_profile(ids)
     s = p["scores"]
     pct = lambda v: None if v is None else round(100 * v)
-    return {"axis": _prefs["axis"] or AXIS.get(p["persona"], "mixte"), "budgetMode": _prefs["budgetMode"],
+    dom = p.get("dominant_cluster") or {}
+    chosen = _load_prefs()["axis"]
+    return {"axis": chosen or AXIS.get(p["persona"], "mixte"), "axisChosen": chosen is not None,
+            "persona": AXIS.get(p["persona"], "mixte"),          # orientation calculée par l'Obj5
+            "budgetMode": False,
             "scores": {"efficacite": pct(s["efficacite"]), "economie": pct(s["economie"]), "image": pct(s["image"])},
-            "diversityScore": pct(p["diversity"]), "formalityPref": p["formality_pref"],
-            "dominantCluster": (p.get("dominant_cluster") or {}).get("name"),
+            "diversityScore": pct(p["diversity"]), "formalityPref": round(p["formality_pref"], 2),
+            "pricePercentile": pct(p.get("price_percentile")),
+            "dominantCluster": dom.get("name"), "dominantShare": pct(dom.get("share")),
             "palette": [{"color": e["colour"], "weight": e["weight"]} for e in p["palette"]],
+            "slotCounts": p.get("slot_counts") or {}, "nItems": p["n_items"], "nItemsUsed": p["n_items_used"],
+            "space": "photos" if p.get("embedding_space") == "fashionclip" else "attributs",
+            "notes": _profile_notes(p),
             "model": model}   # "garde-robe" (entraîné sur vos pièces) ou "référence" (moins de 18 pièces)
 
 
 @app.put("/profile")
 def put_profile(body: dict):
-    _prefs["axis"] = body.get("axis") or _prefs["axis"]
-    _prefs["budgetMode"] = bool(body.get("budgetMode", _prefs["budgetMode"]))
+    """Orientation prioritaire choisie par l'utilisateur ; « auto » (ou null) revient à celle calculée par l'Obj5."""
+    axis = body.get("axis")
+    if axis not in (None, "auto", *AXIS.values()):
+        raise HTTPException(422, "Orientation inconnue.")
+    _prefs_path().write_text(json.dumps({"axis": None if axis == "auto" else axis}), encoding="utf-8")
     return get_profile()
+
+
+OBJ5_REF_CATALOG = REPO / "obj5_profil" / "data" / "wardrobe.json"   # 423 fiches de référence (pièces à découvrir)
+
+
+@app.get("/profile/recommendations")
+def profile_recommendations(slot: Optional[str] = None, k: int = 8, gender: Optional[str] = None):
+    """Pièces du catalogue de référence qui prolongent votre style (Obj5 : proximité au centre de la garde-robe,
+    puis bonus selon l'orientation : neutre/basique pour Efficacité, prix pour Économie, style dominant pour Image)."""
+    from dressme_profile.clustering import StyleModel
+    from dressme_profile.profile import build_profile
+    from dressme_profile.recommend import recommend
+    from dressme_profile.service import load_items
+    if slot not in (None, "", *SLOTS):
+        raise HTTPException(422, "Catégorie inconnue.")
+    ids = {c["id"] for c in catalog()}
+    if not ids:
+        raise HTTPException(422, "Ajoutez des pièces à votre garde-robe pour obtenir des suggestions.")
+    try:
+        if "pref" not in _cache:
+            _cache["pref"] = StyleModel.load(OBJ5_REF_MODEL)
+        if "pref_cat" not in _cache:
+            _cache["pref_cat"] = load_items(OBJ5_REF_CATALOG)
+        model, ref = _cache["pref"], _cache["pref_cat"]
+        wardrobe = [i for i in load_items(STORE / "wardrobe.json") if i.id in ids]
+        prof = build_profile(wardrobe, model, "me", None)   # espace d'attributs : commun aux deux catalogues
+    except Exception as e:
+        log(f"Suggestions Obj5 indisponibles : {type(e).__name__}: {e}")
+        raise HTTPException(503, "Les suggestions de style ne sont pas disponibles pour le moment.")
+    chosen = _load_prefs()["axis"]
+    if chosen:
+        prof = prof.model_copy(update={"persona": AXIS_OBJ5[chosen]})
+    if gender not in ("Women", "Men"):   # par défaut : le genre le plus présent dans la garde-robe
+        g = [i.gender for i in wardrobe if i.gender in ("Women", "Men")]
+        gender = max(set(g), key=g.count) if g else None
+    owned = {(str(i.name).lower(), i.type, tuple(i.colour)) for i in wardrobe}
+    cands = [c for c in ref if c.id not in ids and (gender is None or c.gender in (gender, "Unisex"))
+             and (str(c.name).lower(), c.type, tuple(c.colour)) not in owned]
+    k = max(1, min(k, 20))
+    by_id = {c.id: c for c in cands}
+    recs, seen = [], set()
+    for r in recommend(prof, wardrobe, cands, model, 100, slot or None, None):   # une seule pièce par apparence
+        c = by_id[r.id]; sig = (str(c.name).lower(), c.type, tuple(c.colour))
+        if sig not in seen and len(recs) < k:
+            seen.add(sig); recs.append(r)
+    REASON = {"couleur neutre": "couleur neutre", "pièce basique": "pièce basique", "dans votre style dominant": "dans votre style dominant"}
+    return {"axis": AXIS.get(prof.persona, "mixte"), "gender": gender, "items": [
+        {"id": r.id, "name": by_id[r.id].name, "slot": by_id[r.id].slot, "type": by_id[r.id].type,
+         "colour": list(by_id[r.id].colour), "usage": by_id[r.id].usage, "formality": by_id[r.id].formality,
+         "match": round(100 * max(0.0, min(1.0, r.cosine))), "reasons": [REASON.get(x, x) for x in r.reasons]}
+        for r in recs]}
 
 
 # ---------------------------------------------------------------- objectif 6 : tenue du jour

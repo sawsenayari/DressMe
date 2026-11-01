@@ -128,6 +128,28 @@ export interface StyleProfile {
   dominantCluster?: string;
   palette?: { color: string; weight: number }[];
   model?: 'garde-robe' | 'référence'; // référence = moins de 18 pièces : modèle Obj5 pré-entraîné
+  axisChosen?: boolean; // false = orientation calculée par l'Obj5 (aucun choix enregistré)
+  persona?: StyleAxis; // orientation calculée par l'Obj5
+  dominantShare?: number | null; // part de la garde-robe dans le style dominant (0-100)
+  pricePercentile?: number | null; // 0-100, null = prix inconnus
+  slotCounts?: Partial<Record<Slot, number>>;
+  nItems?: number;
+  nItemsUsed?: number;
+  space?: 'photos' | 'attributs'; // photos = FashionCLIP, attributs = repli sur les champs des fiches
+  notes?: string[];
+}
+
+/** DSO5 : pièce du catalogue de référence qui prolonge votre style */
+export interface StyleSuggestion {
+  id: string;
+  name?: string;
+  slot: Slot;
+  type?: string;
+  colour: string[];
+  usage?: string;
+  formality?: number;
+  match: number; // proximité avec votre garde-robe (0-100)
+  reasons: string[];
 }
 
 /** DSO6 : écran « tenue du jour » complet (POST /outfits/recommend) */

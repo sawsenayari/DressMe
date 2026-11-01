@@ -17,7 +17,7 @@ branché, testé et poussé sur `main` (GitHub `sawsenayari/DressMe`, dépôt **
 | **Composer une tenue** (Outfit Studio) | `POST /outfits/judge` | jury Obj3 (règles + IA + photos en option) + Obj2 |
 | **Does it match ?** | `POST /compatibility/score` | Obj2 (FashionCLIP + PairMLP) |
 | **Pièces à ajouter** (Gaps) | `GET /gaps` | Obj4 (rapport statique `gap_report.json`) |
-| **Mon profil de style** | `GET/PUT /profile` | Obj5 |
+| **Mon profil de style** | `GET/PUT /profile`, `GET /profile/recommendations` | Obj5 (profil, orientation, pièces suggérées) |
 
 Ports : 8000 passerelle (seul backend du front), 8006 Obj6 (service HTTP lancé par `run_all.bat`), 5173 front (Vite).
 Les autres objectifs sont appelés **en interne** par la passerelle (pas de serveur à lancer).
@@ -73,7 +73,7 @@ Automatique (chaque dossier séparément, venv activé) :
 
 | Dossier | Commande (depuis ce dossier) | Attendu |
 |---|---|---|
-| `gateway` | `python -m pytest -q tests` | 12 réussis (≈ 7 min) |
+| `gateway` | `python -m pytest -q tests` | 13 réussis (≈ 8 min) |
 | `obj1_reconnaissance` | `python -m pytest -q` | 30 |
 | `obj2_compat` | `python -m pytest -q tests` puis `python recette.py` | 13 + recette PASS |
 | `obj3_jury` | `python -m pytest -q` | 11 |
@@ -90,7 +90,8 @@ ni dans le modèle Obj5, ni dans le cache Obj1.
 « Orchestration » (durée des étapes), puis 👍 / 🔀 / 👎 sur une tenue ; **Wardrobe** → « Ajouter une pièce » (formulaire pré-rempli puis modifiable), recherche, filtres,
 ✏️ Modifier, 🗑️ Supprimer ; **Composer une tenue** → choisir haut / bas / chaussures, changer contexte et température ;
 **Does it match ?** → `frontend\public\images\cream-trousers.jpg`, puis une photo déjà dans la garde-robe (doublon) ;
-**Pièces à ajouter** ; **Mon profil de style**. Aucune erreur 500 ne doit apparaître (F12 → Console / Réseau).
+**Pièces à ajouter** ; **Mon profil de style** → choisir une orientation (les suggestions changent), filtrer
+les suggestions par catégorie et Femme / Homme, « Revenir à l'orientation calculée ». Aucune erreur 500 ne doit apparaître (F12 → Console / Réseau).
 
 ## 5. Ce qui a été fait (principaux commits, du plus récent au plus ancien)
 
