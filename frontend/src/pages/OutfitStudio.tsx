@@ -88,18 +88,19 @@ function Studio({ live }: { live: boolean }) {
     }, 400);
   };
 
-  const handleSelectItemForSlot = (item: ClothingItem) => {
-    const withoutSlot = selectedItems.filter(i => {
-      if (item.slot === 'onepiece') {
-        return i.slot !== 'top' && i.slot !== 'bottom' && i.slot !== 'onepiece';
-      }
-      if (item.slot === 'top' || item.slot === 'bottom') {
-        return i.slot !== item.slot && i.slot !== 'onepiece';
-      }
+  // Une pièce par emplacement : une robe remplace haut + bas, un haut ou un bas remplace la robe
+  const withItem = (list: ClothingItem[], item: ClothingItem) => [
+    ...list.filter(i => {
+      if (i.id === item.id) return false;
+      if (item.slot === 'onepiece') return i.slot !== 'top' && i.slot !== 'bottom' && i.slot !== 'onepiece';
+      if (item.slot === 'top' || item.slot === 'bottom') return i.slot !== item.slot && i.slot !== 'onepiece';
       return i.slot !== item.slot;
-    });
+    }),
+    item,
+  ];
 
-    const updated = [...withoutSlot, item];
+  const handleSelectItemForSlot = (item: ClothingItem) => {
+    const updated = withItem(selectedItems, item);
     setSelectedItems(updated);
     setActiveSlotModal(null);
     runJuryEvaluation(updated);
@@ -112,10 +113,10 @@ function Studio({ live }: { live: boolean }) {
   };
 
   // Le réparateur de l'Obj3 remplace, ajoute (pas de pièce visée) ou retire (pas de remplaçant)
+  // (la pièce ajoutée prend la place de celle du même emplacement : jamais deux paires de chaussures)
   const handleApplyRepair = (problemId: string | null, replacement?: ClothingItem) => {
-    const updated = problemId === null
-      ? [...selectedItems, ...(replacement ? [replacement] : [])]
-      : selectedItems.flatMap(i => (i.id !== problemId ? [i] : replacement ? [replacement] : []));
+    const base = problemId === null ? selectedItems : selectedItems.filter(i => i.id !== problemId);
+    const updated = replacement ? withItem(base, replacement) : base;
     setSelectedItems(updated);
     runJuryEvaluation(updated);
   };
@@ -316,13 +317,9 @@ function Studio({ live }: { live: boolean }) {
                       background: '#FFFFFF',
                     }}
                   >
-                    Verdict: {juryResult.verdict.toUpperCase()}
+                    Verdict : {({ convient: 'convient', a_ameliorer: 'à améliorer', deconseille: 'déconseillé' } as const)[juryResult.verdict]}
                   </span>
 
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
-                    <span style={{ fontSize: '2rem', fontWeight: 800 }}>{juryResult.score}</span>
-                    <span style={{ fontSize: '0.9rem', color: 'var(--muted)' }}>/100</span>
-                  </div>
                 </div>
 
                 <h3 style={{ fontSize: '1.25rem', marginBottom: '8px' }}>
@@ -417,13 +414,13 @@ function Studio({ live }: { live: boolean }) {
                   </div>
 
                   <p style={{ fontSize: '0.88rem', color: 'var(--ink)', marginBottom: '14px' }}>
-                    Le modèle propose des corrections à partir de votre garde-robe pour hausser la note :
+                    Corrections proposées par l'Objectif 3 à partir de votre garde-robe :
                   </p>
 
                   {juryResult.repairs.map((rep, idx) => (
                     <div key={idx} style={{ background: '#FFFFFF', padding: '14px', borderRadius: '16px', marginBottom: '10px' }}>
-                      <p style={{ fontSize: '0.85rem', color: 'var(--danger)', fontWeight: 600, margin: '0 0 8px' }}>
-                        ⚠️ {rep.reason}
+                      <p style={{ fontSize: '0.85rem', color: 'var(--ink)', fontWeight: 600, margin: '0 0 8px' }}>
+                        🔧 {rep.reason}
                       </p>
 
                       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>

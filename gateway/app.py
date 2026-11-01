@@ -720,7 +720,6 @@ def outfit_feedback(body: FeedbackIn):
 JURY_VERDICT = {0: "deconseille", 1: "a_ameliorer", 2: "convient"}   # niveau Obj3 -> JuryVerdict du front
 JURY_STATUS = {0: "fail", 1: "warn", 2: "pass"}
 JURY_BANDS = {0: (0, 39), 1: (40, 69), 2: (70, 100)}   # mêmes seuils que /compat : déconseillé < 40 <= à améliorer < 70 <= convient
-JUDGE_NAMES = {"regles": "règles", "llm": "LLM", "hybride": "hybride"}
 
 
 def jury_score(niveau, crit):
@@ -749,9 +748,37 @@ def jury_compat(cards):
     return {"score01": c01, "message": "Moyenne des paires de la tenue (Obj2 /pairs, centile parmi 300 références)."}
 
 
-def jury_repair(r, by_id):
-    return {"problemItemId": r["retirer"], "reason": r["explication"],
-            "suggestedReplacements": [to_front_item(by_id[r["ajouter"]])] if r["ajouter"] else []}
+CRIT_FR = {"couleurs": "Couleurs", "formalite": "Formalité", "meteo": "Météo", "coherence": "Cohérence"}
+SLOT_FR = {"top": "un haut", "bottom": "un bas", "onepiece": "une robe", "outer": "une veste", "footwear": "des chaussures",
+           "bag": "un sac", "accessory": "un accessoire"}
+
+
+def jury_repairs(reps, by_id):
+    """Réparations de l'Obj3 regroupées : une entrée par pièce à remplacer / retirer et par emplacement à compléter,
+    remplaçants dédoublonnés (deux pièces identiques de la garde-robe ne sont proposées qu'une fois), textes en français."""
+    name = lambda i: by_id[i].get("name") or by_id[i].get("type") or i
+    look = lambda i: (str(by_id[i].get("name")).lower(), tuple(by_id[i].get("colour") or []), by_id[i].get("type"))
+    groups = {}
+    for r in reps:
+        rid, add = r.get("retirer"), r.get("ajouter")
+        if rid is not None and rid not in by_id or add is not None and add not in by_id:
+            continue
+        target = r.get("explication", "").rsplit("→", 1)[-1].strip(" .") or "convient"
+        key = (rid, by_id[add]["slot"] if rid is None else None)
+        g = groups.setdefault(key, {"rid": rid, "slot": key[1], "adds": [], "looks": set(), "target": target})
+        if add is not None and look(add) not in g["looks"]:
+            g["looks"].add(look(add)); g["adds"].append(add)
+    out = []
+    for g in groups.values():
+        if g["rid"] is None:
+            reason = f"Ajouter {SLOT_FR.get(g['slot'], 'une pièce')}"
+        elif g["adds"]:
+            reason = f"Remplacer « {name(g['rid'])} »"
+        else:
+            reason = f"Retirer « {name(g['rid'])} »"
+        out.append({"problemItemId": g["rid"], "reason": f"{reason} → la tenue {g['target']}.",
+                    "suggestedReplacements": [to_front_item(by_id[a]) for a in g["adds"]]})
+    return out
 
 
 @app.post("/outfits/judge")
@@ -782,17 +809,21 @@ def outfit_judge(body: JudgeRequest):
                                   if os.environ.get("DRESSME_JURY_LLM") != "1" else "Aucune clé GEMINI_API_KEY / LLM_API_KEY.")
         llm = {"verdict": NON_DISPONIBLE, "critique": f"Juge LLM {NON_DISPONIBLE} : {why}"}
     reserves = [k for k, v in crit.items() if v["niveau"] < 2]
-    ok = len(crit) - len(reserves)
     label = j["verdict"].capitalize() + (", avec réserves" if niveau == 2 and reserves else "")
-    votes_txt = ", ".join(f"{JUDGE_NAMES.get(k, k)} : {v}" for k, v in votes.items())
-    if reserves:
-        why = "Réserves : " + " · ".join(f"{k} : {crit[k]['raison']}" for k in reserves)
+    # Description minimaliste : seules les raisons du juge règles (calculées sur les fiches) sont citées ;
+    # un point relevé uniquement par le LLM est signalé sans recopier son texte, qui peut être inexact.
+    rules_why = {}
+    for r in par_juge.get("regles", []):
+        k, sep, txt = r.partition(" : ")
+        if sep and k in crit:
+            rules_why[k] = txt.strip().rstrip(".")
+    if not reserves:
+        why = "Rien à revoir : couleurs, formalité, météo et cohérence conviennent."
     else:
-        why = "Les 4 critères (couleurs, formalité, météo, cohérence) sont satisfaits."
-    how = (f"Votes ({votes_txt}) -> verdict retenu à la majorité : {j['verdict']}." if complet
-           else f"Verdict du juge règles : {j['verdict']}.")
+        why = "À revoir : " + " · ".join(
+            f"{CRIT_FR[k]} ({rules_why[k]})" if k in rules_why else f"{CRIT_FR[k]} (relevé par le juge LLM)" for k in reserves) + "."
     return {"score": jury_score(niveau, crit), "verdict": JURY_VERDICT[niveau], "verdictLabel": label,
-            "rationale": f"{why} {how} Note : {ok}/4 critères satisfaits dans la tranche « {j['verdict']} ».",
+            "rationale": why,
             "mode": "complet" if complet else "regles", "notes": notes,
             "judges": {
                 "rules": {"status": JURY_STATUS[rules_lvl],
@@ -805,4 +836,4 @@ def outfit_judge(body: JudgeRequest):
                             "occasionLevel": crit["formalite"]["niveau"],
                             "message": f"{crit['meteo']['raison']} · {crit['formalite']['raison']}"},
                 "compatibility": jury_compat([by_id[i] for i in ids])},
-            "repairs": [jury_repair(r, by_id) for r in j["reparations"]]}
+            "repairs": jury_repairs(j["reparations"], by_id)}

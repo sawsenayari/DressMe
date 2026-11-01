@@ -110,7 +110,7 @@ def test_outfit_judge_obj3_obj2(tmp_path, monkeypatch):
     assert r.status_code == 200, r.text
     o = r.json(); n = {"convient": 2, "a_ameliorer": 1, "deconseille": 0}[o["verdict"]]
     lo, hi = {2: (70, 100), 1: (40, 69), 0: (0, 39)}[n]                         # tranche du verdict, nuancée par les critères
-    assert lo <= o["score"] <= hi and o["verdictLabel"] and "critères satisfaits" in o["rationale"]
+    assert lo <= o["score"] <= hi and o["verdictLabel"] and ("À revoir" in o["rationale"] or "Rien à revoir" in o["rationale"]) and "/4" not in o["rationale"]
     assert o["judges"]["context"]["weatherLevel"] in (0, 1, 2) and o["judges"]["context"]["occasionLevel"] in (0, 1, 2)
     js = o["judges"]
     assert js["rules"]["status"] in ("pass", "warn", "fail") and js["rules"]["message"]
