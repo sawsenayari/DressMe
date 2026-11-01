@@ -540,8 +540,19 @@ def _obj5_core(ids):
 
 def _obj5_profile(ids):
     from collections import Counter
-    _, items, prof = _obj5_core(ids)
+    from dressme_profile.clustering import _name_cluster
+    from dressme_profile.features import stack
+    model, items, prof = _obj5_core(ids)
     p = prof.model_dump()
+    # Style dominant : le nom de l'Obj5 décrit le groupe du catalogue de référence (sa couleur n'est pas forcément la
+    # vôtre) -> renommé avec la même règle à partir de VOS pièces rangées dans ce style, et ces pièces sont renvoyées.
+    vecs = model.vectorize(items, None)
+    vid = [i.id for i in items if i.id in vecs]
+    by = {i.id: i for i in items}
+    members = [by[i] for i, lab in zip(vid, model.assign(stack(vecs, vid))) if int(lab) == prof.dominant_cluster.id] if vid else []
+    if members:
+        p["dominant_cluster"]["name"] = _name_cluster(members)
+    p["dominant_pieces"] = [{"id": m.id, "name": m.name} for m in members]
     # Palette : chaque pièce compte pour 1, partagée entre ses couleurs (l'Obj5 pondère par la confiance de l'Obj1 sur
     # la couleur, ce qui faisait passer une couleur fréquente mais incertaine derrière une couleur rare).
     share, pieces = Counter(), Counter()
@@ -586,6 +597,7 @@ def get_profile():
             "diversityScore": pct(p["diversity"]), "formalityPref": round(p["formality_pref"], 2),
             "pricePercentile": pct(p.get("price_percentile")),
             "dominantCluster": dom.get("name"), "dominantShare": pct(dom.get("share")),
+            "dominantPieces": p.get("dominant_pieces") or [],
             "palette": [{"color": e["colour"], "weight": e["weight"], "pieces": e["pieces"]} for e in p["palette"]],
             "slotCounts": p.get("slot_counts") or {}, "nItems": p["n_items"], "nItemsUsed": p["n_items_used"],
             "space": "photos" if p.get("embedding_space") == "fashionclip" else "attributs",

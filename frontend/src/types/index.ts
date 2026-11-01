@@ -129,6 +129,7 @@ export interface StyleProfile {
   palette?: { color: string; weight: number; pieces?: number }[]; // pieces = nombre de pièces de cette couleur
   model?: 'garde-robe' | 'référence'; // référence = taxonomie de styles apprise sur le catalogue de l'Obj5
   nStyles?: number; // nombre de styles de cette taxonomie
+  dominantPieces?: { id: string; name?: string }[]; // vos pièces rangées dans le style dominant
   persona?: StyleAxis; // orientation calculée par l'Obj5
   dominantShare?: number | null; // part de la garde-robe dans le style dominant (0-100)
   pricePercentile?: number | null; // 0-100, null = prix inconnus

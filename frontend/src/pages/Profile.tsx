@@ -30,6 +30,32 @@ const styleLabel = (c?: string) => {
   return words.join(' · ').replace(/^./, x => x.toUpperCase());
 };
 
+// Bilan en phrases simples, tiré des résultats de l'Obj5
+const PERSONA_TEXT: Record<string, string> = {
+  efficiency: "beaucoup de couleurs neutres et de pièces basiques : des tenues faciles et rapides à composer",
+  economy: 'des pièces plutôt abordables par rapport au catalogue',
+  brand: 'un style marqué et cohérent, avec des pièces habillées ou des couleurs fortes',
+  mixte: "un équilibre entre pièces pratiques et pièces qui affirment votre style",
+};
+function verdict(p: StyleProfile): string[] {
+  const out: string[] = [];
+  const slots = Object.entries(p.slotCounts ?? {}).sort((a, b) => (b[1] ?? 0) - (a[1] ?? 0));
+  if (p.nItems != null && slots.length)
+    out.push(`Votre garde-robe compte ${p.nItems} pièces, surtout des ${STYLE_WORDS[slots[0][0]] ?? slots[0][0]} (${slots[0][1]}).`);
+  const cols = (p.palette ?? []).slice(0, 2).map(c => colourLabel(c.color).toLowerCase());
+  if (cols.length) out.push(`Vos couleurs les plus présentes : ${cols.join(' et ')}.`);
+  if (p.diversityScore != null) {
+    const v = p.diversityScore >= 70 ? 'variée' : p.diversityScore >= 40 ? 'assez variée' : 'peu variée';
+    const f = p.formalityPref == null ? '' : `, de style plutôt ${FORMALITY[Math.round(p.formalityPref)].toLowerCase()}`;
+    out.push(`Elle est ${v} (${p.diversityScore} %)${f}.`);
+  }
+  const axis = p.persona ?? p.axis;
+  out.push(`Orientation ${AXIS_TITLE[axis]} : ${PERSONA_TEXT[axis]}.`);
+  const missing = (['top', 'bottom', 'footwear'] as Slot[]).filter(s => p.slotCounts && !p.slotCounts[s]);
+  if (p.slotCounts && missing.length) out.push(`À compléter : ${missing.map(s => STYLE_WORDS[s]).join(', ')}.`);
+  return out;
+}
+
 const bar = (value: number, color: string) => (
   <div style={{ width: '100%', height: '8px', background: '#FFFFFF', borderRadius: '999px', margin: '10px 0 8px', overflow: 'hidden' }}>
     <div style={{ width: `${Math.max(0, Math.min(100, value))}%`, height: '100%', background: color, borderRadius: '999px' }} />
@@ -87,6 +113,16 @@ export default function Profile() {
 
       {(live ? state.data : true) && (
         <>
+          {/* Bilan */}
+          {live && (
+            <section className="card card-lavender" aria-label="Bilan de votre garde-robe" style={{ marginBottom: '20px', padding: '18px 22px' }}>
+              <h3 style={{ fontSize: '1.1rem', marginBottom: '8px' }}>🧾 Bilan de votre garde-robe</h3>
+              <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '0.92rem', lineHeight: 1.7 }}>
+                {verdict(profile).map(t => <li key={t}>{t}</li>)}
+              </ul>
+            </section>
+          )}
+
           {/* Notes de l'analyse */}
           {live && !!profile.notes?.length && (
             <div role="status" className="card card-butter" style={{ marginBottom: '20px', padding: '12px 18px' }}>
@@ -98,10 +134,15 @@ export default function Profile() {
 
           {/* Résumé */}
           <section className="card" style={{ marginBottom: '28px', background: 'linear-gradient(135deg, #FFFFFF 0%, var(--pastel-pink-subtle) 100%)', padding: '22px' }}>
-            <p style={{ color: 'var(--muted)', fontSize: '0.9rem', margin: 0 }}>Votre style dominant</p>
+            <p style={{ color: 'var(--muted)', fontSize: '0.9rem', margin: 0 }}>Votre style le plus représenté</p>
             <h2 style={{ fontSize: '1.4rem', margin: '4px 0 2px' }}>{styleLabel(profile.dominantCluster) || 'à découvrir'}</h2>
             {profile.dominantShare != null && (
               <p style={{ color: 'var(--muted)', fontSize: '0.85rem', margin: 0 }}>{profile.dominantShare} % de vos pièces sont dans ce style</p>
+            )}
+            {!!profile.dominantPieces?.length && (
+              <div className="chips" aria-label="Pièces de ce style" style={{ marginTop: '8px', marginBottom: 0 }}>
+                {profile.dominantPieces.map(d => <span key={d.id} className="chip-tag chip-tag-lavender">{d.name || d.id}</span>)}
+              </div>
             )}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px', marginTop: '16px' }}>
               {[
@@ -128,7 +169,7 @@ export default function Profile() {
           <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', marginBottom: '28px' }}>
             <div className="card" style={{ background: '#FFFFFF' }}>
               <h3 style={h3}>🎨 Votre palette</h3>
-              <p style={sub}>Couleurs les plus présentes dans vos pièces.</p>
+              <p style={sub}>Couleurs les plus présentes sur l'ensemble de vos pièces (tous styles confondus).</p>
               {profile.palette?.length ? (
                 <div style={{ display: 'grid', gap: '8px' }}>
                   {profile.palette.map(p => (

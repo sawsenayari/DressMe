@@ -37,6 +37,7 @@ def test_routes(tmp_path, monkeypatch):
     pal = p["palette"]; assert [x["weight"] for x in pal] == sorted((x["weight"] for x in pal), reverse=True)
     cat = c.get("/wardrobe/items").json()
     assert pal[0]["pieces"] == sum(pal[0]["color"] in (i.get("colour") or []) for i in cat)
+    assert p["dominantPieces"] and {d["id"] for d in p["dominantPieces"]} <= {i["id"] for i in cat}   # style dominant = vos pièces
     assert {"slotCounts", "nItems", "nItemsUsed", "notes", "dominantShare", "space"} <= set(p)
     gp = c.get("/gaps"); assert gp.status_code in (200, 503)
     if gp.status_code == 200:
