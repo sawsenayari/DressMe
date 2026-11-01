@@ -169,13 +169,24 @@ async def compat_score(image: UploadFile = File(...), category: Optional[str] = 
     return compat_for(vec, category or guessed, W)
 
 
+FRONT_SLOT = {  # slots / catégories Polyvore de l'Obj4 -> Slot du front
+    "top": "top", "tops": "top", "bottom": "bottom", "bottoms": "bottom", "onepiece": "onepiece", "all-body": "onepiece",
+    "outer": "outer", "outerwear": "outer", "footwear": "footwear", "shoes": "footwear", "bag": "bag", "bags": "bag",
+    "accessory": "accessory", "accessories": "accessory", "hats": "accessory", "jewellery": "accessory",
+    "scarves": "accessory", "sunglasses": "accessory",
+}
+
+
 @app.get("/gaps")
 def gaps():
     if not GAPS.exists():
         raise HTTPException(503, f"rapport de manques introuvable : {GAPS}")
     d = json.load(open(GAPS, encoding="utf-8"))
-    for i, g in enumerate(d if isinstance(d, list) else []):
+    d = d if isinstance(d, list) else d.get("gaps", [])
+    for i, g in enumerate(d):
         g.setdefault("rank", i + 1)
+        s = FRONT_SLOT.get(str(g.get("slot") or g.get("category") or "").lower(), "accessory")
+        g["slot"] = g["category"] = s
     return d
 
 

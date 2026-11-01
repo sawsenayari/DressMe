@@ -20,6 +20,7 @@ def make_store(tmp):
 def test_routes(tmp_path, monkeypatch):
     store = make_store(tmp_path)
     monkeypatch.setenv("DRESSME_STORE", str(store)); monkeypatch.setenv("DRESSME_CATALOG", str(store / "wardrobe.json"))
+    monkeypatch.setenv("DRESSME_PROFILE_MODEL", str(store / "style_model.joblib"))   # ne pas écraser le modèle versionné de l'Obj5
     sys.path.insert(0, str(REPO / "gateway"))
     import app as g
     from fastapi.testclient import TestClient
@@ -32,5 +33,7 @@ def test_routes(tmp_path, monkeypatch):
     j = r.json(); assert 0 <= j["score"] <= 100 and j["verdict"] in ("compatible", "moyenne", "peu compatible") and "duplicate" in j
     p = c.get("/profile").json(); assert p["axis"] in ("efficiency", "economy", "brand", "mixte") and p["palette"]
     assert c.put("/profile", json={"axis": "economy", "budgetMode": True}).json()["budgetMode"] is True
-    assert c.get("/gaps").status_code in (200, 503)
+    gp = c.get("/gaps"); assert gp.status_code in (200, 503)
+    if gp.status_code == 200:
+        assert all(g["slot"] == g["category"] and g["slot"] in ("top", "bottom", "onepiece", "outer", "footwear", "bag", "accessory") for g in gp.json())
     assert c.get("/outfits/today").status_code == 501 and c.post("/wardrobe/items", files={"image": ("x.jpg", b"x")}).status_code == 501
