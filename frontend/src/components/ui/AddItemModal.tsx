@@ -45,8 +45,8 @@ export function AddItemModal({ isOpen, onClose, onAdd, busy }: Props) {
 
         <h2 style={{ marginBottom: '6px' }}>Ajouter une pièce</h2>
         <p style={{ color: 'var(--muted)', fontSize: '0.88rem', marginBottom: '18px' }}>
-          L'Objectif 1 découpe la photo et détecte les caractéristiques. Laissez « Auto » ou renseignez ce que vous connaissez :
-          vos choix remplacent la détection.
+          Nous reconnaissons le vêtement sur la photo. Laissez « Auto » ou indiquez ce que vous savez déjà :
+          vos choix sont prioritaires.
         </p>
 
         {error && (

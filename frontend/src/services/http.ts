@@ -1,11 +1,21 @@
 const BASE = import.meta.env.VITE_API_URL ? String(import.meta.env.VITE_API_URL) : '/api';
 
+/** Erreur d'appel au serveur : `message` est lisible par l'utilisateur, `status` sert au code. */
+export class ApiError extends Error {
+  constructor(message: string, public status: number) { super(message); }
+}
+
 export async function http<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(BASE + path, init);
+  let res: Response;
+  try {
+    res = await fetch(BASE + path, init);
+  } catch {
+    throw new ApiError('Le serveur ne répond pas. Vérifiez qu\'il est bien lancé, puis réessayez.', 0);
+  }
   if (!res.ok) {
-    // FastAPI renvoie {"detail": "..."} : on le remonte pour l'afficher (501 = objectif pas encore branché).
+    // FastAPI renvoie {"detail": "..."} : messages déjà rédigés pour l'utilisateur par la passerelle
     const detail = await res.json().then(j => (typeof j?.detail === 'string' ? j.detail : ''), () => '');
-    throw new Error(detail ? `${res.status} — ${detail}` : `${res.status} ${path}`);
+    throw new ApiError(detail || 'Une erreur est survenue. Réessayez dans un instant.', res.status);
   }
   return res.json() as Promise<T>;
 }

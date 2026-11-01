@@ -152,16 +152,16 @@ export function AppShell() {
             {/* Live weather badge */}
             <div className="topbar-pill" title="Current weather for outfit styling">
               <span className="pill-dot"></span>
-              <span>Tunis <strong>· météo</strong> (Objectif 6)</span>
+              <span>Tunis <strong>· météo du jour</strong></span>
             </div>
 
             {/* Demo / Live Backend Toggle */}
             <button
               className={`demo-toggle-btn ${useDemoData ? 'active' : 'inactive'}`}
               onClick={() => setUseDemoData(!useDemoData)}
-              title={useDemoData ? 'Using rich sample wardrobe. Click to connect to backend endpoints.' : 'Connected to live model API (/api). Click to switch to sample wardrobe.'}
+              title={useDemoData ? 'Exemples de démonstration. Cliquez pour afficher votre garde-robe.' : 'Votre garde-robe. Cliquez pour voir les exemples de démonstration.'}
             >
-              <span>{useDemoData ? '✨ Sample Wardrobe: ON' : '⚡ Live Model API'}</span>
+              <span>{useDemoData ? '✨ Mode démo' : '👗 Ma garde-robe'}</span>
             </button>
 
             {/* Notification bell button */}

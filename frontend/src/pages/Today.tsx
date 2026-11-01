@@ -9,6 +9,7 @@ import { MannequinView } from '../components/ui/MannequinView';
 import { useApp } from '../context/AppContext';
 
 const OCCASIONS: Occasion[] = ['work', 'casual', 'evening'];
+const AXIS_FR: Record<string, string> = { efficiency: 'Efficacité', economy: 'Économie', brand: 'Image', mixte: 'Équilibre' };
 
 // Agenda du jour : texte transmis à l'Obj6 (qui le lit avec son agent) + occasion correspondante pour les puces
 const AGENDAS: { label: string; text: string; occasion: Occasion }[] = [
@@ -55,7 +56,7 @@ export default function Today() {
     setBusy(true);
     try {
       const r = await sendOutfitFeedback(apiState.data.items.map(i => i.id), true, apiState.data.features);
-      flash('accepted', `Enregistré par l'Objectif 6 (${r.accepted} tenue(s) validée(s) au total).`);
+      flash('accepted', `C'est noté ! Vos prochaines suggestions en tiendront compte (${r.accepted} tenue(s) validée(s)).`);
     } catch (e) {
       flash('rejected', `Avis non enregistré : ${e instanceof Error ? e.message : e}`);
     } finally { setBusy(false); }
@@ -77,7 +78,7 @@ export default function Today() {
               Bonjour, Camille <span style={{ fontSize: '1.8rem' }}>✨</span>
             </h1>
             <p className="page-subtitle">
-              Recommandation contextuelle basée sur 24 variables : météo, agenda, et profil de style.
+              Une tenue choisie pour vous selon la météo, votre journée et votre style.
             </p>
           </div>
 
@@ -145,7 +146,7 @@ export default function Today() {
             ))}
           </select>
           <span className="chip-tag chip-tag-mint" style={{ fontSize: '0.74rem' }}>
-            Objectif 6 Actif
+            Suggestion du jour
           </span>
         </div>
 
@@ -166,10 +167,10 @@ export default function Today() {
               <span style={{ fontSize: '18px' }}>👗</span>
             </div>
             <div style={{ fontSize: '1.5rem', fontWeight: 800, marginTop: '8px', color: 'var(--ink)' }}>
-              {occasion.toUpperCase()}
+              {({ work: 'Travail', casual: 'Décontracté', evening: 'Soirée' } as const)[occasion]}
             </div>
             <div style={{ fontSize: '0.82rem', color: 'var(--muted)', marginTop: '2px' }}>
-              {budget ? '🌿 Budget mode actif' : 'Rotation standard'}
+              {budget ? '🌿 Mode budget activé' : 'Sans contrainte de budget'}
             </div>
           </div>
 
@@ -184,22 +185,22 @@ export default function Today() {
               {activeOutfit?.compat01 != null ? `${Math.round(activeOutfit.compat01 * 100)} / 100` : '—'}
             </div>
             <div style={{ fontSize: '0.82rem', color: 'var(--muted)', marginTop: '2px' }}>
-              {activeOutfit?.compat01 != null ? 'Score /pairs (Objectif 2)' : 'Non calculée (embeddings manquants)'}
+              {activeOutfit?.compat01 != null ? 'Accord entre les pièces' : 'Pas encore calculable'}
             </div>
           </div>
 
           <div className="card card-butter" style={{ padding: '18px 20px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--pastel-butter-deep)', textTransform: 'uppercase' }}>
-                Stratégie de Style
+                Votre priorité
               </span>
               <span style={{ fontSize: '18px' }}>⚡</span>
             </div>
             <div style={{ fontSize: '1.5rem', fontWeight: 800, marginTop: '8px', color: 'var(--ink)', textTransform: 'capitalize' }}>
-              {profile.axis}
+              {AXIS_FR[profile.axis] || profile.axis}
             </div>
             <div style={{ fontSize: '0.82rem', color: 'var(--muted)', marginTop: '2px' }}>
-              {profile.scores?.efficacite ?? '—'}% d'efficacité matin
+              Votre priorité pour les tenues
             </div>
           </div>
 
@@ -230,7 +231,7 @@ export default function Today() {
               aria-pressed={o === occasion}
               onClick={() => changeOccasion(o)}
             >
-              {o === 'work' ? '💼 Travail' : o === 'casual' ? '☕ Casual Chic' : '🌙 Soirée'}
+              {o === 'work' ? '💼 Travail' : o === 'casual' ? '☕ Décontracté' : '🌙 Soirée'}
             </button>
           ))}
           <button
@@ -239,7 +240,7 @@ export default function Today() {
             onClick={() => setBudget(b => !b)}
             title="Priorise les basiques déjà bien rentabilisés"
           >
-            🌿 Budget Mode {budget ? 'ON' : 'OFF'}
+            🌿 Mode budget : {budget ? 'oui' : 'non'}
           </button>
         </div>
 
@@ -258,7 +259,7 @@ export default function Today() {
             }}
             onClick={() => setDisplayMode('grid')}
           >
-            Grille Lookbook
+            Vue en grille
           </button>
           <button
             className="chip"
@@ -273,7 +274,7 @@ export default function Today() {
             }}
             onClick={() => setDisplayMode('mannequin')}
           >
-            🪞 Silhouette Mannequin
+            🪞 Vue silhouette
           </button>
         </div>
       </section>
@@ -332,9 +333,9 @@ export default function Today() {
               <div className="card" style={{ background: '#FFFFFF' }}>
                 <h4 style={{ fontSize: '1rem', marginBottom: '10px' }}>Facteurs de Décision Algorithmique</h4>
                 <ul style={{ paddingLeft: '20px', margin: 0, fontSize: '0.88rem', color: 'var(--muted)', lineHeight: '1.6' }}>
-                  <li>Paires validées à 92% de compatibilité par le réseau de neurones PairMLP.</li>
+                  <li>Pièces choisies pour bien s'accorder entre elles.</li>
                   <li>Indice thermique adapté pour une journée à 21°C.</li>
-                  <li>Adhérence au persona de style : <strong>{profile.axis}</strong>.</li>
+                  <li>Adaptée à votre priorité : <strong>{AXIS_FR[profile.axis] || profile.axis}</strong>.</li>
                 </ul>
               </div>
             </aside>
@@ -376,7 +377,7 @@ export default function Today() {
                 </div>
                 {!!outfit.warnings?.length && (
                   <div className="card" style={{ background: '#FFFFFF' }}>
-                    <h4 style={{ fontSize: '1rem', marginBottom: '10px' }}>Points d'attention (Obj3 / Obj6)</h4>
+                    <h4 style={{ fontSize: '1rem', marginBottom: '10px' }}>Points d'attention</h4>
                     <ul style={{ paddingLeft: '20px', margin: 0, fontSize: '0.88rem', color: 'var(--muted)', lineHeight: '1.6' }}>
                       {outfit.warnings.map(w => <li key={w}>{w}</li>)}
                     </ul>

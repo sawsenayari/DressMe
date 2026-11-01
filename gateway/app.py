@@ -83,7 +83,8 @@ def catalog():
     if "c" not in _cache:
         p = STORE / "wardrobe.json"
         if not p.exists():
-            raise HTTPException(503, f"catalogue introuvable : {p} (variable DRESSME_STORE)")
+            log(f"catalogue introuvable : {p} (variable DRESSME_STORE)")
+            raise HTTPException(503, "La garde-robe est introuvable sur le serveur.")
         d = json.load(open(p, encoding="utf-8"))
         _cache["c"] = d if isinstance(d, list) else d.get("items", [])
     return _cache["c"]
@@ -158,6 +159,26 @@ def to_front_item(c):
 
 
 VERDICT = {"compatible": "compatible", "moyenne": "moyenne", "peu compatible": "peu compatible"}
+CAT_USER = {"tops": "un haut", "bottoms": "un bas", "all-body": "une robe", "outerwear": "une veste", "shoes": "des chaussures",
+            "bags": "un sac", "accessories": "un accessoire", "hats": "un chapeau", "jewellery": "un bijou", "scarves": "une écharpe",
+            "sunglasses": "des lunettes de soleil"}
+CRIT_USER = {"couleurs": "Couleurs", "formalite": "Style", "meteo": "Météo", "coherence": "Ensemble"}
+OCC_USER = {"casual": "décontractée", "work": "travail", "party": "soirée", "formal": "formelle", "sport": "sport",
+            "wedding": "mariage", "religious": "religieuse"}
+
+
+def log(msg):
+    """Détail technique pour les développeurs (console du serveur), jamais affiché à l'utilisateur."""
+    print(f"[passerelle] {msg}", file=sys.stderr)
+
+
+def crit_text(entries):
+    """« formalite : raison » (Obj3) -> « Style : raison »."""
+    out = []
+    for e in entries:
+        k, sep, txt = e.partition(" : ")
+        out.append(f"{CRIT_USER.get(k, k)} : {txt}" if sep and k in CRIT_USER else e)
+    return out
 
 
 def compat_for(vec, category, wardrobe, name="candidate"):
@@ -169,9 +190,7 @@ def compat_for(vec, category, wardrobe, name="candidate"):
     return {"score": r["rank100"], "score01": r["score01"], "verdict": VERDICT.get(r["verdict"], r["verdict"]),
             "newOutfits": 0, "partners": [{"id": p["id"], "pair_score01": p["pair_score01"]} for p in r["partners"]],
             "duplicate": r["duplicate"], "clashingItems": [],
-            "notes": [f"Catégorie utilisée : {category}.",
-                      "Score = rang parmi 300 articles Polyvore de même catégorie (50 = hasard).",
-                      "newOutfits non calculé : à fournir par l'objectif 4."]}
+            "notes": [f"Pièce reconnue comme {CAT_USER.get(category, 'un vêtement')}."]}
 
 
 # ---------------------------------------------------------------- routes
@@ -220,7 +239,8 @@ def recognizer():
             _cache[("obj1", mode)] = (None, f"{type(e).__name__}: {e}")
     svc, err = _cache[("obj1", mode)]
     if svc is None:
-        raise HTTPException(501, f"Objectif 1 non lançable ({err}).")
+        log(f"Objectif 1 non lançable ({err})")
+        raise HTTPException(501, "L'analyse automatique des photos n'est pas disponible pour le moment.")
     return svc
 
 
@@ -333,7 +353,7 @@ def edit_item(item_id: str, body: dict):
         d, items = _load_catalog_file()
         card = next((c for c in items if c.get("id") == item_id), None)
         if card is None:
-            raise HTTPException(404, f"article inconnu : {item_id}")
+            raise HTTPException(404, "Cette pièce n'existe plus dans votre garde-robe.")
         card.update(patch)
         card["source"] = "user_corrected"
         conf = card.get("confidence") or {}   # comme apply_correction (Obj1) : confiance 1.0 sur les champs corrigés ;
@@ -354,7 +374,7 @@ def delete_item(item_id: str):
         d, items = _load_catalog_file()
         card = next((c for c in items if c.get("id") == item_id), None)
         if card is None:
-            raise HTTPException(404, f"article inconnu : {item_id}")
+            raise HTTPException(404, "Cette pièce n'existe plus dans votre garde-robe.")
         items.remove(card)
         _save_catalog_file(d)
         for rel in {card.get("image"), card.get("image_crop"), card.get("embedding"), f"items/{item_id}.json"}:
@@ -388,7 +408,8 @@ def add_item(image: UploadFile = File(...)):
         try:
             r = svc.recognize(src, item_id=item_id, raw_path=str(raw), out_dir=STORE, **kw)
         except Exception as e:
-            raise HTTPException(500, f"Reconnaissance (Obj1) en échec : {type(e).__name__}: {e}")
+            log(f"Reconnaissance (Obj1) en échec : {type(e).__name__}: {e}")
+            raise HTTPException(500, "L'analyse de la photo a échoué. Réessayez avec une autre photo.")
         if r.card is None:
             raise HTTPException(422, f"Aucune fiche produite ({r.status}) : {', '.join(r.reasons) or r.category}")
         card = r.card.model_dump()
@@ -405,13 +426,15 @@ def add_item(image: UploadFile = File(...)):
 async def compat_score(image: UploadFile = File(...), category: Optional[str] = Form(None)):
     W = wardrobe_with_embeddings()
     if len(W) < 2:
-        raise HTTPException(503, "Moins de 2 articles avec embedding dans le catalogue : lancer embed_cards.py (voir README).")
+        log("moins de 2 articles avec embedding : lancer embed_cards.py (voir README)")
+        raise HTTPException(503, "Pas encore assez de pièces analysées dans votre garde-robe pour comparer (2 au minimum).")
     W = W[:int(os.environ.get("MAX_WARDROBE", "40"))]   # le calcul croît avec le carré de la taille de la garde-robe
     data = await image.read()
     try:
         vec, guessed = embed_photo(data)
     except ImportError as e:
-        raise HTTPException(503, f"torch/transformers manquants : {e}")
+        log(f"torch/transformers manquants : {e}")
+        raise HTTPException(503, "La comparaison n'est pas disponible pour le moment.")
     return compat_for(vec, category or guessed, W)
 
 
@@ -426,7 +449,8 @@ FRONT_SLOT = {  # slots / catégories Polyvore de l'Obj4 -> Slot du front
 @app.get("/gaps")
 def gaps():
     if not GAPS.exists():
-        raise HTTPException(503, f"rapport de manques introuvable : {GAPS}")
+        log(f"rapport de manques introuvable : {GAPS}")
+        raise HTTPException(503, "L'analyse des pièces manquantes n'est pas encore disponible.")
     d = json.load(open(GAPS, encoding="utf-8"))
     d = d if isinstance(d, list) else d.get("gaps", [])
     for i, g in enumerate(d):
@@ -470,7 +494,8 @@ def _obj5_profile(ids):
         items = [i for i in load_items(STORE / "wardrobe.json") if i.id in set(ids)]
         return build_profile(items, _cache["pref"], "me", None).model_dump(), "référence"
     except Exception as e:
-        raise HTTPException(503, f"Profil de style (Obj5) indisponible : {type(e).__name__}: {e}")
+        log(f"Profil de style (Obj5) indisponible : {type(e).__name__}: {e}")
+        raise HTTPException(503, "Votre profil de style n'est pas encore disponible.")
 
 
 @app.get("/profile")
@@ -527,13 +552,16 @@ def _obj6_post(route, payload):
     try:
         r = httpx.post(f"{OBJ6_URL}{route}", json=payload, timeout=60)
     except Exception as e:
-        raise HTTPException(501, f"Objectif 6 non joignable sur {OBJ6_URL} ({type(e).__name__}) : lancer obj6_app (voir run_all.bat).")
+        log(f"Objectif 6 non joignable sur {OBJ6_URL} ({type(e).__name__}) : lancer obj6_app (voir run_all.bat)")
+        raise HTTPException(501, "Le service de tenue du jour ne répond pas. Réessayez dans un instant.")
     if r.status_code >= 400:
         try:
             detail = r.json().get("detail")
         except Exception:
             detail = r.text[:200]
-        raise HTTPException(r.status_code if r.status_code < 500 else 502, f"Objectif 6 : {detail}")
+        log(f"Objectif 6 {route} : {r.status_code} {detail}")
+        raise HTTPException(r.status_code if r.status_code < 500 else 502,
+                            detail if r.status_code < 500 and isinstance(detail, str) else "Le service de tenue du jour a rencontré un problème.")
     return r.json()
 
 
@@ -607,24 +635,23 @@ def judge_visual(cards, temperature, rain, occasion):
     """Juge visuel de l'Obj3 (judge_vision_v3) sur la planche de la tenue. Informatif : n'entre pas dans le vote de l'arbitre."""
     llm = vision_llm()
     if llm is None:
-        why = ("activer DRESSME_JURY_LLM=1" if os.environ.get("DRESSME_JURY_LLM") != "1"
-               else "ajouter GEMINI_API_KEY dans gateway/.env (Groq est texte seul)")
-        return {"score01": None, "status": "unavailable", "message": f"Juge visuel {NON_DISPONIBLE} : {why}."}
+        log("juge visuel : DRESSME_JURY_LLM=1 et GEMINI_API_KEY requis (gateway/.env)")
+        return {"score01": None, "status": "unavailable", "message": "Analyse des photos non activée."}
     from dressme.context import make_context
     from dressme.judges2 import judge_vision_v3
     t = "météo non précisée" if temperature is None else f"{temperature:g} °C{', pluie' if rain else ''}"
     board = outfit_board(cards, f"Tenue 1 - {t} - occasion : {occasion}")
     if board is None:
-        return {"score01": None, "status": "unavailable", "message": f"Juge visuel {NON_DISPONIBLE} : aucune photo pour ces pièces."}
+        return {"score01": None, "status": "unavailable", "message": "Pas de photo pour ces pièces."}
     try:
         v = judge_vision_v3(llm, board, make_context(temperature, rain, occasion))
     except Exception as e:   # quota Gemini, réseau, réponse illisible
-        return {"score01": None, "status": "unavailable", "message": f"Juge visuel {NON_DISPONIBLE} ({type(e).__name__} : {str(e)[:120]})."}
+        log(f"juge visuel : {type(e).__name__} : {str(e)[:200]}")
+        return {"score01": None, "status": "unavailable", "message": "Analyse des photos momentanément indisponible."}
     lv = {k: c["niveau"] for k, c in v["criteres"].items()}
     notes = [f"{k} : {c['raison']}" for k, c in v["criteres"].items() if c["niveau"] < 2]
     return {"score01": round(sum(lv.values()) / (2 * len(lv)), 2), "status": JURY_STATUS[min(lv.values())],   # une réserve visible = « Réserves »
-            "message": f"{v.get('modele') or 'Gemini'} (photos) : " + (" · ".join(notes) or "rien à signaler sur les photos.")
-                       + " Avis informatif, hors vote."}
+            "message": ("Sur les photos : " + " · ".join(crit_text(notes))) if notes else "Rien à signaler sur les photos."}
 
 
 def jury_llm():
@@ -669,7 +696,7 @@ def outfit_today(occasion: str = "casual", budget: bool = False, city: str = "Tu
     res = obj6_recommend(payload)
     ctx = res.get("context", {})
     if not res.get("outfits"):
-        raise HTTPException(404, res.get("message") or "Aucune tenue proposée par l'objectif 6.")
+        raise HTTPException(404, res.get("message") or "Aucune tenue trouvée pour aujourd'hui avec votre garde-robe.")
     temp, rain = float(ctx.get("feels_like", 20)), float(ctx.get("rain_prob", 0))
     best = None
     for o in res["outfits"]:   # chaque candidat de l'Obj6 passe par le jury (Obj3) et la compatibilité (Obj2)
@@ -681,14 +708,19 @@ def outfit_today(occasion: str = "casual", budget: bool = False, city: str = "Tu
         if best is None or key > best[0]:
             best = (key, o, cards, j, c01)
     _, o, cards, j, c01 = best
-    reasons = list(o.get("reasons") or []) + [f"Jury (Obj3) : {j['verdict']}."]
-    warns = list(o.get("warnings") or []) + [f"{k} : {v['raison']}" for k, v in j["criteres"].items() if v["niveau"] < 2]
-    if c01 is None:
-        warns.append("Compatibilité (Obj2) non calculée : embeddings manquants dans le catalogue.")
+    def occ_fr(txt):   # « casual » (Obj6) -> « décontractée »
+        for k, v in OCC_USER.items():
+            txt = txt.replace(f"« {k} »", f"« {v} »")
+        return txt
+    reasons = [occ_fr(r) for r in (o.get("reasons") or [])]
+    reasons.append("Validée par le jury de style." if j["niveau"] == 2 else "Le jury de style émet des réserves.")
+    warns = list(o.get("warnings") or []) + crit_text(f"{k} : {v['raison']}" for k, v in j["criteres"].items() if v["niveau"] < 2)
     if budget:
-        warns.append("Mode budget : pas encore pris en compte par l'objectif 6.")
+        warns.append("Le mode budget n'est pas encore pris en compte.")
+    src = str(ctx.get("weather_source", ""))
+    wlabel = f"{city} · pluie {rain:.0%}" if not src.startswith("default") else f"{city} · météo indisponible (température estimée)"
     return {"id": "-".join(c["id"] for c in cards), "items": [to_front_item(c) for c in cards], "compat01": c01,
-            "reason": " · ".join(reasons), "weather": {"temperatureC": round(temp), "label": f"{city}, pluie {rain:.0%} ({ctx.get('weather_source', '?')})"},
+            "reason": " · ".join(reasons), "weather": {"temperatureC": round(temp), "label": wlabel},
             "agenda": agenda or ctx.get("occasion"), "warnings": warns,
             "features": o.get("features") or {}, "excludeKey": [i["id"] for i in o["items"]],   # pour le feedback / « Autre proposition »
             "excludedCount": len(excl)}
@@ -742,13 +774,13 @@ def jury_compat(cards):
     try:
         c01 = outfit_compat01(cards)
     except Exception as e:
-        return {"message": f"Compatibilité (Obj2) {NON_DISPONIBLE} ({type(e).__name__})."}
+        log(f"compatibilité de la tenue : {type(e).__name__}")
+        return {"message": "Pas encore calculable pour ces pièces."}
     if c01 is None:
-        return {"message": f"Compatibilité (Obj2) {NON_DISPONIBLE} : moins de 2 pièces ou embeddings manquants."}
-    return {"score01": c01, "message": "Moyenne des paires de la tenue (Obj2 /pairs, centile parmi 300 références)."}
+        return {"message": "Pas encore calculable pour ces pièces."}
+    return {"score01": c01, "message": "Accord visuel entre les pièces de la tenue."}
 
 
-CRIT_FR = {"couleurs": "Couleurs", "formalite": "Formalité", "meteo": "Météo", "coherence": "Cohérence"}
 SLOT_FR = {"top": "un haut", "bottom": "un bas", "onepiece": "une robe", "outer": "une veste", "footwear": "des chaussures",
            "bag": "un sac", "accessory": "un accessoire"}
 
@@ -802,12 +834,13 @@ def outfit_judge(body: JudgeRequest):
     rules_lvl = min(v["par_juge"].get("regles", v["niveau"]) for v in crit.values())
     rules_msg = [r for r in par_juge.get("regles", []) if r != "Tous les critères sont satisfaisants."]
     if "llm" in votes or "hybride" in votes:   # avis du LLM (et du juge hybride règles + LLM)
-        llm = {"verdict": " / ".join(f"{k} : {v}" for k, v in votes.items() if k in ("llm", "hybride")),
-               "critique": " · ".join(par_juge.get("llm") or par_juge.get("hybride") or [])}
+        ia = {v for k, v in votes.items() if k in ("llm", "hybride")}
+        llm = {"verdict": ia.pop() if len(ia) == 1 else "avis partagé",
+               "critique": " · ".join(crit_text(par_juge.get("llm") or par_juge.get("hybride") or []))}
     else:
-        why = " ".join(notes) or ("Activer avec DRESSME_JURY_LLM=1 et une clé LLM (gateway/.env)."
-                                  if os.environ.get("DRESSME_JURY_LLM") != "1" else "Aucune clé GEMINI_API_KEY / LLM_API_KEY.")
-        llm = {"verdict": NON_DISPONIBLE, "critique": f"Juge LLM {NON_DISPONIBLE} : {why}"}
+        log("avis IA : " + (" ".join(notes) or ("DRESSME_JURY_LLM=1 non activé" if os.environ.get("DRESSME_JURY_LLM") != "1"
+                                                  else "aucune clé GEMINI_API_KEY / LLM_API_KEY")))
+        llm = {"verdict": NON_DISPONIBLE, "critique": "Avis de l'IA non activé." if not notes else "Avis de l'IA momentanément indisponible."}
     reserves = [k for k, v in crit.items() if v["niveau"] < 2]
     label = j["verdict"].capitalize() + (", avec réserves" if niveau == 2 and reserves else "")
     # Description minimaliste : seules les raisons du juge règles (calculées sur les fiches) sont citées ;
@@ -818,22 +851,22 @@ def outfit_judge(body: JudgeRequest):
         if sep and k in crit:
             rules_why[k] = txt.strip().rstrip(".")
     if not reserves:
-        why = "Rien à revoir : couleurs, formalité, météo et cohérence conviennent."
+        why = "Rien à revoir : couleurs, style, météo et ensemble conviennent."
     else:
         why = "À revoir : " + " · ".join(
-            f"{CRIT_FR[k]} ({rules_why[k]})" if k in rules_why else f"{CRIT_FR[k]} (relevé par le juge LLM)" for k in reserves) + "."
+            f"{CRIT_USER[k]} ({rules_why[k]})" if k in rules_why else f"{CRIT_USER[k]} (signalé par l'IA)" for k in reserves) + "."
     return {"score": jury_score(niveau, crit), "verdict": JURY_VERDICT[niveau], "verdictLabel": label,
             "rationale": why,
             "mode": "complet" if complet else "regles", "notes": notes,
             "judges": {
                 "rules": {"status": JURY_STATUS[rules_lvl],
-                          "message": " · ".join(rules_msg) or "Tous les critères sont satisfaisants."},
+                          "message": " · ".join(crit_text(rules_msg)) or "Tout est en ordre."},
                 "visual": visual,
                 "llm": llm,
                 "context": {"matchWeather": None if body.temperatureC is None else crit["meteo"]["niveau"] == 2,
                             "matchOccasion": crit["formalite"]["niveau"] == 2,
                             "weatherLevel": None if body.temperatureC is None else crit["meteo"]["niveau"],   # 0 / 1 / 2
                             "occasionLevel": crit["formalite"]["niveau"],
-                            "message": f"{crit['meteo']['raison']} · {crit['formalite']['raison']}"},
+                            "message": f"Météo : {crit['meteo']['raison']} · Style : {crit['formalite']['raison']}"},
                 "compatibility": jury_compat([by_id[i] for i in ids])},
             "repairs": jury_repairs(j["reparations"], by_id)}

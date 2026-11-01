@@ -9,8 +9,8 @@ import { judgeOutfit } from '../services/jury';
 import { listItems } from '../services/wardrobe';
 
 const SLOTS: { id: Slot; label: string; icon: string }[] = [
-  { id: 'top', label: 'Haut (Top)', icon: '👚' },
-  { id: 'bottom', label: 'Bas (Bottom)', icon: '👖' },
+  { id: 'top', label: 'Haut', icon: '👚' },
+  { id: 'bottom', label: 'Bas', icon: '👖' },
   { id: 'onepiece', label: 'Robe / Pièce unique', icon: '👗' },
   { id: 'outer', label: 'Veste / Manteau', icon: '🧥' },
   { id: 'footwear', label: 'Chaussures', icon: '👠' },
@@ -19,7 +19,7 @@ const SLOTS: { id: Slot; label: string; icon: string }[] = [
 ];
 
 const OCCASIONS: { id: Occasion; label: string; icon: string }[] = [
-  { id: 'casual', label: 'Casual Chic', icon: '☕' },
+  { id: 'casual', label: 'Décontracté', icon: '☕' },
   { id: 'work', label: 'Travail & Bureau', icon: '💼' },
   { id: 'evening', label: 'Soirée Habillée', icon: '🌙' },
 ];
@@ -112,24 +112,16 @@ function Studio({ live }: { live: boolean }) {
     runJuryEvaluation(updated);
   };
 
-  // Le réparateur de l'Obj3 remplace, ajoute (pas de pièce visée) ou retire (pas de remplaçant)
-  // (la pièce ajoutée prend la place de celle du même emplacement : jamais deux paires de chaussures)
-  const handleApplyRepair = (problemId: string | null, replacement?: ClothingItem) => {
-    const base = problemId === null ? selectedItems : selectedItems.filter(i => i.id !== problemId);
-    const updated = replacement ? withItem(base, replacement) : base;
-    setSelectedItems(updated);
-    runJuryEvaluation(updated);
-  };
 
   return (
     <>
       <header className="page-head">
         <div>
           <h1 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            Outfit Studio & Jury de Tenues <span style={{ fontSize: '1.6rem' }}>⚖️</span>
+            Composer une tenue <span style={{ fontSize: '1.6rem' }}>⚖️</span>
           </h1>
           <p className="page-subtitle">
-            Composez librement votre tenue depuis votre dressing. L'arbitre multi-juges (Objectif 3 & 2) évalue la cohérence et propose des réparations automatiques.
+            Composez une tenue avec vos pièces : notre jury de style vous dit si elle convient à l'occasion et à la météo, et pourquoi.
           </p>
         </div>
 
@@ -139,7 +131,7 @@ function Studio({ live }: { live: boolean }) {
           disabled={isEvaluating || selectedItems.length === 0}
         >
           <span>⚖️</span>
-          <span>{isEvaluating ? 'Délibération du Jury…' : 'Évaluer la Tenue'}</span>
+          <span>{isEvaluating ? 'Évaluation…' : 'Évaluer la tenue'}</span>
         </button>
       </header>
 
@@ -163,7 +155,7 @@ function Studio({ live }: { live: boolean }) {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'var(--surface)', padding: '6px 16px', borderRadius: '999px', border: '1px solid var(--line)' }}>
-          <span style={{ fontSize: '0.85rem', color: 'var(--muted)' }}>Météo prévue:</span>
+          <span style={{ fontSize: '0.85rem', color: 'var(--muted)' }}>Température :</span>
           <input
             type="range"
             min="5"
@@ -280,17 +272,17 @@ function Studio({ live }: { live: boolean }) {
         <div>
           {live && liveWardrobe.error && (
             <div className="card card-peach" style={{ padding: '18px', marginBottom: '20px', fontSize: '0.9rem' }}>
-              Garde-robe indisponible (GET /wardrobe/items) : {liveWardrobe.error.message}
+              Votre garde-robe n'a pas pu être chargée : {liveWardrobe.error.message}
             </div>
           )}
           {juryError && (
             <div className="card card-peach" style={{ padding: '18px', marginBottom: '20px', fontSize: '0.9rem' }}>
-              Jury indisponible (POST /outfits/judge) : {juryError}
+              L'évaluation n'a pas pu être faite : {juryError}
             </div>
           )}
           {live && !juryResult && !juryError && !isEvaluating && (
             <div className="card" style={{ padding: '22px', color: 'var(--muted)', fontSize: '0.92rem' }}>
-              Composez une tenue depuis votre garde-robe : le jury l'évaluera à chaque changement.
+              Choisissez des pièces de votre garde-robe : la tenue est évaluée à chaque changement.
             </div>
           )}
           {juryResult && (
@@ -334,12 +326,12 @@ function Studio({ live }: { live: boolean }) {
               <div className="card" style={{ padding: '22px' }}>
                 <h4 style={{ fontSize: '1.05rem', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span>🏛️</span>
-                  <span>Délibération des 5 Juges Spécialisés</span>
+                  <span>Le détail de l'évaluation</span>
                 </h4>
 
                 <div style={{ display: 'grid', gap: '12px', fontSize: '0.88rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid var(--line)' }}>
-                    <span>📐 <strong>Juge Règles & Proportions</strong></span>
+                    <span>📐 <strong>Règles de style</strong></span>
                     <span style={{ color: juryResult.judges.rules.status === 'pass' ? 'var(--pastel-mint-deep)' : juryResult.judges.rules.status === 'warn' ? 'var(--pastel-butter-deep)' : 'var(--danger)', fontWeight: 600 }}
                           title={juryResult.judges.rules.message}>
                       {juryResult.judges.rules.status === 'pass' ? '✓ Valide' : juryResult.judges.rules.status === 'warn' ? '⚠️ Réserves' : '✗ Non conforme'}
@@ -348,7 +340,7 @@ function Studio({ live }: { live: boolean }) {
 
                   <div style={{ paddingBottom: '8px', borderBottom: '1px solid var(--line)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span>🎨 <strong>Juge Visuel</strong></span>
+                      <span>🎨 <strong>Analyse des photos</strong></span>
                       <span style={{ fontWeight: 600, color: juryResult.judges.visual.score01 == null ? 'var(--muted)' : juryResult.judges.visual.status === 'pass' ? 'var(--pastel-mint-deep)' : juryResult.judges.visual.status === 'warn' ? 'var(--pastel-butter-deep)' : 'var(--danger)' }}>
                         {juryResult.judges.visual.score01 == null
                           ? 'Non disponible'
@@ -361,17 +353,17 @@ function Studio({ live }: { live: boolean }) {
                   </div>
 
                   <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid var(--line)' }}>
-                    <span>🔗 <strong>Juge Paires (Obj2 PairMLP)</strong></span>
+                    <span>🔗 <strong>Accord entre les pièces</strong></span>
                     <span style={{ fontWeight: 600 }} title={juryResult.judges.compatibility.message}>
                       {juryResult.judges.compatibility.score01 == null
                         ? 'Non disponible'
-                        : `Compatibilité: ${(juryResult.judges.compatibility.score01 * 100).toFixed(0)}%`}
+                        : `${(juryResult.judges.compatibility.score01 * 100).toFixed(0)} %`}
                     </span>
                   </div>
 
                   <div style={{ paddingBottom: '8px', borderBottom: '1px solid var(--line)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px' }}>
-                      <span>🌤️ <strong>Juge Contexte</strong></span>
+                      <span>🌤️ <strong>Météo et occasion</strong></span>
                       <span style={{ fontWeight: 600, textAlign: 'right' }}>
                         {(() => {
                           const ctx = juryResult.judges.context;
@@ -386,7 +378,7 @@ function Studio({ live }: { live: boolean }) {
 
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px' }}>
-                      <span>🤖 <strong>Juge LLM {juryResult.mode === 'complet' ? '(+ hybride)' : ''}</strong></span>
+                      <span>🤖 <strong>Avis de l'IA</strong></span>
                       <span style={{ fontWeight: 600, color: juryResult.judges.llm.verdict === 'non disponible' ? 'var(--muted)' : 'var(--ink)', textAlign: 'right' }}>
                         {juryResult.judges.llm.verdict === 'non disponible' ? 'Non disponible' : juryResult.judges.llm.verdict}
                       </span>
@@ -397,57 +389,9 @@ function Studio({ live }: { live: boolean }) {
                       </p>
                     )}
                   </div>
-                  {!!juryResult.notes?.length && juryResult.judges.llm.verdict !== 'non disponible' && (
-                    <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--muted)' }}>ℹ️ {juryResult.notes.join(' ')}</p>
-                  )}
                 </div>
               </div>
 
-              {/* Réparation d'Outfit ("Réparateur" from Objectif 3) */}
-              {juryResult.repairs.length > 0 && (
-                <div className="card card-lavender" style={{ padding: '22px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
-                    <span style={{ fontSize: '20px' }}>🔧</span>
-                    <h4 style={{ fontSize: '1.05rem', color: 'var(--pastel-lavender-deep)' }}>
-                      Suggestions du Réparateur de Tenue
-                    </h4>
-                  </div>
-
-                  <p style={{ fontSize: '0.88rem', color: 'var(--ink)', marginBottom: '14px' }}>
-                    Corrections proposées par l'Objectif 3 à partir de votre garde-robe :
-                  </p>
-
-                  {juryResult.repairs.map((rep, idx) => (
-                    <div key={idx} style={{ background: '#FFFFFF', padding: '14px', borderRadius: '16px', marginBottom: '10px' }}>
-                      <p style={{ fontSize: '0.85rem', color: 'var(--ink)', fontWeight: 600, margin: '0 0 8px' }}>
-                        🔧 {rep.reason}
-                      </p>
-
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                        {rep.suggestedReplacements.map(sug => (
-                          <button
-                            key={sug.id}
-                            className="btn btn-mint btn-sm"
-                            style={{ borderRadius: '999px', fontSize: '0.8rem', padding: '6px 12px' }}
-                            onClick={() => handleApplyRepair(rep.problemItemId, sug)}
-                          >
-                            + {rep.problemItemId === null ? 'Ajouter' : 'Remplacer par'} {sug.name || sug.color}
-                          </button>
-                        ))}
-                        {rep.suggestedReplacements.length === 0 && (
-                          <button
-                            className="btn btn-mint btn-sm"
-                            style={{ borderRadius: '999px', fontSize: '0.8rem', padding: '6px 12px' }}
-                            onClick={() => handleApplyRepair(rep.problemItemId)}
-                          >
-                            Retirer cette pièce
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
           )}
         </div>

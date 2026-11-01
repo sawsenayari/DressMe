@@ -1,6 +1,6 @@
 import type { ClothingItem } from '../../types';
 import { Placeholder } from './Placeholder';
-import { coloursLabel, seasonLabel, slotLabel } from './ItemFields';
+import { coloursLabel, seasonLabel, slotLabel, typeLabel } from './ItemFields';
 
 interface Props {
   item?: ClothingItem;
@@ -67,7 +67,7 @@ export function ItemTile({ item, index = 0, onClick }: Props) {
             {(item.type || item.style) && (
               <>
                 <span>•</span>
-                <span>{item.type || item.style}</span>
+                <span>{typeLabel(item.type) || item.style}</span>
               </>
             )}
             {item.source === 'user_corrected' && <span title="Caractéristiques confirmées par vous">✓</span>}

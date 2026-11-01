@@ -66,7 +66,7 @@ export default function DoesItMatch() {
         setResult(res);
       }
     } catch (e) {
-      setError(`Erreur d'évaluation (service /compat, Objectif 2) : ${e instanceof Error ? e.message : e}`);
+      setError(`Impossible d'analyser cette photo : ${e instanceof Error ? e.message : e}`);
     } finally {
       setBusy(false);
     }
@@ -107,9 +107,12 @@ export default function DoesItMatch() {
   }
 
   const getScoreTheme = (score: number) => {
-    if (score >= 70) return { bg: 'var(--pastel-mint-soft)', color: 'var(--pastel-mint-deep)', label: 'Compatible (≥ 70)' };
-    if (score >= 40) return { bg: 'var(--pastel-butter-soft)', color: 'var(--pastel-butter-deep)', label: 'Moyenne (40 à 69)' };
-    return { bg: 'var(--pastel-pink-soft)', color: 'var(--pastel-pink-deep)', label: 'Peu compatible (< 40)' };
+    if (score >= 70) return { bg: 'var(--pastel-mint-soft)', color: 'var(--pastel-mint-deep)', label: 'Bon choix',
+                              headline: 'Elle ira bien avec votre garde-robe.' };
+    if (score >= 40) return { bg: 'var(--pastel-butter-soft)', color: 'var(--pastel-butter-deep)', label: 'À réfléchir',
+                              headline: 'Elle s\'associe avec une partie de votre garde-robe.' };
+    return { bg: 'var(--pastel-pink-soft)', color: 'var(--pastel-pink-deep)', label: 'Peu assortie',
+             headline: 'Elle s\'accorde peu avec votre garde-robe actuelle.' };
   };
 
   return (
@@ -120,7 +123,7 @@ export default function DoesItMatch() {
             Does It Match? <span style={{ fontSize: '1.6rem' }}>🛍️</span>
           </h1>
           <p className="page-subtitle">
-            Service de compatibilité (Objectif 2 — Suzana). Scannez un article avant achat pour calculer le score /compat et détecter les doublons.
+            Avant d'acheter, prenez la pièce en photo : nous vérifions si elle s'accorde avec votre garde-robe et si vous possédez déjà la même.
           </p>
         </div>
 
@@ -144,10 +147,11 @@ export default function DoesItMatch() {
       )}
 
       {/* Preset Test Candidates */}
+      {useDemoData && (   // exemples à résultats fixes : mode démo uniquement
       <section style={{ marginBottom: '24px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
           <span style={{ fontSize: '0.85rem', color: 'var(--muted)', fontWeight: 500 }}>
-            Candidats de test rapides :
+            Exemples :
           </span>
           {PRESET_CANDIDATES.map(preset => (
             <button
@@ -156,11 +160,12 @@ export default function DoesItMatch() {
               onClick={() => handleSelectPreset(preset)}
               style={{ padding: '6px 14px', fontSize: '0.82rem' }}
             >
-              🛍️ {preset.name} {preset.isDuplicateTest ? '(Test Doublon)' : ''}
+              🛍️ {preset.name}
             </button>
           ))}
         </div>
       </section>
+      )}
 
       {!preview && (
         <div
@@ -177,7 +182,7 @@ export default function DoesItMatch() {
           <div style={{ fontSize: '48px', marginBottom: '16px' }}>🛍️</div>
           <h2>Analyseur de Compatibilité d'Achat</h2>
           <p style={{ color: 'var(--muted)', maxWidth: '440px', margin: '8px auto 24px', fontSize: '0.95rem' }}>
-            Prenez en photo un article en magasin ou en ligne. Le modèle PairMLP (FashionCLIP) compare la pièce avec tout votre dressing et calcule les nouvelles tenues débloquées.
+            Prenez en photo un article, en magasin ou en ligne : nous le comparons à toute votre garde-robe et vous montrons avec quelles pièces il ira le mieux.
           </p>
           <PhotoPicker label="Choisir une photo à tester" onPick={onPick} busy={busy} />
         </div>
@@ -216,7 +221,7 @@ export default function DoesItMatch() {
                 {candidateName || 'Pièce Candidate'}
               </h3>
               <p style={{ color: 'var(--muted)', fontSize: '0.85rem', margin: '4px 0 0' }}>
-                {busy ? 'Calcul PairMLP en cours…' : 'Évalué contre vos pièces de dressing'}
+                {busy ? 'Analyse en cours…' : 'Comparée à votre garde-robe'}
               </p>
             </div>
           </div>
@@ -226,7 +231,7 @@ export default function DoesItMatch() {
             <div className="skeleton" style={{ height: '360px' }}>
               <div style={{ padding: '32px', textAlign: 'center' }}>
                 <div style={{ fontSize: '32px', marginBottom: '12px' }}>🪄</div>
-                <h3>Calcul du rang sur 100 via PairMLP…</h3>
+                <h3>Analyse de la pièce…</h3>
               </div>
             </div>
           )}
@@ -248,10 +253,10 @@ export default function DoesItMatch() {
                   <span style={{ fontSize: '28px' }}>⚠️</span>
                   <div>
                     <h4 style={{ margin: 0, fontSize: '0.95rem', color: 'var(--pastel-butter-deep)' }}>
-                      Doublon Détecté dans votre Dressing ({result.duplicate.pct}% similarité)
+                      Vous avez peut-être déjà cette pièce
                     </h4>
                     <p style={{ margin: '4px 0 0', fontSize: '0.82rem', color: 'var(--ink)' }}>
-                      Vous possédez déjà une pièce presque identique (ID: <code>{result.duplicate.id}</code>). Réfléchissez avant de valider cet achat !
+                      Elle ressemble beaucoup à « {source.find(i => i.id === result.duplicate!.id)?.name || 'une pièce de votre garde-robe'} ». Réfléchissez avant de l'acheter.
                     </p>
                   </div>
                 </div>
@@ -293,8 +298,7 @@ export default function DoesItMatch() {
                     >
                       {getScoreTheme(result.score).label}
                     </span>
-                    <h3>Débloque +{result.newOutfits} Nouvelles Tenues</h3>
-                    <p>Appel API direct : <code>POST /compat</code></p>
+                    <h3>{getScoreTheme(result.score).headline}</h3>
                   </div>
                 </div>
               </div>
@@ -326,19 +330,19 @@ export default function DoesItMatch() {
 
               {/* Best Partners in Wardrobe */}
               <div className="card">
-                <h4 style={{ fontSize: '1rem', marginBottom: '12px' }}>Meilleurs Partenaires de votre Garde-Robe</h4>
+                <h4 style={{ fontSize: '1rem', marginBottom: '12px' }}>À porter avec</h4>
                 <div className="grid small" style={{ marginTop: 0 }}>
                   {partnerItems.map(({ item, score }, idx) => (
                     <div key={item.id}>
                       <ItemTile item={item} index={idx} onClick={it => setSelectedItem(it)} />
                       <p style={{ fontSize: '0.8rem', color: 'var(--muted)', marginTop: '4px' }}>
-                        Paire /pairs : <strong>{Math.round(score * 100)} %</strong>
+                        S'accorde à <strong>{Math.round(score * 100)} %</strong>
                       </p>
                     </div>
                   ))}
                 </div>
                 {partnerItems.length === 0 && (
-                  <p style={{ fontSize: '0.88rem', color: 'var(--muted)' }}>Aucun partenaire renvoyé par l'Objectif 2.</p>
+                  <p style={{ fontSize: '0.88rem', color: 'var(--muted)' }}>Aucune pièce de votre garde-robe ne s'y associe vraiment.</p>
                 )}
               </div>
             </div>

@@ -11,8 +11,8 @@ import { useApp } from '../context/AppContext';
 // 7 official slots defined in ItemCard v1 contract
 const SLOTS: { id: Slot | 'all'; label: string; icon: string }[] = [
   { id: 'all', label: 'Toutes les pièces', icon: '✨' },
-  { id: 'top', label: 'Hauts (Top)', icon: '👚' },
-  { id: 'bottom', label: 'Bas (Bottom)', icon: '👖' },
+  { id: 'top', label: 'Hauts', icon: '👚' },
+  { id: 'bottom', label: 'Bas', icon: '👖' },
   { id: 'onepiece', label: 'Robe / Combinaison', icon: '👗' },
   { id: 'outer', label: 'Vestes & Manteaux', icon: '🧥' },
   { id: 'footwear', label: 'Chaussures', icon: '👠' },
@@ -128,7 +128,7 @@ export default function Wardrobe() {
     } else if (sortBy === 'least-worn') {
       items.sort((a, b) => (a.wearCount || 0) - (b.wearCount || 0));
     } else if (sortBy === 'confidence') {
-      items.sort((a, b) => (b.confidence?.slot || 0) - (a.confidence?.slot || 0));
+      items.sort((a, b) => (a.source === 'user_corrected' ? 2 : a.confidence?.slot ?? 1) - (b.source === 'user_corrected' ? 2 : b.confidence?.slot ?? 1));
     }
 
     return items;
@@ -142,7 +142,7 @@ export default function Wardrobe() {
             Dressing Numérique <span style={{ fontSize: '1.6rem' }}>🧺</span>
           </h1>
           <p className="page-subtitle">
-            Conforme au contrat ItemCard v1 (7 emplacements, découpe SegFormer/rembg et traçabilité de classification).
+            Toutes vos pièces au même endroit : ajoutez une photo, nous reconnaissons le vêtement pour vous.
           </p>
         </div>
 
@@ -266,7 +266,7 @@ export default function Wardrobe() {
             <option value="name">Nom (A → Z)</option>
             {useDemoData && <option value="most-worn">Plus porté</option>}
             {useDemoData && <option value="least-worn">Moins porté</option>}
-            <option value="confidence">Confiance détection (Obj1)</option>
+            <option value="confidence">À vérifier en premier</option>
           </select>
         </div>
       </section>

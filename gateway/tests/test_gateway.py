@@ -39,7 +39,7 @@ def test_routes(tmp_path, monkeypatch):
     monkeypatch.setattr(g, "OBJ6_URL", "http://127.0.0.1:9")   # Obj6 absent (même si un vrai service tourne sur 8006)
     assert c.get("/outfits/today").status_code == 501
     monkeypatch.setattr(g, "OBJ1", tmp_path / "absent")                              # Obj1 non lançable -> 501
-    r = c.post("/wardrobe/items", files={"image": ("x.jpg", b"x")}); assert r.status_code == 501 and "Objectif 1" in r.json()["detail"]
+    r = c.post("/wardrobe/items", files={"image": ("x.jpg", b"x")}); assert r.status_code == 501 and "photos" in r.json()["detail"] and "Obj" not in r.json()["detail"]
 
 
 def test_add_item_with_obj1_mock(tmp_path, monkeypatch):
@@ -87,7 +87,7 @@ def test_outfit_today_obj6_obj3_obj2(tmp_path, monkeypatch):
     out = r.json()
     assert sent["occasion"] == "work" and all(i["slot"] != "bag" for i in sent["wardrobe"]) and len(sent["wardrobe"]) == len(cat)
     assert out["items"] and all({"id", "slot", "imageUrl"} <= set(i) for i in out["items"])
-    assert 0 <= out["compat01"] <= 1 and "Jury (Obj3)" in out["reason"] and out["weather"]["temperatureC"] == 21
+    assert 0 <= out["compat01"] <= 1 and "jury de style" in out["reason"] and "Obj" not in out["reason"] and out["weather"]["temperatureC"] == 21
     assert c.get("/outfits/today", params={"occasion": "plage"}).status_code == 422
 
 
@@ -114,15 +114,15 @@ def test_outfit_judge_obj3_obj2(tmp_path, monkeypatch):
     assert o["judges"]["context"]["weatherLevel"] in (0, 1, 2) and o["judges"]["context"]["occasionLevel"] in (0, 1, 2)
     js = o["judges"]
     assert js["rules"]["status"] in ("pass", "warn", "fail") and js["rules"]["message"]
-    assert js["visual"]["score01"] is None and js["visual"]["status"] == "unavailable" and "non disponible" in js["visual"]["message"]
-    assert js["llm"]["verdict"] == "non disponible" and "non disponible" in js["llm"]["critique"]
+    assert js["visual"]["score01"] is None and js["visual"]["status"] == "unavailable" and "non activée" in js["visual"]["message"]
+    assert js["llm"]["verdict"] == "non disponible" and "non activé" in js["llm"]["critique"]
     assert isinstance(js["context"]["matchWeather"], bool) and isinstance(js["context"]["matchOccasion"], bool)
     assert 0 <= js["compatibility"]["score01"] <= 1
 
     # une seule pièce, sans chaussures : réparations de l'Obj3, compatibilité absente, météo non évaluée sans température
     o = judge(item_ids=[pick("top")]).json()
     assert o["verdict"] != "convient" and o["score"] < 100 and o["repairs"]
-    assert "score01" not in o["judges"]["compatibility"] and "non disponible" in o["judges"]["compatibility"]["message"]
+    assert "score01" not in o["judges"]["compatibility"] and "Pas encore calculable" in o["judges"]["compatibility"]["message"]
     assert o["judges"]["context"]["matchWeather"] is None and o["judges"]["rules"]["status"] in ("warn", "fail")
     for rep in o["repairs"]:
         assert rep["reason"] and (rep["problemItemId"] or rep["suggestedReplacements"])
@@ -157,7 +157,7 @@ def test_profile_small_wardrobe_uses_reference_model(tmp_path, monkeypatch):
     assert r.status_code == 200 and r.json()["model"] == "référence" and r.json()["palette"], r.text
     assert g.OBJ5_REF_MODEL.read_bytes() == ref                                    # modèle versionné jamais réécrit
     monkeypatch.setattr(g, "OBJ5_REF_MODEL", tmp_path / "absent.joblib"); monkeypatch.setattr(g, "_cache", {})
-    r = c.get("/profile"); assert r.status_code == 503 and "Obj5" in r.json()["detail"]
+    r = c.get("/profile"); assert r.status_code == 503 and "profil" in r.json()["detail"]
 
 def _hf_cached(name):
     from pathlib import Path as P
@@ -258,10 +258,10 @@ def test_outfit_judge_with_llm(tmp_path, monkeypatch):
     r = TestClient(g.app).post("/outfits/judge", json={"item_ids": ids, "occasion": "casual", "temperatureC": 20})
     assert r.status_code == 200, r.text
     j = r.json(); assert j["mode"] == "complet" and j["judges"]["llm"]["verdict"] != "non disponible", j
-    assert "ternes" in j["judges"]["llm"]["critique"] and "LLM" in j["rationale"]
+    assert "ternes" in j["judges"]["llm"]["critique"] and "Couleurs" in j["judges"]["llm"]["critique"] and "IA" in j["rationale"]
     monkeypatch.setattr(obj3, "build_llm", lambda *a, **k: None); monkeypatch.setattr(g, "_cache", {})   # pas de clé -> règles seules
     j = TestClient(g.app).post("/outfits/judge", json={"item_ids": ids, "occasion": "casual"}).json()
-    assert j["mode"] == "regles" and j["judges"]["llm"]["verdict"] == "non disponible" and "clé" in j["judges"]["llm"]["critique"]
+    assert j["mode"] == "regles" and j["judges"]["llm"]["verdict"] == "non disponible" and "IA" in j["judges"]["llm"]["critique"]
 
 
 def test_outfit_judge_visual_with_fake_gemini(tmp_path, monkeypatch):
@@ -290,8 +290,8 @@ def test_outfit_judge_visual_with_fake_gemini(tmp_path, monkeypatch):
     c = TestClient(g.app)
     j = c.post("/outfits/judge", json={"item_ids": [x["id"] for x in cards], "occasion": "casual", "temperatureC": 20}).json()
     v = j["judges"]["visual"]
-    assert v["score01"] == 0.88 and v["status"] == "warn" and "bleu vif" in v["message"] and "hors vote" in v["message"]
+    assert v["score01"] == 0.88 and v["status"] == "warn" and "bleu vif" in v["message"] and v["message"].startswith("Sur les photos : Couleurs")
     assert isinstance(seen["images"][0], Image.Image) and seen["images"][0].width > 300 and "image montre" in seen["prompt"]
     monkeypatch.setattr(g, "vision_llm", lambda: None)                      # sans Gemini : raison affichée
     v = c.post("/outfits/judge", json={"item_ids": [x["id"] for x in cards], "occasion": "casual"}).json()["judges"]["visual"]
-    assert v["score01"] is None and v["status"] == "unavailable" and "non disponible" in v["message"]
+    assert v["score01"] is None and v["status"] == "unavailable" and "non activée" in v["message"]

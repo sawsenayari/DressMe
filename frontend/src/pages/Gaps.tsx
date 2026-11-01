@@ -4,6 +4,28 @@ import { listGaps } from '../services/gaps';
 import type { GapSuggestion } from '../types';
 import { DataState } from '../components/ui/DataState';
 import { useApp } from '../context/AppContext';
+import { slotLabel } from '../components/ui/ItemFields';
+
+// Rapport de l'Obj4 en anglais (« black dress ») -> français ; un mot inconnu est gardé tel quel
+const GAP_WORDS: Record<string, string> = {
+  dress: 'robe', blouse: 'chemisier', skirt: 'jupe', flats: 'ballerines', coat: 'manteau', jacket: 'veste', shirt: 'chemise',
+  't-shirt': 't-shirt', tshirt: 't-shirt', jeans: 'jean', trousers: 'pantalon', pants: 'pantalon', sneakers: 'baskets',
+  shoes: 'chaussures', heels: 'escarpins', boots: 'bottes', bag: 'sac', handbag: 'sac à main', sweater: 'pull', top: 'haut',
+  black: 'noir', white: 'blanc', grey: 'gris', gray: 'gris', beige: 'beige', brown: 'marron', blue: 'bleu', navy: 'bleu marine',
+  red: 'rouge', pink: 'rose', green: 'vert', yellow: 'jaune', purple: 'violet', orange: 'orange',
+};
+const FEMININE = new Set(['robe', 'jupe', 'veste', 'chemise']);
+const FEM_ADJ: Record<string, string> = { noir: 'noire', blanc: 'blanche', gris: 'grise', vert: 'verte', violet: 'violette', marron: 'marron' };
+const describeGap = (d: string) => {
+  const words = d.toLowerCase().split(/\s+/).filter(Boolean);
+  if (words.length === 2 && GAP_WORDS[words[0]] && GAP_WORDS[words[1]]) {   // « couleur nom » -> « nom couleur »
+    const noun = GAP_WORDS[words[1]];
+    const adj = GAP_WORDS[words[0]];
+    return `${noun} ${FEMININE.has(noun) ? FEM_ADJ[adj] || adj : adj}`;
+  }
+  return words.map(w => GAP_WORDS[w] || w).join(' ');
+};
+const SLOT_ICON: Record<string, string> = { top: '👚', bottom: '👖', onepiece: '👗', outer: '🧥', footwear: '👠', bag: '👜', accessory: '🧣' };
 
 const GAP_IMAGES: Record<string, string> = {
   'gap-1': 'https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=700&auto=format&fit=crop&q=80',
@@ -35,10 +57,10 @@ export default function Gaps() {
       <header className="page-head">
         <div>
           <h1 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            Manques de Garde-Robe (Gaps) <span style={{ fontSize: '1.6rem' }}>🎯</span>
+            Pièces à ajouter <span style={{ fontSize: '1.6rem' }}>🎯</span>
           </h1>
           <p className="page-subtitle">
-            Analyse de rentabilité vestimentaire (Objectif 4). Identifie les archétypes manquants générant le plus de tenues croisées via <code>/pairs</code>.
+            Les quelques pièces qui, ajoutées à votre garde-robe, vous permettraient de créer le plus de nouvelles tenues.
           </p>
         </div>
       </header>
@@ -110,14 +132,6 @@ export default function Gaps() {
             </div>
           </div>
 
-          <div style={{ background: '#FFFFFF', padding: '14px 20px', borderRadius: '18px', textAlign: 'center' }}>
-            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--pastel-pink-deep)' }}>
-              ranking_ready
-            </div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--muted)', textTransform: 'uppercase', fontWeight: 600 }}>
-              Statut Modèle
-            </div>
-          </div>
         </div>
       </section>
 
@@ -149,7 +163,7 @@ export default function Gaps() {
                       {gap.slot || gap.category}
                     </span>
                     <span style={{ fontSize: '0.78rem', color: 'var(--muted)' }}>
-                      Rang #{gap.rank || index + 1}
+                      Priorité {gap.rank || index + 1}
                     </span>
                   </div>
 
@@ -186,26 +200,23 @@ export default function Gaps() {
           state={apiState}
           endpoint="GET /gaps"
           isEmpty={d => d.length === 0}
-          pending="Les pièces prioritaires apparaîtront ici après calcul par le modèle de gaps."
+          pending="Les pièces à ajouter en priorité apparaîtront ici dès que l'analyse de votre garde-robe sera prête."
         >
           {gaps => (
             <ul className="rows">
               {gaps.map((g, i) => (
                 <li key={g.id} className="row">
-                  <div style={{ width: '84px', height: '100px', borderRadius: '16px', overflow: 'hidden' }}>
-                    <img
-                      src={GAP_IMAGES[g.id] || GAP_IMAGES['gap-1']}
-                      alt={g.description}
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                    />
+                  <div style={{ width: '84px', height: '100px', borderRadius: '16px', background: 'var(--pastel-lavender-soft)', display: 'grid', placeItems: 'center', fontSize: '34px' }}
+                       aria-hidden="true">
+                    {SLOT_ICON[g.slot || g.category] || '🛍️'}
                   </div>
                   <div>
                     <span className="chip-tag chip-tag-lavender" style={{ marginBottom: '6px', display: 'inline-block' }}>
-                      {g.slot || g.category}
+                      Priorité {g.rank ?? i + 1} · {slotLabel(g.slot || g.category)}
                     </span>
-                    <h3>{g.description}</h3>
+                    <h3 style={{ textTransform: 'capitalize' }}>{describeGap(g.description)}</h3>
                     <p style={{ color: 'var(--muted)', fontSize: '0.85rem', margin: '4px 0 0' }}>
-                      +{g.gain_lower ?? g.unlockedOutfits} à +{g.gain_upper ?? g.unlockedOutfits} tenues estimées.
+                      Avec vos pièces actuelles, elle permettrait environ {g.unlockedOutfits} nouvelle(s) tenue(s).
                     </p>
                   </div>
                   <strong>+{g.unlockedOutfits}</strong>

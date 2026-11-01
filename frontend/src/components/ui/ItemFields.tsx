@@ -30,6 +30,17 @@ const TYPE_SUGGESTIONS = ['Tshirts', 'Shirts', 'Tops', 'Sweaters', 'Sweatshirts'
   'Heels', 'Flats', 'Boots', 'Handbags', 'Belts', 'Watches', 'Scarves', 'Sunglasses', 'Caps'];
 
 const find = <T extends { id: string; label: string }>(opts: T[], id?: string | null) => opts.find(o => o.id === id)?.label;
+// Types du catalogue (anglais, Obj1) -> français pour l'affichage ; un type saisi par l'utilisateur reste tel quel
+const TYPE_FR: Record<string, string> = {
+  tshirts: 'T-shirt', shirts: 'Chemise', tops: 'Haut', sweaters: 'Pull', sweatshirts: 'Sweat', jeans: 'Jean', trousers: 'Pantalon',
+  shorts: 'Short', skirts: 'Jupe', 'track pants': 'Jogging', leggings: 'Legging', dresses: 'Robe', jumpsuit: 'Combinaison',
+  kaftan: 'Caftan', jebba: 'Jebba', traditional: 'Tenue traditionnelle', other: 'Autre', jackets: 'Veste', blazers: 'Blazer',
+  coats: 'Manteau', 'rain jacket': 'Imperméable', 'casual shoes': 'Baskets', 'formal shoes': 'Chaussures de ville',
+  'sports shoes': 'Chaussures de sport', sandals: 'Sandales', heels: 'Talons', flats: 'Ballerines', boots: 'Bottes',
+  handbags: 'Sac à main', clutches: 'Pochette', belts: 'Ceinture', watches: 'Montre', scarves: 'Écharpe', sunglasses: 'Lunettes de soleil',
+  caps: 'Casquette', socks: 'Chaussettes', ties: 'Cravate',
+};
+export const typeLabel = (t?: string) => (t ? TYPE_FR[t.toLowerCase()] || t : '');
 export const slotLabel = (s?: string) => find(SLOT_OPTIONS, s) || s || '—';
 export const seasonLabel = (s?: string) => find(SEASON_OPTIONS, s) || s || '—';
 export const usageLabel = (u?: string) => find(USAGE_OPTIONS, u) || u || '—';
@@ -83,7 +94,7 @@ interface Props {
 
 export function ItemFields({ form, onChange, auto = false, idPrefix = 'f' }: Props) {
   const set = <K extends keyof ItemForm>(k: K, v: ItemForm[K]) => onChange({ ...form, [k]: v });
-  const autoOpt = (txt = 'Auto (détecté par l\'Obj1)') => (auto ? <option value="">{txt}</option> : null);
+  const autoOpt = (txt = 'Auto (reconnu sur la photo)') => (auto ? <option value="">{txt}</option> : null);
   const id = (k: string) => `${idPrefix}-${k}`;
   // une valeur existante hors liste (ancienne fiche) reste affichée telle quelle
   const extra = (opts: { id: string }[], v: string) => (v && !opts.some(o => o.id === v) ? <option value={v}>{v}</option> : null);

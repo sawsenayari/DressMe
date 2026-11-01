@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import type { ClothingItem } from '../../types';
 import type { ItemPatch } from '../../services/wardrobe';
 import {
-  FORMALITY_OPTIONS, ItemFields, WARMTH_OPTIONS, coloursLabel, formFromItem, patchFromForm, seasonLabel, slotLabel, usageLabel,
+  FORMALITY_OPTIONS, ItemFields, WARMTH_OPTIONS, coloursLabel, formFromItem, patchFromForm, seasonLabel, slotLabel, typeLabel, usageLabel,
   type ItemForm,
 } from './ItemFields';
 
@@ -60,13 +60,13 @@ export function ItemDetailModal({ item, onClose, onSave, onDelete }: Props) {
 
   const facts: [string, string][] = [
     ['Emplacement', slotLabel(current.slot)],
-    ['Type', current.type || '—'],
+    ['Type', typeLabel(current.type) || '—'],
     ['Couleur', coloursLabel(current)],
     ['Saison', seasonLabel(current.season)],
     ['Usage', usageLabel(current.usage)],
     ['Formalité', current.formality != null ? FORMALITY_OPTIONS[current.formality] ?? String(current.formality) : '—'],
     ['Chaleur', current.warmth != null ? WARMTH_OPTIONS[current.warmth] ?? String(current.warmth) : '—'],
-    ['Source', corrected ? 'corrigée par vous' : current.source === 'obj1.knn' ? 'Obj1 (voisins)' : current.source === 'obj1.llm' ? 'Obj1 (LLM)' : current.source || '—'],
+    ['Renseignée par', corrected ? 'vous' : current.source?.startsWith('obj1') ? 'reconnaissance automatique' : '—'],
   ];
 
   return (
@@ -96,7 +96,7 @@ export function ItemDetailModal({ item, onClose, onSave, onDelete }: Props) {
               <span style={{ fontWeight: 700 }}>{corrected ? '✓ Caractéristiques confirmées par vous' : '⚠️ Vérification recommandée'}</span>
               {!corrected && (
                 <div style={{ fontSize: '0.76rem', color: 'var(--muted)' }}>
-                  Confiance de l'Obj1 : emplacement {confSlot ?? '—'} %, couleur {confColour ?? '—'} %. Vérifiez, puis confirmez ou modifiez.
+                  Reconnaissance automatique peu sûre (type {confSlot ?? '—'} %, couleur {confColour ?? '—'} %). Vérifiez, puis confirmez ou modifiez.
                 </div>
               )}
             </div>

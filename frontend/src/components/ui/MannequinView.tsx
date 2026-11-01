@@ -33,7 +33,7 @@ export function MannequinView({ items, tryOnImageUrl }: Props) {
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <span style={{ fontSize: '1.2rem' }}>🪞</span>
-          <h3 style={{ fontSize: '1.1rem' }}>Avatar & Silhouette Studio</h3>
+          <h3 style={{ fontSize: '1.1rem' }}>Aperçu de la tenue</h3>
         </div>
 
         <div style={{ display: 'flex', gap: '6px', background: 'var(--paper)', padding: '4px', borderRadius: '999px' }}>
@@ -50,7 +50,7 @@ export function MannequinView({ items, tryOnImageUrl }: Props) {
             }}
             onClick={() => setViewMode('layers')}
           >
-            Niveau 1: Mannequin 2D
+            Silhouette
           </button>
           <button
             className="chip"
@@ -65,7 +65,7 @@ export function MannequinView({ items, tryOnImageUrl }: Props) {
             }}
             onClick={() => setViewMode('tryon')}
           >
-            ✨ Niveau 2: Essayage Virtuel
+            ✨ Essayage virtuel
           </button>
         </div>
       </div>

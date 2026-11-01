@@ -14,7 +14,7 @@ const AXES: {
 }[] = [
   {
     id: 'efficiency',
-    title: 'Efficacité (Quick Mornings)',
+    title: 'Efficacité',
     text: 'S\'habiller en quelques secondes avec zéro fatigue décisionnelle.',
     icon: '⚡',
     benefit: 'Priorise la rapidité et la simplicité',
@@ -22,7 +22,7 @@ const AXES: {
   },
   {
     id: 'economy',
-    title: 'Économie (Spend Less & Rewear)',
+    title: 'Économie',
     text: 'Rentabiliser les basiques de qualité, n\'acheter que les vrais besoins.',
     icon: '🌿',
     benefit: 'Maximise le coût par port',
@@ -30,7 +30,7 @@ const AXES: {
   },
   {
     id: 'brand',
-    title: 'Image / Signature Look',
+    title: 'Image',
     text: 'Construire un style marquant et affirmer une identité visuelle forte.',
     icon: '💎',
     benefit: 'Priorise les pièces fortes et l\'allure',
@@ -44,6 +44,19 @@ const FORMALITY_LEVELS = [
   { level: 2, label: 'Professionnel / Soigné' },
   { level: 3, label: 'Très Formel / Cérémonie' },
 ];
+
+// « onepiece · Ethnic · beige · traditionnel » (Obj5) -> « Robe · traditionnel · beige »
+const STYLE_WORDS: Record<string, string> = {
+  top: 'hauts', bottom: 'bas', onepiece: 'robes', outer: 'vestes', footwear: 'chaussures', bag: 'sacs', accessory: 'accessoires',
+  casual: 'décontracté', 'smart casual': 'smart casual', formal: 'habillé', sports: 'sport', ethnic: 'traditionnel', party: 'soirée',
+  black: 'noir', white: 'blanc', grey: 'gris', beige: 'beige', brown: 'marron', blue: 'bleu', red: 'rouge', pink: 'rose',
+  purple: 'violet', orange: 'orange', yellow: 'jaune', green: 'vert', metallic: 'doré / argenté', multicolor: 'multicolore',
+};
+const styleLabel = (c?: string) => {
+  if (!c) return '';
+  const words = Array.from(new Set(c.split('·').map(w => w.trim()).filter(Boolean).map(w => w.split('/').map(x => STYLE_WORDS[x.trim().toLowerCase()] || x.trim()).join(' et '))));
+  return words.join(' · ').replace(/^./, x => x.toUpperCase());
+};
 
 export default function Profile() {
   const { profile: contextProfile, setProfile: setContextProfile, useDemoData } = useApp();
@@ -104,10 +117,10 @@ export default function Profile() {
       <header className="page-head">
         <div>
           <h1 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            Profil de Style & Personas (Objectif 5) <span style={{ fontSize: '1.6rem' }}>🪞</span>
+            Mon profil de style <span style={{ fontSize: '1.6rem' }}>🪞</span>
           </h1>
           <p className="page-subtitle">
-            Modèle de style d'Ahmed Ayari : Persona par scores tripartites (Efficacité, Économie, Image), indice de diversité et préférence de formalité.
+            Ce que votre garde-robe dit de votre style, et vos préférences pour les suggestions de tenues.
           </p>
         </div>
 
@@ -138,14 +151,13 @@ export default function Profile() {
           role="alert"
           style={{ background: 'var(--danger-bg)', color: 'var(--danger)', padding: '12px 18px', borderRadius: '16px', marginBottom: '20px', fontSize: '0.9rem' }}
         >
-          Profil réel indisponible ({state.error.message}). Les valeurs ci-dessous sont celles enregistrées précédemment, pas un calcul de l'Objectif 5.
+          Votre profil n'a pas pu être mis à jour ({state.error.message}). Les valeurs ci-dessous sont les dernières connues.
         </div>
       )}
 
       {!useDemoData && state.data?.model === 'référence' && (
         <div role="status" className="card" style={{ marginBottom: '20px', fontSize: '0.9rem', color: 'var(--muted)' }}>
-          Moins de 18 pièces : profil calculé avec le modèle de référence de l'Objectif 5 (entraîné sur le catalogue). Il sera
-          réentraîné sur votre garde-robe à partir de 18 pièces.
+          Profil provisoire : il deviendra plus personnel à partir de 18 pièces dans votre garde-robe.
         </div>
       )}
 
@@ -178,10 +190,10 @@ export default function Profile() {
         <div style={{ flex: 1, minWidth: '220px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <h2 style={{ fontSize: '1.4rem' }}>Camille Stinson</h2>
-            <span className="chip-tag chip-tag-pink">Persona Actif</span>
+            <span className="chip-tag chip-tag-pink">Profil actif</span>
           </div>
           <p style={{ color: 'var(--muted)', fontSize: '0.9rem', margin: '4px 0 0' }}>
-            Cluster Dominant : <strong style={{ color: 'var(--ink)' }}>{profile.dominantCluster || 'Minimalist Pastel Tailoring'}</strong>
+            Votre style dominant : <strong style={{ color: 'var(--ink)' }}>{styleLabel(profile.dominantCluster) || 'à découvrir'}</strong>
           </p>
         </div>
 
@@ -191,7 +203,7 @@ export default function Profile() {
             {profile.diversityScore || 78}%
           </div>
           <div style={{ fontSize: '0.72rem', color: 'var(--muted)', textTransform: 'uppercase', fontWeight: 700 }}>
-            Indice Diversité
+            Variété de la garde-robe
           </div>
         </div>
 
@@ -207,7 +219,7 @@ export default function Profile() {
       {/* Tripartite Persona Scores (Objectif 5 Core: Efficacité, Économie, Image) */}
       <section style={{ marginBottom: '32px' }}>
         <h3 style={{ fontSize: '1.2rem', marginBottom: '16px' }}>
-          Scores Dimensionnels du Profil (Objectif 5)
+          Ce qui compte pour vous
         </h3>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
@@ -262,7 +274,7 @@ export default function Profile() {
       <section style={{ marginBottom: '32px' }}>
         <h3 style={{ fontSize: '1.2rem', marginBottom: '8px' }}>Orientation Prioritaire</h3>
         <p style={{ color: 'var(--muted)', fontSize: '0.9rem', marginBottom: '16px' }}>
-          Indiquez la dimension que le modèle de génération (DSO6) doit maximiser en priorité.
+          Choisissez ce que vos suggestions de tenues doivent privilégier.
         </p>
 
         <div className="options" style={{ marginTop: 0 }}>
@@ -297,7 +309,7 @@ export default function Profile() {
       <section style={{ marginBottom: '32px' }}>
         <h3 style={{ fontSize: '1.2rem', marginBottom: '8px' }}>Préférence de Formalité Quotidienne (0 à 3)</h3>
         <p style={{ color: 'var(--muted)', fontSize: '0.9rem', marginBottom: '14px' }}>
-          Calibre le curseur <code>formality_pref</code> utilisé par l'ajustement contextuel de l'Objectif 6.
+          Indiquez à quel point vous aimez être habillé(e) au quotidien.
         </p>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px' }}>
