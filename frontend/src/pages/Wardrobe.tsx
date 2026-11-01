@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useAsync } from '../hooks/useAsync';
-import { addItem, listItems } from '../services/wardrobe';
+import { addItem, deleteItem, listItems, updateItem, type ItemPatch } from '../services/wardrobe';
 import type { Slot, Season, ClothingItem } from '../types';
 import { ItemTile } from '../components/ui/ItemTile';
 import { ItemDetailModal } from '../components/ui/ItemDetailModal';
@@ -29,14 +29,14 @@ const SEASONS: { id: Season | 'all'; label: string }[] = [
 ];
 
 export default function Wardrobe() {
-  const { useDemoData, wardrobe: demoWardrobe, addWardrobeItem, searchQuery } = useApp();
+  const { useDemoData, wardrobe: demoWardrobe, addWardrobeItem, updateWardrobeItem, removeWardrobeItem, searchQuery, setSearchQuery } = useApp();
   const [version, setVersion] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [activeSlot, setActiveSlot] = useState<Slot | 'all'>('all');
   const [activeSeason, setActiveSeason] = useState<Season | 'all'>('all');
   const [onlyTraditional, setOnlyTraditional] = useState(false);
-  const [sortBy, setSortBy] = useState<'recent' | 'most-worn' | 'least-worn' | 'confidence'>('recent');
+  const [sortBy, setSortBy] = useState<'recent' | 'name' | 'most-worn' | 'least-worn' | 'confidence'>('recent');
   const [selectedItem, setSelectedItem] = useState<ClothingItem | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
@@ -77,6 +77,24 @@ export default function Wardrobe() {
     }
   }
 
+  // Modifier / supprimer : passerelle (PUT / DELETE /wardrobe/items/{id}) en mode API, état local en mode démo
+  async function handleSave(id: string, patch: ItemPatch): Promise<ClothingItem | void> {
+    if (useDemoData) {
+      updateWardrobeItem(id, { ...patch, ...(patch.colour ? { color: patch.colour[0] } : {}), ...(patch.slot ? { category: patch.slot } : {}) });
+      const it = demoWardrobe.find(i => i.id === id);
+      return it ? { ...it, ...patch, source: 'user_corrected' } : undefined;
+    }
+    const updated = await updateItem(id, patch);
+    setVersion(v => v + 1);
+    return updated;
+  }
+
+  async function handleDelete(id: string) {
+    if (useDemoData) { removeWardrobeItem(id); return; }
+    await deleteItem(id);
+    setVersion(v => v + 1);
+  }
+
   const rawItems: ClothingItem[] = useDemoData
     ? demoWardrobe
     : (apiState.data || []);
@@ -97,17 +115,20 @@ export default function Wardrobe() {
     }
 
     if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      items = items.filter(
-        i =>
-          (i.name && i.name.toLowerCase().includes(q)) ||
-          i.slot.toLowerCase().includes(q) ||
-          i.color.toLowerCase().includes(q) ||
-          (i.style && i.style.toLowerCase().includes(q))
-      );
+      // chaque mot doit apparaître dans au moins un champ : nom, emplacement, type, couleurs, usage, saison, style, id
+      const words = searchQuery.toLowerCase().split(/\s+/).filter(Boolean);
+      items = items.filter(i => {
+        const text = [i.name, i.slot, i.type, i.color, ...(i.colour || []), i.usage, i.season, i.style, i.id,
+                      i.traditional ? 'traditionnel traditional' : ''].filter(Boolean).join(' ').toLowerCase();
+        return words.every(w => text.includes(w));
+      });
     }
 
-    if (sortBy === 'most-worn') {
+    if (sortBy === 'recent') {
+      items.sort((a, b) => b.id.localeCompare(a.id, undefined, { numeric: true }));   // identifiants croissants à l'ajout
+    } else if (sortBy === 'name') {
+      items.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'fr'));
+    } else if (sortBy === 'most-worn') {
       items.sort((a, b) => (b.wearCount || 0) - (a.wearCount || 0));
     } else if (sortBy === 'least-worn') {
       items.sort((a, b) => (a.wearCount || 0) - (b.wearCount || 0));
@@ -246,16 +267,28 @@ export default function Wardrobe() {
             className="form-select"
             style={{ padding: '6px 12px', fontSize: '0.84rem', width: 'auto', borderRadius: '12px' }}
           >
-            <option value="recent">Récemment Ajouté</option>
-            <option value="most-worn">Plus Porté</option>
-            <option value="least-worn">Moins Porté</option>
-            <option value="confidence">Confiance Détection (Obj1)</option>
+            <option value="recent">Récemment ajouté</option>
+            <option value="name">Nom (A → Z)</option>
+            {useDemoData && <option value="most-worn">Plus porté</option>}
+            {useDemoData && <option value="least-worn">Moins porté</option>}
+            <option value="confidence">Confiance détection (Obj1)</option>
           </select>
         </div>
       </section>
 
       {/* Grid of Items */}
-      {filteredItems.length > 0 ? (
+      {searchQuery.trim() && (
+        <p style={{ fontSize: '0.86rem', color: 'var(--muted)', margin: '0 0 12px' }}>
+          {filteredItems.length} résultat(s) pour « {searchQuery} » ·{' '}
+          <button className="btn-sm btn-secondary" style={{ borderRadius: '999px', fontSize: '0.76rem' }} onClick={() => setSearchQuery('')}>
+            Effacer la recherche
+          </button>
+        </p>
+      )}
+
+      {!useDemoData && apiState.error ? (
+        <EmptyState text={`Garde-robe indisponible : ${apiState.error.message}`} endpoint="GET /wardrobe/items" />
+      ) : filteredItems.length > 0 ? (
         <div className="grid">
           {filteredItems.map((item, idx) => (
             <ItemTile
@@ -277,6 +310,8 @@ export default function Wardrobe() {
       <ItemDetailModal
         item={selectedItem}
         onClose={() => setSelectedItem(null)}
+        onSave={handleSave}
+        onDelete={handleDelete}
       />
 
       {/* Add Item Modal */}

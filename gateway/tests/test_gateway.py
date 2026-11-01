@@ -178,3 +178,28 @@ def test_add_item_obj1_local_knn(tmp_path, monkeypatch):
     assert r.status_code == 200, r.text
     it = r.json(); assert it["slot"] == "bottom" and it["source"] == "obj1.knn"
     v = np.load(store / f"emb/{it['id']}.npy"); assert v.shape == (512,) and abs(float(np.linalg.norm(v)) - 1) < 1e-3
+
+def test_edit_and_delete_item(tmp_path, monkeypatch):
+    """PUT corrige une fiche (validée, source user_corrected, saison autumn <-> fall) ; DELETE retire la fiche et ses fichiers."""
+    store = make_store(tmp_path)
+    monkeypatch.setenv("DRESSME_PROFILE_MODEL", str(store / "style_model.joblib"))
+    sys.path.insert(0, str(REPO / "gateway"))
+    import app as g
+    from fastapi.testclient import TestClient
+    monkeypatch.setattr(g, "STORE", store); monkeypatch.setattr(g, "_cache", {})
+    c = TestClient(g.app)
+    first = c.get("/wardrobe/items").json()[0]; iid = first["id"]
+    r = c.put(f"/wardrobe/items/{iid}", json={"name": "Veste noire", "slot": "outer", "colour": ["Black", "white"], "season": "autumn", "formality": 2})
+    assert r.status_code == 200, r.text
+    it = r.json(); assert it["name"] == "Veste noire" and it["slot"] == "outer" and it["colour"] == ["black", "white"] and it["season"] == "autumn"
+    assert it["source"] == "user_corrected"
+    card = next(x for x in json.load(open(store / "wardrobe.json", encoding="utf-8")) if x["id"] == iid)
+    assert card["season"] == "fall" and card["formality"] == 2                       # contrat ItemCard conservé dans le store
+    assert c.put(f"/wardrobe/items/{iid}", json={"slot": "chapeau"}).status_code == 422
+    assert c.put(f"/wardrobe/items/{iid}", json={"formality": 9}).status_code == 422
+    assert c.put("/wardrobe/items/inconnu", json={"name": "x"}).status_code == 404
+    emb = store / card["embedding"]; assert emb.exists()
+    n0 = len(c.get("/wardrobe/items").json())
+    r = c.delete(f"/wardrobe/items/{iid}"); assert r.status_code == 200 and r.json()["items"] == n0 - 1
+    assert not emb.exists() and iid not in {x["id"] for x in c.get("/wardrobe/items").json()}
+    assert c.delete(f"/wardrobe/items/{iid}").status_code == 404

@@ -129,6 +129,10 @@ def embed_photo(data: bytes):
 
 
 # ---------------------------------------------------------------- mappings vers les types du front
+SEASON_FRONT = {"spring": "spring", "summer": "summer", "fall": "autumn", "autumn": "autumn", "winter": "winter", "all": "all"}
+SEASON_STORE = {"autumn": "fall"}   # le contrat ItemCard (Obj1) écrit "fall" ; le front affiche "autumn"
+
+
 def to_front_item(c):
     img = lambda p: f"/files/{p}" if p else None
     col = c.get("colour") or []
@@ -136,7 +140,7 @@ def to_front_item(c):
             "type": c.get("type"), "colour": col, "color": col[0] if col else "", "usage": c.get("usage"),
             "warmth": c.get("warmth"), "formality": c.get("formality"), "waterproof": c.get("waterproof"),
             "open_toe": c.get("open_toe"), "gender": c.get("gender"), "imageUrl": img(c.get("image")) or "",
-            "imageCrop": img(c.get("image_crop")), "season": c.get("season") or "all", "pattern": c.get("pattern"),
+            "imageCrop": img(c.get("image_crop")), "season": SEASON_FRONT.get(c.get("season") or "all", "all"), "pattern": c.get("pattern"),
             "confidence": c.get("confidence"), "source": c.get("source"), "price_dt": c.get("price_dt"),
             "traditional": c.get("traditional")}
 
@@ -235,15 +239,117 @@ def _next_id():
     return f"it_{n:04d}"
 
 
-def _append_to_catalog(card):
+def _load_catalog_file():
+    d = json.load(open(STORE / "wardrobe.json", encoding="utf-8"))
+    return d, (d if isinstance(d, list) else d.setdefault("items", []))
+
+
+def _save_catalog_file(d):
     p = STORE / "wardrobe.json"
-    d = json.load(open(p, encoding="utf-8"))
-    (d if isinstance(d, list) else d.setdefault("items", [])).append(card)
     tmp = p.with_suffix(".json.tmp")
     tmp.write_text(json.dumps(d, indent=2, ensure_ascii=False), encoding="utf-8")
     os.replace(tmp, p)
     for k in ("c", "p", "j"):  # catalogue relu ; profil Obj5 et jury Obj3 reconstruits (ils refusent les identifiants inconnus)
         _cache.pop(k, None)
+
+
+def _append_to_catalog(card):
+    d, items = _load_catalog_file()
+    items.append(card)
+    _save_catalog_file(d)
+
+
+def _store_file(rel):
+    """Chemin d'un fichier du store, refusé s'il sort du dossier (chemins lus dans les fiches)."""
+    if not rel:
+        return None
+    f = (STORE / rel).resolve()
+    return f if STORE.resolve() in f.parents else None
+
+
+SLOTS = {"top", "bottom", "onepiece", "outer", "footwear", "bag", "accessory"}
+USAGES = {"Casual", "Smart Casual", "Formal", "Sports", "Ethnic", "Party"}
+SEASONS = {"spring", "summer", "fall", "winter", "all"}
+
+
+def _check_patch(body):
+    """Champs modifiables d'une fiche ItemCard v1, validés ; accepte aussi les noms du front (color, category, autumn)."""
+    b = dict(body)
+    if "color" in b and "colour" not in b:
+        b["colour"] = [b.pop("color")]
+    if "category" in b and "slot" not in b:
+        b["slot"] = b.pop("category")
+    out, err = {}, []
+    if "name" in b:
+        out["name"] = str(b["name"]).strip() or err.append("name vide")
+    if "type" in b:
+        out["type"] = str(b["type"]).strip() or err.append("type vide")
+    if "slot" in b:
+        out["slot"] = b["slot"] if b["slot"] in SLOTS else err.append(f"slot : {sorted(SLOTS)}")
+    if "colour" in b:
+        col = [str(x).strip().lower() for x in (b["colour"] if isinstance(b["colour"], list) else [b["colour"]]) if str(x).strip()]
+        out["colour"] = col if 1 <= len(col) <= 2 else err.append("colour : 1 ou 2 couleurs")
+    if "usage" in b:
+        out["usage"] = b["usage"] if b["usage"] in USAGES else err.append(f"usage : {sorted(USAGES)}")
+    if "season" in b:
+        sea = SEASON_STORE.get(b["season"], b["season"])
+        out["season"] = sea if sea in SEASONS else err.append("season : spring, summer, autumn, winter, all")
+    for k, hi in (("formality", 3), ("warmth", 4)):
+        if k in b:
+            try:
+                v = int(b[k]); out[k] = v if 0 <= v <= hi else err.append(f"{k} : 0 à {hi}")
+            except (TypeError, ValueError):
+                err.append(f"{k} : entier 0 à {hi}")
+    for k in ("traditional", "waterproof", "open_toe"):
+        if k in b:
+            out[k] = bool(b[k])
+    if "price_dt" in b:
+        try:
+            out["price_dt"] = None if b["price_dt"] in (None, "") else float(b["price_dt"])
+        except (TypeError, ValueError):
+            err.append("price_dt : nombre")
+    if err:
+        raise HTTPException(422, "Champs invalides : " + " ; ".join(err))
+    return out
+
+
+@app.put("/wardrobe/items/{item_id}")
+def edit_item(item_id: str, body: dict):
+    """Correction d'une fiche par l'utilisateur (source = user_corrected, comme apply_correction de l'Obj1)."""
+    patch = _check_patch(body)
+    with _write_lock:
+        d, items = _load_catalog_file()
+        card = next((c for c in items if c.get("id") == item_id), None)
+        if card is None:
+            raise HTTPException(404, f"article inconnu : {item_id}")
+        card.update(patch)
+        card["source"] = "user_corrected"
+        conf = card.get("confidence") or {}   # comme apply_correction (Obj1) : confiance 1.0 sur les champs corrigés ;
+        for k in conf:                         # patch vide (« Confirmer ») = tous les attributs confirmés
+            if not patch or k in patch:
+                conf[k] = 1.0
+        _save_catalog_file(d)
+        own = _store_file(f"items/{item_id}.json")
+        if own is not None and own.exists():
+            own.write_text(json.dumps(card, indent=2, ensure_ascii=False), encoding="utf-8")
+    return to_front_item(card)
+
+
+@app.delete("/wardrobe/items/{item_id}")
+def delete_item(item_id: str):
+    """Retire la pièce du catalogue et supprime ses fichiers (photo, crop, embedding, fiche)."""
+    with _write_lock:
+        d, items = _load_catalog_file()
+        card = next((c for c in items if c.get("id") == item_id), None)
+        if card is None:
+            raise HTTPException(404, f"article inconnu : {item_id}")
+        items.remove(card)
+        _save_catalog_file(d)
+        for rel in {card.get("image"), card.get("image_crop"), card.get("embedding"), f"items/{item_id}.json"}:
+            f = _store_file(rel)
+            if f is not None and f.is_file():
+                f.unlink()
+    return {"deleted": item_id, "items": len(items)}
 
 
 @app.post("/wardrobe/items")

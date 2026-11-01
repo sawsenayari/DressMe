@@ -1,4 +1,4 @@
-import { NavLink, Outlet } from 'react-router-dom';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { AuthModal } from '../ui/AuthModal';
 
@@ -67,6 +67,13 @@ const NAV_LINKS = [
 
 export function AppShell() {
   const { useDemoData, setUseDemoData, searchQuery, setSearchQuery, setIsAuthModalOpen } = useApp();
+  const navigate = useNavigate();
+  const location = useLocation();
+  // La recherche porte sur la garde-robe : taper depuis une autre page ouvre Wardrobe avec le filtre
+  const onSearch = (q: string) => {
+    setSearchQuery(q);
+    if (q.trim() && location.pathname !== '/wardrobe') navigate('/wardrobe');
+  };
 
   return (
     <div className="shell">
@@ -133,10 +140,11 @@ export function AppShell() {
             <span className="topbar-search-icon">{Icons.search}</span>
             <input
               type="text"
-              placeholder="Search wardrobe, colors, categories…"
+              placeholder="Rechercher : nom, couleur, type, saison…"
               value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              aria-label="Search wardrobe"
+              onChange={e => onSearch(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Escape') setSearchQuery(''); }}
+              aria-label="Rechercher dans la garde-robe"
             />
           </div>
 

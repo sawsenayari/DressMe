@@ -7,6 +7,8 @@ interface AppContextType {
   setUseDemoData: (v: boolean) => void;
   wardrobe: ClothingItem[];
   addWardrobeItem: (item: ClothingItem) => void;
+  updateWardrobeItem: (id: string, patch: Partial<ClothingItem>) => void;
+  removeWardrobeItem: (id: string) => void;
   profile: StyleProfile;
   setProfile: (p: StyleProfile) => void;
   gaps: GapSuggestion[];
@@ -61,6 +63,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setWardrobe(prev => [item, ...prev]);
   };
 
+  // Mode démo : modifications locales (le mode API passe par PUT / DELETE /wardrobe/items/{id})
+  const updateWardrobeItem = (id: string, patch: Partial<ClothingItem>) => {
+    setWardrobe(prev => prev.map(i => (i.id === id ? { ...i, ...patch, source: 'user_corrected' } : i)));
+  };
+
+  const removeWardrobeItem = (id: string) => {
+    setWardrobe(prev => prev.filter(i => i.id !== id));
+  };
+
   const getDemoOutfit = (occasion: Occasion, budget: boolean): Outfit => {
     const base = SAMPLE_OUTFITS[occasion] || SAMPLE_OUTFITS.casual;
     if (budget) {
@@ -93,6 +104,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setUseDemoData,
         wardrobe,
         addWardrobeItem,
+        updateWardrobeItem,
+        removeWardrobeItem,
         profile,
         setProfile,
         gaps: SAMPLE_GAPS,
