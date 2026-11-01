@@ -128,7 +128,7 @@ cd frontend && npx tsc --noEmit && npm run build && cd ..
 
 ## 6. Limites connues
 
-- Ajout de photo : sans Kaggle ni GPU, l'Obj1 tourne en **kNN sur sa base locale** (`data/agent_final`) ; les fiches sortent en `needs_review`.
+- Ajout de photo (Obj1) sans Kaggle ni GPU : avec `GEMINI_API_KEY` dans `gateway/.env`, l'agent de l'Obj1 tourne en mode complet avec Gemini à la place de Qwen (photo analysée, contrôle par les voisins, RAG) ; sans clé, vote des voisins seul. Mesure sur 28 photos portées tunisiennes : couleur juste 89 % avec Gemini contre 29 % sans, pièces traditionnelles 7/8 contre 0/8 ; photos produit ≈ 90 % dans les deux cas. Limites de l'Obj1 : une pièce traditionnelle est toujours rangée en « robe / pièce unique », chaleur et formalité sont des valeurs par défaut (dictionnaire officiel absent).
 - Jury (Obj3) : règles seules par défaut. Juge LLM dans Outfit Studio : `copy gateway\.env.example gateway\.env`,
   y mettre `LLM_API_KEY` (Groq) ou `GEMINI_API_KEY`, puis relancer `run_all.bat` (≈ 10 s par évaluation, 40 appels LLM / heure).
   Avec `GEMINI_API_KEY`, le juge visuel (Gemini) juge aussi la photo de la tenue (avis informatif, hors vote). Today reste en règles seules.

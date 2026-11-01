@@ -244,9 +244,37 @@ def recognizer():
     return svc
 
 
+class GeminiVisionLLM:
+    """Remplace Qwen2.5-VL (GPU) dans l'agent de l'Obj1 : même interface generate(image, prompt, system) -> texte JSON.
+    Modèles Gemini essayés dans l'ordre (quota gratuit par modèle)."""
+
+    def __init__(self, key, models):
+        from openai import OpenAI
+        self.client = OpenAI(api_key=key, base_url="https://generativelanguage.googleapis.com/v1beta/openai/", max_retries=3)
+        self.models = models
+
+    def generate(self, image, prompt, system=None):
+        import base64
+        if system is None:
+            from recognition.prompts import SYSTEM as system
+        buf = io.BytesIO(); image.convert("RGB").save(buf, "JPEG", quality=90)
+        url = "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode()
+        msgs = [{"role": "system", "content": system},
+                {"role": "user", "content": [{"type": "text", "text": prompt}, {"type": "image_url", "image_url": {"url": url}}]}]
+        last = None
+        for m in self.models:
+            try:
+                r = self.client.chat.completions.create(model=m, messages=msgs, response_format={"type": "json_object"})
+                return r.choices[0].message.content or ""
+            except Exception as e:   # quota du modèle, modèle indisponible : modèle suivant
+                last = e
+        raise last
+
+
 def _obj1_local_knn():
-    """Obj1 en mode « knn_only » sans Kaggle ni LLM : crop (SegFormer / rembg) -> FashionCLIP gelé -> vote des voisins
-    sur la base locale data/agent_final (kb_meta.csv + kb_emb.npy) -> ItemCard v1. Même encodeur que la passerelle."""
+    """Obj1 sans Kaggle ni GPU : crop (SegFormer / rembg) -> FashionCLIP gelé -> base de voisins locale data/agent_final
+    (kb_meta.csv + kb_emb.npy) -> ItemCard v1. Avec GEMINI_API_KEY, l'agent tourne en mode complet (Gemini voit la photo,
+    contrôle par les voisins, RAG) au lieu du seul vote des voisins. Même encodeur que la passerelle."""
     import pandas as pd
     from transformers import CLIPProcessor
     from recognition.agent import RecognitionAgent
@@ -259,8 +287,16 @@ def _obj1_local_knn():
     if not (meta.exists() and emb.exists()):
         raise FileNotFoundError(f"base kNN de l'Obj1 absente : {meta} / {emb}")
     shared = FashionClipEmbedder(model=clip()[0], proc=CLIPProcessor.from_pretrained(CLIP_NAME), device="cpu")
-    agent = RecognitionAgent(None, shared, Retriever(np.load(emb), pd.read_csv(meta)), CFG)
-    return RecognitionService(agent, shared, CFG, None, "knn_only", cropper=Cropper.from_config(CFG))
+    key = os.environ.get("GEMINI_API_KEY", "")
+    vlm, cache = None, None
+    if key and os.environ.get("DRESSME_OBJ1_VLM", "gemini") == "gemini":
+        from recognition.llm import JsonlCache
+        models = [m.strip() for m in os.environ.get("GEMINI_VISION_MODELS", GEMINI_VISION_MODELS).split(",") if m.strip()]
+        vlm = GeminiVisionLLM(key, models)
+        cache = JsonlCache(Path(os.environ.get("DRESSME_OBJ1_CACHE", CFG.out / "llm_calls_gemini.jsonl")))   # réponses déjà obtenues (fichier ignoré par git)
+    log(f"Obj1 : {'mode complet avec Gemini (' + vlm.models[0] + ')' if vlm else 'vote des voisins seul (pas de GEMINI_API_KEY)'}")
+    agent = RecognitionAgent(vlm, shared, Retriever(np.load(emb), pd.read_csv(meta)), CFG, cache)
+    return RecognitionService(agent, shared, CFG, None, "full" if vlm else "knn_only", cropper=Cropper.from_config(CFG))
 
 
 def _next_id():

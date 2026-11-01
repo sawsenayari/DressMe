@@ -175,6 +175,7 @@ def test_add_item_obj1_local_knn(tmp_path, monkeypatch):
     sys.path.insert(0, str(REPO / "gateway"))
     import app as g
     from fastapi.testclient import TestClient
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)   # vote des voisins seul : jamais d'appel réel à Gemini en test
     monkeypatch.setattr(g, "STORE", store); monkeypatch.setattr(g, "_cache", {})
     photo = (REPO / "frontend" / "public" / "images" / "cream-trousers.jpg").read_bytes()
     r = TestClient(g.app).post("/wardrobe/items", files={"image": ("p.jpg", photo, "image/jpeg")})
@@ -295,3 +296,29 @@ def test_outfit_judge_visual_with_fake_gemini(tmp_path, monkeypatch):
     monkeypatch.setattr(g, "vision_llm", lambda: None)                      # sans Gemini : raison affichée
     v = c.post("/outfits/judge", json={"item_ids": [x["id"] for x in cards], "occasion": "casual"}).json()["judges"]["visual"]
     assert v["score01"] is None and v["status"] == "unavailable" and "non activée" in v["message"]
+
+def test_add_item_obj1_full_with_fake_gemini(tmp_path, monkeypatch):
+    """Obj1 en mode complet (Gemini voit la photo à la place de Qwen) : faux Gemini -> fiche reconnue par le LLM (source obj1.llm)."""
+    import pytest
+    if not (_hf_cached("patrickjohncyh/fashion-clip") and _hf_cached("mattmdjaga/segformer_b2_clothes")
+            and (REPO / "obj1_reconnaissance" / "data" / "agent_final" / "kb_emb.npy").exists()):
+        pytest.skip("FashionCLIP / SegFormer non téléchargés ou base kNN de l'Obj1 absente")
+    store = make_store(tmp_path)
+    monkeypatch.setenv("DRESSME_OBJ1_MODE", "knn"); monkeypatch.setenv("HF_HUB_OFFLINE", "1"); monkeypatch.setenv("GEMINI_API_KEY", "faux")
+    monkeypatch.setenv("DRESSME_OBJ1_CACHE", str(tmp_path / "cache.jsonl"))   # jamais le vrai cache de l'Obj1
+    sys.path.insert(0, str(REPO / "gateway"))
+    import app as g
+    from fastapi.testclient import TestClient
+    seen = []
+    class FakeGemini:
+        def __init__(self, key, models): self.models = models
+        def generate(self, image, prompt, system=None):
+            seen.append(image.size)
+            return json.dumps({"evidence": "pantalon large crème", "category": "pants", "alternative": "jeans", "color": "beige",
+                               "gender": "female", "season": "all_season", "occasion": "casual", "confidence": 0.93})
+    monkeypatch.setattr(g, "GeminiVisionLLM", FakeGemini)
+    monkeypatch.setattr(g, "STORE", store); monkeypatch.setattr(g, "_cache", {})
+    photo = (REPO / "frontend" / "public" / "images" / "cream-trousers.jpg").read_bytes()
+    r = TestClient(g.app).post("/wardrobe/items", files={"image": ("p.jpg", photo, "image/jpeg")})
+    assert r.status_code == 200, r.text
+    it = r.json(); assert it["slot"] == "bottom" and it["colour"] == ["beige"] and it["source"] == "obj1.llm" and seen

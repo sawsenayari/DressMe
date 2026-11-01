@@ -44,32 +44,23 @@ export default function Wardrobe() {
   const apiState = useAsync(listItems, [version]);
 
   // Ajout : l'Obj1 reconnaît la photo, puis les caractéristiques saisies (champs non « Auto ») remplacent sa détection
-  async function handleAdd(file: File, patch: ItemPatch) {
-    setBusy(true);
+  // Ajout en 2 temps : la photo est analysée (pièce créée, caractéristiques détectées), puis l'utilisateur vérifie
+  // le formulaire pré-rempli et enregistre (handleSave) ou annule (handleDelete).
+  async function handleAnalyze(file: File): Promise<ClothingItem> {
     setError('');
-    try {
-      if (useDemoData) {
-        const colour = patch.colour?.length ? patch.colour : ['beige'];
-        const slot = patch.slot || 'top';
-        addWardrobeItem({
-          id: `it_${Date.now()}`, name: patch.name || 'Nouvelle pièce', type: patch.type, slot, category: slot,
-          colour, color: colour[0], season: patch.season || 'all', usage: patch.usage || 'Casual',
-          formality: patch.formality ?? 1, warmth: patch.warmth ?? 1, traditional: !!patch.traditional,
-          imageUrl: URL.createObjectURL(file), imageCrop: URL.createObjectURL(file),
-          source: 'user_corrected', confidence: { slot: 1, colour: 1, type: 1 },
-        });
-      } else {
-        const created = await addItem(file);
-        if (Object.keys(patch).length) await updateItem(created.id, patch);
-        setVersion(v => v + 1);
-      }
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      setError(`Impossible d'ajouter la pièce : ${msg}`);
-      throw e instanceof Error ? e : new Error(msg);
-    } finally {
-      setBusy(false);
+    if (useDemoData) {   // démo : pas de reconnaissance, fiche de départ à compléter
+      const item: ClothingItem = {
+        id: `it_${Date.now()}`, name: 'Nouvelle pièce', type: 'Tshirts', slot: 'top', category: 'top', colour: ['beige'], color: 'beige',
+        season: 'all', usage: 'Casual', formality: 1, warmth: 1, traditional: false,
+        imageUrl: URL.createObjectURL(file), imageCrop: URL.createObjectURL(file),
+        source: 'obj1.knn', confidence: { slot: 0.6, colour: 0.6, type: 0.6 },
+      };
+      addWardrobeItem(item);
+      return item;
     }
+    const created = await addItem(file);
+    setVersion(v => v + 1);
+    return created;
   }
 
   // Modifier / supprimer : passerelle (PUT / DELETE /wardrobe/items/{id}) en mode API, état local en mode démo
@@ -313,8 +304,9 @@ export default function Wardrobe() {
       <AddItemModal
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
-        onAdd={handleAdd}
-        busy={busy}
+        onAnalyze={handleAnalyze}
+        onConfirm={handleSave}
+        onDiscard={handleDelete}
       />
     </>
   );
