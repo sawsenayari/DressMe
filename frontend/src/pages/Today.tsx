@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAsync } from '../hooks/useAsync';
-import { getOutfitOfDay } from '../services/outfits';
+import { getOutfitOfDay, sendOutfitFeedback } from '../services/outfits';
 import type { Occasion, ClothingItem } from '../types';
 import { DataState } from '../components/ui/DataState';
 import { ItemTile } from '../components/ui/ItemTile';
@@ -10,11 +10,12 @@ import { useApp } from '../context/AppContext';
 
 const OCCASIONS: Occasion[] = ['work', 'casual', 'evening'];
 
-const AGENDAS = [
-  '☕ Co-working & Rendez-vous informel',
-  '💼 Réunion Client & Présentation Projet',
-  '🎨 Vernissage & Dîner en Ville',
-  '🌿 Balade Décontractée & Marché',
+// Agenda du jour : texte transmis à l'Obj6 (qui le lit avec son agent) + occasion correspondante pour les puces
+const AGENDAS: { label: string; text: string; occasion: Occasion }[] = [
+  { label: '☕ Co-working & Rendez-vous informel', text: 'co-working et rendez-vous informel', occasion: 'casual' },
+  { label: '💼 Réunion Client & Présentation Projet', text: 'réunion client et présentation de projet au bureau', occasion: 'work' },
+  { label: '🎨 Vernissage & Dîner en Ville', text: 'vernissage puis dîner au restaurant en ville', occasion: 'evening' },
+  { label: '🌿 Balade Décontractée & Marché', text: 'balade décontractée et marché', occasion: 'casual' },
 ];
 
 export default function Today() {
@@ -22,25 +23,48 @@ export default function Today() {
   const [occasion, setOccasion] = useState<Occasion>('casual');
   const [selectedAgenda, setSelectedAgenda] = useState(AGENDAS[0]);
   const [budget, setBudget] = useState(false);
+  const [exclude, setExclude] = useState<string[][]>([]);   // tenues écartées par « Autre proposition »
   const [feedbackState, setFeedbackState] = useState<'idle' | 'accepted' | 'rejected'>('idle');
+  const [feedbackMsg, setFeedbackMsg] = useState('');
+  const [busy, setBusy] = useState(false);
   const [selectedItem, setSelectedItem] = useState<ClothingItem | null>(null);
   const [displayMode, setDisplayMode] = useState<'grid' | 'mannequin'>('grid');
 
-  // Live model backend query
-  const apiState = useAsync(() => getOutfitOfDay(occasion, budget), [occasion, budget]);
+  // Live model backend query (Obj6 -> jury Obj3 + compatibilité Obj2)
+  const apiState = useAsync(() => getOutfitOfDay(occasion, budget, selectedAgenda.text, exclude),
+                            [occasion, budget, selectedAgenda, exclude]);
 
   // Demo outfit fallback
   const demoOutfit = getDemoOutfit(occasion, budget);
   const activeOutfit = useDemoData ? demoOutfit : apiState.data;
 
-  const handleAcceptOutfit = () => {
-    setFeedbackState('accepted');
-    setTimeout(() => setFeedbackState('idle'), 2500);
+  const flash = (state: 'accepted' | 'rejected', msg: string) => {
+    setFeedbackState(state); setFeedbackMsg(msg);
+    setTimeout(() => { setFeedbackState('idle'); setFeedbackMsg(''); }, 3500);
   };
 
+  const changeOccasion = (o: Occasion) => { setOccasion(o); setExclude([]); };
+  const changeAgenda = (label: string) => {
+    const ag = AGENDAS.find(a => a.label === label) || AGENDAS[0];
+    setSelectedAgenda(ag); setOccasion(ag.occasion); setExclude([]);
+  };
+
+  // « Valider & Porter » : avis positif mémorisé par l'Obj6 (pièces favorisées et marquées portées aujourd'hui)
+  const handleAcceptOutfit = async () => {
+    if (useDemoData || !apiState.data) { flash('accepted', ''); return; }
+    setBusy(true);
+    try {
+      const r = await sendOutfitFeedback(apiState.data.items.map(i => i.id), true, apiState.data.features);
+      flash('accepted', `Enregistré par l'Objectif 6 (${r.accepted} tenue(s) validée(s) au total).`);
+    } catch (e) {
+      flash('rejected', `Avis non enregistré : ${e instanceof Error ? e.message : e}`);
+    } finally { setBusy(false); }
+  };
+
+  // « Autre proposition » : nouvelle tenue en écartant celle-ci (sans pénaliser ses pièces)
   const handleRejectOutfit = () => {
-    setFeedbackState('rejected');
-    setTimeout(() => setFeedbackState('idle'), 2500);
+    if (useDemoData || !apiState.data?.excludeKey) { flash('rejected', ''); return; }
+    setExclude(prev => [...prev, apiState.data!.excludeKey!]);
   };
 
   return (
@@ -62,18 +86,34 @@ export default function Today() {
               className={`btn-sm ${feedbackState === 'accepted' ? 'btn-mint' : 'btn-secondary'}`}
               style={{ borderRadius: '999px', fontWeight: 600 }}
               onClick={handleAcceptOutfit}
+              disabled={busy || (!useDemoData && !apiState.data)}
             >
-              {feedbackState === 'accepted' ? '✓ Portée Aujourd\'hui !' : '✨ Valider & Porter'}
+              {feedbackState === 'accepted' ? '✓ Portée aujourd\'hui !' : busy ? 'Envoi…' : '✨ Valider & Porter'}
             </button>
             <button
               className="btn-secondary btn-sm"
               style={{ borderRadius: '999px', fontSize: '0.8rem' }}
               onClick={handleRejectOutfit}
+              disabled={!useDemoData && (apiState.loading || !apiState.data)}
             >
-              {feedbackState === 'rejected' ? 'Noté pour l\'IA' : '↻ Autre proposition'}
+              {feedbackState === 'rejected' && useDemoData ? 'Noté pour l\'IA' : '↻ Autre proposition'}
             </button>
           </div>
         </div>
+
+        {(feedbackMsg || (!useDemoData && exclude.length > 0)) && (
+          <p role="status" style={{ fontSize: '0.84rem', color: feedbackState === 'rejected' ? 'var(--danger)' : 'var(--muted)', margin: '10px 0 0' }}>
+            {feedbackMsg}
+            {!useDemoData && exclude.length > 0 && (
+              <>
+                {feedbackMsg ? ' · ' : ''}{exclude.length} tenue(s) écartée(s){' '}
+                <button className="btn-sm btn-secondary" style={{ borderRadius: '999px', fontSize: '0.74rem' }} onClick={() => setExclude([])}>
+                  Réinitialiser
+                </button>
+              </>
+            )}
+          </p>
+        )}
 
         {/* Agenda / Event Dropdown (Objectif 6 - Contexte) */}
         <div
@@ -93,14 +133,14 @@ export default function Today() {
             📅 Contexte Agenda du jour :
           </span>
           <select
-            value={selectedAgenda}
-            onChange={e => setSelectedAgenda(e.target.value)}
+            value={selectedAgenda.label}
+            onChange={e => changeAgenda(e.target.value)}
             className="form-select"
             style={{ padding: '6px 14px', fontSize: '0.86rem', width: 'auto', flex: 1, minWidth: '220px' }}
           >
             {AGENDAS.map(ag => (
-              <option key={ag} value={ag}>
-                {ag}
+              <option key={ag.label} value={ag.label}>
+                {ag.label}
               </option>
             ))}
           </select>
@@ -188,7 +228,7 @@ export default function Today() {
               key={o}
               className="chip"
               aria-pressed={o === occasion}
-              onClick={() => setOccasion(o)}
+              onClick={() => changeOccasion(o)}
             >
               {o === 'work' ? '💼 Travail' : o === 'casual' ? '☕ Casual Chic' : '🌙 Soirée'}
             </button>
@@ -311,7 +351,7 @@ export default function Today() {
         <DataState
           state={apiState}
           endpoint="GET /outfits/today"
-          pending="Votre tenue du jour apparaîtra ici dès la connexion aux services d'orchestration."
+          pending={apiState.error ? `Tenue indisponible : ${apiState.error.message}` : "Votre tenue du jour apparaîtra ici dès la connexion aux services d'orchestration."}
         >
           {outfit => (
             <section className="split">

@@ -506,15 +506,27 @@ def to_obj3_piece(c):
             "motif": "uni" if (c.get("pattern") or "plain") == "plain" else "imprimé"}
 
 
-def obj6_recommend(payload):
-    """Appel HTTP à l'objectif 6. Service absent ou en erreur -> 501 (Obj6 non lançable)."""
+OBJ6_UID = "me"   # utilisateur unique de la démo : préférences et rotation mémorisées par l'Obj6 (feedback.db)
+
+
+def _obj6_post(route, payload):
+    """Appel HTTP à l'objectif 6. Service absent -> 501 ; requête refusée par l'Obj6 -> même code et son détail."""
     import httpx
     try:
-        r = httpx.post(f"{OBJ6_URL}/api/recommend", json=payload, timeout=60)
-        r.raise_for_status()
-        return r.json()
+        r = httpx.post(f"{OBJ6_URL}{route}", json=payload, timeout=60)
     except Exception as e:
         raise HTTPException(501, f"Objectif 6 non joignable sur {OBJ6_URL} ({type(e).__name__}) : lancer obj6_app (voir run_all.bat).")
+    if r.status_code >= 400:
+        try:
+            detail = r.json().get("detail")
+        except Exception:
+            detail = r.text[:200]
+        raise HTTPException(r.status_code if r.status_code < 500 else 502, f"Objectif 6 : {detail}")
+    return r.json()
+
+
+def obj6_recommend(payload):
+    return _obj6_post("/api/recommend", payload)
 
 
 def jury():
@@ -538,12 +550,18 @@ def outfit_compat01(cards):
 
 
 @app.get("/outfits/today")
-def outfit_today(occasion: str = "casual", budget: bool = False, city: str = "Tunis", k: int = 5):
+def outfit_today(occasion: str = "casual", budget: bool = False, city: str = "Tunis", k: int = 5,
+                 agenda: Optional[str] = None, exclude: Optional[str] = None):
+    """agenda : texte libre transmis à l'Obj6 ; exclude : tenues déjà refusées, "id1,id2;id3,id4" (« Autre proposition »)."""
     if occasion not in OCC_OBJ6:
         raise HTTPException(422, f"occasion inconnue : {occasion} (attendu : {list(OCC_OBJ6)})")
     by_id = {c["id"]: c for c in catalog()}
-    res = obj6_recommend({"wardrobe": [to_obj6_item(c) for c in by_id.values()], "occasion": OCC_OBJ6[occasion],
-                          "city": city, "k": max(1, min(k, 10))})
+    excl = [[i for i in grp.split(",") if i] for grp in (exclude or "").split(";") if grp.strip()]
+    payload = {"wardrobe": [to_obj6_item(c) for c in by_id.values()], "occasion": OCC_OBJ6[occasion],
+               "city": city, "k": max(1, min(k, 10)), "uid": OBJ6_UID, "exclude_outfits": excl}
+    if agenda and agenda.strip():
+        payload["agenda"] = agenda.strip()[:300]
+    res = obj6_recommend(payload)
     ctx = res.get("context", {})
     if not res.get("outfits"):
         raise HTTPException(404, res.get("message") or "Aucune tenue proposée par l'objectif 6.")
@@ -566,7 +584,31 @@ def outfit_today(occasion: str = "casual", budget: bool = False, city: str = "Tu
         warns.append("Mode budget : pas encore pris en compte par l'objectif 6.")
     return {"id": "-".join(c["id"] for c in cards), "items": [to_front_item(c) for c in cards], "compat01": c01,
             "reason": " · ".join(reasons), "weather": {"temperatureC": round(temp), "label": f"{city}, pluie {rain:.0%} ({ctx.get('weather_source', '?')})"},
-            "agenda": ctx.get("occasion"), "warnings": warns}
+            "agenda": agenda or ctx.get("occasion"), "warnings": warns,
+            "features": o.get("features") or {}, "excludeKey": [i["id"] for i in o["items"]],   # pour le feedback / « Autre proposition »
+            "excludedCount": len(excl)}
+
+
+FEEDBACK_REASONS = {"too_hot", "too_cold", "too_formal", "too_casual", "style"}
+
+
+class FeedbackIn(BaseModel):
+    item_ids: list[str]
+    accepted: bool
+    features: dict = {}
+    reason: Optional[str] = None
+
+
+@app.post("/outfits/feedback")
+def outfit_feedback(body: FeedbackIn):
+    """« Valider & Porter » (accepted) ou refus motivé : mémorisé par l'Obj6 (préférences des pièces, rotation des tenues portées)."""
+    if not body.item_ids:
+        raise HTTPException(422, "item_ids vide")
+    if body.reason is not None and body.reason not in FEEDBACK_REASONS:
+        raise HTTPException(422, f"reason : {sorted(FEEDBACK_REASONS)}")
+    feats = {k: float(v) for k, v in body.features.items() if isinstance(v, (int, float)) and not isinstance(v, bool)}
+    return _obj6_post("/api/feedback", {"features": feats, "accepted": body.accepted, "uid": OBJ6_UID,
+                                        "reason": body.reason, "item_ids": body.item_ids})
 
 
 # ---------------------------------------------------------------- objectif 3 : jury d'une tenue composée (Outfit Studio)

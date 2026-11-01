@@ -203,3 +203,32 @@ def test_edit_and_delete_item(tmp_path, monkeypatch):
     r = c.delete(f"/wardrobe/items/{iid}"); assert r.status_code == 200 and r.json()["items"] == n0 - 1
     assert not emb.exists() and iid not in {x["id"] for x in c.get("/wardrobe/items").json()}
     assert c.delete(f"/wardrobe/items/{iid}").status_code == 404
+
+def test_outfit_agenda_exclusions_and_feedback(tmp_path, monkeypatch):
+    """Today : agenda et tenues écartées transmis à l'Obj6 ; « Valider & Porter » relayé vers /api/feedback de l'Obj6."""
+    store = make_store(tmp_path)
+    monkeypatch.setenv("DRESSME_PROFILE_MODEL", str(store / "style_model.joblib"))
+    sys.path.insert(0, str(REPO / "gateway"))
+    import app as g
+    from fastapi.testclient import TestClient
+    monkeypatch.setattr(g, "STORE", store); monkeypatch.setattr(g, "_cache", {})
+    cat = json.load(open(store / "wardrobe.json", encoding="utf-8"))
+    pick = lambda s: next(x for x in cat if x["slot"] == s)["id"]
+    calls = []
+    def fake(route, payload):
+        calls.append((route, payload))
+        if route == "/api/feedback":
+            return {"stored": True, "feedback": 1, "accepted": int(payload["accepted"])}
+        ids = [pick("top"), pick("bottom"), pick("footwear")]
+        return {"context": {"feels_like": 18, "rain_prob": 0, "occasion": "work"},
+                "outfits": [{"score": .9, "items": [{"id": i} for i in ids], "accessories": [], "reasons": [], "warnings": [], "features": {"warmth": 2.5}}]}
+    monkeypatch.setattr(g, "_obj6_post", fake)
+    c = TestClient(g.app)
+    r = c.get("/outfits/today", params={"occasion": "work", "agenda": "réunion client", "exclude": "a,b;c,d"}); assert r.status_code == 200, r.text
+    route, sent = calls[-1]
+    assert route == "/api/recommend" and sent["agenda"] == "réunion client" and sent["exclude_outfits"] == [["a", "b"], ["c", "d"]] and sent["uid"] == "me"
+    o = r.json(); assert o["excludeKey"] == [i["id"] for i in o["items"]] and o["features"] == {"warmth": 2.5} and o["excludedCount"] == 2
+    r = c.post("/outfits/feedback", json={"item_ids": o["excludeKey"], "accepted": True, "features": o["features"]})
+    assert r.status_code == 200 and calls[-1][0] == "/api/feedback" and calls[-1][1]["item_ids"] == o["excludeKey"] and calls[-1][1]["uid"] == "me"
+    assert c.post("/outfits/feedback", json={"item_ids": ["x"], "accepted": False, "reason": "bof"}).status_code == 422
+    assert c.post("/outfits/feedback", json={"item_ids": [], "accepted": True}).status_code == 422

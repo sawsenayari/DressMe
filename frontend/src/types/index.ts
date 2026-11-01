@@ -49,6 +49,9 @@ export interface Outfit {
   agenda?: string; // Objectif 6 context variable
   warnings?: string[];
   tryOnImageUrl?: string; // Niveau 2 photorealistic try-on
+  features?: Record<string, number>; // variables de contexte de l'Obj6 (renvoyées avec le feedback)
+  excludeKey?: string[]; // pièces de la tenue Obj6 (sans accessoires) pour « Autre proposition »
+  excludedCount?: number;
 }
 
 /** DSO2: Compatibility between candidate item and wardrobe */
