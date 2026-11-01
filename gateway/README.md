@@ -16,3 +16,5 @@ temps de calcul croît avec son carré (~3 s à 40 articles sur CPU) ; le premie
 Test : `python -m pytest -q gateway/tests` (catalogue synthétique, FashionCLIP remplacé ; le modèle Obj5 est réentraîné dans un dossier temporaire, pas dans `obj5_profil/models`). Lancer chaque dossier de tests séparément (ils s'appellent tous `tests`).
 
 Obj6 : service séparé (ses chemins sont relatifs à `obj6_app` et son `.env` est chargé en mode override), lancé par `run_all.bat` ; la passerelle reste le seul backend du front (port 8000). Variable `OBJ6_URL` (défaut http://127.0.0.1:8006).
+
+Démo avec de vraies photos (store de l'Obj1 : 11 pièces, photos + embeddings FashionCLIP) : `set DRESSME_STORE=obj1_reconnaissance\data\store` puis `set DRESSME_PROFILE_MODEL=%TEMP%\style_model_demo.joblib` (pour ne pas réentraîner le modèle versionné de l'Obj5) avant `run_all.bat`.

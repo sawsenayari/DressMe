@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { scoreCandidate } from '../services/compatibility';
+import { listItems } from '../services/wardrobe';
+import { useAsync } from '../hooks/useAsync';
 import type { CompatibilityResult, ClothingItem } from '../types';
 import { PhotoPicker } from '../components/ui/PhotoPicker';
 import { ItemTile } from '../components/ui/ItemTile';
@@ -38,6 +40,15 @@ export default function DoesItMatch() {
   const [candidateName, setCandidateName] = useState('');
   const [result, setResult] = useState<CompatibilityResult | null>(null);
   const [selectedItem, setSelectedItem] = useState<ClothingItem | null>(null);
+  const live = useAsync(listItems);   // garde-robe réelle (mode API) pour retrouver les partenaires renvoyés par /compat
+
+  // Partenaires = ceux renvoyés par l'Objectif 2 (meilleurs scores de paire), retrouvés dans la garde-robe affichée
+  const source = useDemoData ? wardrobe : (live.data || []);
+  const partnerItems = (result?.partners || [])
+    .map(p => ({ item: source.find(i => i.id === p.id), score: p.pair_score01 }))
+    .filter((p): p is { item: ClothingItem; score: number } => !!p.item)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 3);
 
   async function onPick(file: File) {
     setBusy(true);
@@ -317,15 +328,18 @@ export default function DoesItMatch() {
               <div className="card">
                 <h4 style={{ fontSize: '1rem', marginBottom: '12px' }}>Meilleurs Partenaires de votre Garde-Robe</h4>
                 <div className="grid small" style={{ marginTop: 0 }}>
-                  {wardrobe.slice(0, 3).map((item, idx) => (
-                    <ItemTile
-                      key={item.id}
-                      item={item}
-                      index={idx}
-                      onClick={it => setSelectedItem(it)}
-                    />
+                  {partnerItems.map(({ item, score }, idx) => (
+                    <div key={item.id}>
+                      <ItemTile item={item} index={idx} onClick={it => setSelectedItem(it)} />
+                      <p style={{ fontSize: '0.8rem', color: 'var(--muted)', marginTop: '4px' }}>
+                        Paire /pairs : <strong>{Math.round(score * 100)} %</strong>
+                      </p>
+                    </div>
                   ))}
                 </div>
+                {partnerItems.length === 0 && (
+                  <p style={{ fontSize: '0.88rem', color: 'var(--muted)' }}>Aucun partenaire renvoyé par l'Objectif 2.</p>
+                )}
               </div>
             </div>
           )}

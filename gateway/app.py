@@ -101,7 +101,7 @@ def embed_photo(data: bytes):
                         T.Normalize(ip.image_mean, ip.image_std)])
         with torch.no_grad():
             t = m.get_text_features(**pr(text=list(SLOT_PROMPTS.values()), return_tensors="pt", padding=True))
-            t = t if isinstance(t, torch.Tensor) else t[0]
+            t = t if isinstance(t, torch.Tensor) else t.pooler_output   # transformers >= 5 : sortie structurée
             t = t / t.norm(dim=-1, keepdim=True)
         _cache["clip"] = (m, tf, t)
     import torch
@@ -111,7 +111,7 @@ def embed_photo(data: bytes):
     tmp = io.BytesIO(data)
     with torch.no_grad():
         o = m.get_image_features(pixel_values=tf(load_img(tmp)).unsqueeze(0))
-        o = o if isinstance(o, torch.Tensor) else o[0]
+        o = o if isinstance(o, torch.Tensor) else o.pooler_output
         o = o / o.norm(dim=-1, keepdim=True)
     cat = list(SLOT_PROMPTS)[int((o @ txt.T).argmax())]
     return o[0].numpy().astype(np.float32), cat
