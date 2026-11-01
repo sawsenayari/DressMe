@@ -240,6 +240,7 @@ def test_outfit_judge_with_llm(tmp_path, monkeypatch):
     """Outfit Studio avec le juge LLM de l'Obj3 (DRESSME_JURY_LLM=1) : faux LLM, arbitrage règles + LLM + hybride."""
     store = make_store(tmp_path)
     monkeypatch.setenv("DRESSME_PROFILE_MODEL", str(store / "style_model.joblib")); monkeypatch.setenv("DRESSME_JURY_LLM", "1")
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)   # pas de vrai Gemini (juge visuel) pendant les tests
     sys.path.insert(0, str(REPO / "gateway"))
     import app as g
     from fastapi.testclient import TestClient
@@ -261,3 +262,36 @@ def test_outfit_judge_with_llm(tmp_path, monkeypatch):
     monkeypatch.setattr(obj3, "build_llm", lambda *a, **k: None); monkeypatch.setattr(g, "_cache", {})   # pas de clé -> règles seules
     j = TestClient(g.app).post("/outfits/judge", json={"item_ids": ids, "occasion": "casual"}).json()
     assert j["mode"] == "regles" and j["judges"]["llm"]["verdict"] == "non disponible" and "clé" in j["judges"]["llm"]["critique"]
+
+
+def test_outfit_judge_visual_with_fake_gemini(tmp_path, monkeypatch):
+    """Juge visuel : planche des photos de la tenue -> judge_vision_v3 de l'Obj3 (faux client vision) ; avis informatif hors vote."""
+    from PIL import Image
+    store = make_store(tmp_path)
+    monkeypatch.setenv("DRESSME_PROFILE_MODEL", str(store / "style_model.joblib")); monkeypatch.setenv("DRESSME_JURY_LLM", "0")
+    sys.path.insert(0, str(REPO / "gateway"))
+    import app as g
+    from fastapi.testclient import TestClient
+    monkeypatch.setattr(g, "STORE", store); monkeypatch.setattr(g, "_cache", {})
+    cat = json.load(open(store / "wardrobe.json", encoding="utf-8"))
+    cards = [next(x for x in cat if x["slot"] == s) for s in ("top", "bottom", "footwear")]
+    for k, c in enumerate(cards):                                            # vraies petites photos dans le store
+        f = store / c["image_crop"]; f.parent.mkdir(parents=True, exist_ok=True)
+        Image.new("RGB", (120, 160), (40 * k, 90, 200)).save(f)
+    seen = {}
+    class FakeVision:
+        vision = True
+        def json_call(self, prompt, images=None):
+            seen["prompt"], seen["images"] = prompt, images
+            crit = {k: {"niveau": 2, "raison": "ok"} for k in ("couleurs", "formalite", "meteo", "coherence")}
+            crit["couleurs"] = {"niveau": 1, "raison": "Le bleu vif écrase le reste."}
+            return {"verdict": "convient", "criteres": crit, "_modele": "faux-gemini"}
+    monkeypatch.setattr(g, "vision_llm", lambda: FakeVision())
+    c = TestClient(g.app)
+    j = c.post("/outfits/judge", json={"item_ids": [x["id"] for x in cards], "occasion": "casual", "temperatureC": 20}).json()
+    v = j["judges"]["visual"]
+    assert v["score01"] == 0.88 and v["status"] == "warn" and "bleu vif" in v["message"] and "hors vote" in v["message"]
+    assert isinstance(seen["images"][0], Image.Image) and seen["images"][0].width > 300 and "image montre" in seen["prompt"]
+    monkeypatch.setattr(g, "vision_llm", lambda: None)                      # sans Gemini : raison affichée
+    v = c.post("/outfits/judge", json={"item_ids": [x["id"] for x in cards], "occasion": "casual"}).json()["judges"]["visual"]
+    assert v["score01"] is None and v["status"] == "unavailable" and "non disponible" in v["message"]

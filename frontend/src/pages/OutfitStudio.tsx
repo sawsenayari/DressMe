@@ -352,15 +352,15 @@ function Studio({ live }: { live: boolean }) {
                   <div style={{ paddingBottom: '8px', borderBottom: '1px solid var(--line)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span>🎨 <strong>Juge Visuel</strong></span>
-                      <span style={{ fontWeight: 600, color: juryResult.judges.visual.score01 == null ? 'var(--muted)' : 'var(--ink)' }}>
+                      <span style={{ fontWeight: 600, color: juryResult.judges.visual.score01 == null ? 'var(--muted)' : juryResult.judges.visual.status === 'pass' ? 'var(--pastel-mint-deep)' : juryResult.judges.visual.status === 'warn' ? 'var(--pastel-butter-deep)' : 'var(--danger)' }}>
                         {juryResult.judges.visual.score01 == null
                           ? 'Non disponible'
-                          : `Score : ${(juryResult.judges.visual.score01 * 100).toFixed(0)} %`}
+                          : `${juryResult.judges.visual.status === 'pass' ? '✓' : juryResult.judges.visual.status === 'warn' ? '⚠️' : '✗'} ${(juryResult.judges.visual.score01 * 100).toFixed(0)} %`}
                       </span>
                     </div>
-                    {juryResult.judges.visual.score01 == null && (
-                      <p style={{ margin: '4px 0 0', fontSize: '0.78rem', color: 'var(--muted)' }}>{juryResult.judges.visual.message}</p>
-                    )}
+                    <p style={{ margin: '4px 0 0', fontSize: '0.78rem', color: 'var(--muted)', fontStyle: juryResult.judges.visual.score01 == null ? 'normal' : 'italic' }}>
+                      {juryResult.judges.visual.message}
+                    </p>
                   </div>
 
                   <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid var(--line)' }}>

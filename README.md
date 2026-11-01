@@ -131,7 +131,7 @@ cd frontend && npx tsc --noEmit && npm run build && cd ..
 - Ajout de photo : sans Kaggle ni GPU, l'Obj1 tourne en **kNN sur sa base locale** (`data/agent_final`) ; les fiches sortent en `needs_review`.
 - Jury (Obj3) : règles seules par défaut (note 0 / 50 / 100). Juge LLM dans Outfit Studio : `copy gateway\.env.example gateway\.env`,
   y mettre `LLM_API_KEY` (Groq) ou `GEMINI_API_KEY`, puis relancer `run_all.bat` (≈ 10 s par évaluation, 40 appels LLM / heure).
-  Today reste en règles seules. Le juge visuel n'est pas branché.
+  Avec `GEMINI_API_KEY`, le juge visuel (Gemini) juge aussi la photo de la tenue (avis informatif, hors vote). Today reste en règles seules.
 - L'Obj6 n'a que 6 slots (pas de `bag`, converti en `accessory`) et sa vision utilise open_clip, pas FashionCLIP.
 - Le store de démo de l'Obj1 contient une erreur de reconnaissance signalée par l'Obj1 lui-même (`it_0010`, basket classée « onepiece »).
 

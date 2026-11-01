@@ -550,6 +550,83 @@ def jury():
     return _cache["j"]
 
 
+GEMINI_VISION_MODELS = "gemini-3.5-flash-lite,gemini-3.5-flash"   # modèles Gemini existants (la liste par défaut de l'Obj3 cite un modèle retiré)
+
+
+def vision_llm():
+    """Client vision de l'Obj3 (Gemini, voit les images) si DRESSME_JURY_LLM=1 et GEMINI_API_KEY ; None sinon."""
+    key = os.environ.get("GEMINI_API_KEY", "")
+    if os.environ.get("DRESSME_JURY_LLM") != "1" or not key:
+        return None
+    if "vl" not in _cache:
+        jury()   # chemin de l'Obj3
+        from dressme.llm2 import GEMINI_URL, FallbackLLM, OpenAICompatClient2
+        models = [m.strip() for m in os.environ.get("GEMINI_VISION_MODELS", GEMINI_VISION_MODELS).split(",") if m.strip()]
+        _cache["vl"] = FallbackLLM([OpenAICompatClient2(key, m, GEMINI_URL, vision=True, cache_dir=str(OBJ3 / "app_data" / "llm_cache"),
+                                                        name=m) for m in models])
+    return _cache["vl"]
+
+
+def outfit_board(cards, legend):
+    """Planche attendue par le juge vision de l'Obj3 : légende en haut, puis les pièces de gauche à droite (découpes)."""
+    from PIL import Image, ImageDraw, ImageFont
+    tiles = []
+    for c in cards:
+        f = next((x for x in (_store_file(c.get("image_crop")), _store_file(c.get("image"))) if x is not None and x.is_file()), None)
+        if f is None:
+            continue
+        im = Image.open(f).convert("RGBA")
+        bg = Image.new("RGBA", im.size, (255, 255, 255, 255)); bg.alpha_composite(im)
+        im = bg.convert("RGB"); im.thumbnail((320, 320)); tiles.append(im)
+    if not tiles:
+        return None
+    pad, top = 20, 60
+    board = Image.new("RGB", (pad + sum(t.width + pad for t in tiles), top + 320 + pad), "white")
+    d = ImageDraw.Draw(board)
+    font = None
+    for name in ("arial.ttf", "DejaVuSans.ttf", "LiberationSans-Regular.ttf"):   # polices avec accents (Windows, Linux)
+        try:
+            font = ImageFont.truetype(name, 22); break
+        except OSError:
+            pass
+    if font is None:   # police intégrée sans accents : légende translittérée
+        import unicodedata
+        legend = unicodedata.normalize("NFKD", legend).encode("ascii", "ignore").decode()
+        try:
+            font = ImageFont.load_default(size=22)
+        except TypeError:   # Pillow < 10.1
+            font = ImageFont.load_default()
+    d.text((pad, 18), legend, fill="black", font=font)
+    x = pad
+    for t in tiles:
+        board.paste(t, (x, top + (320 - t.height) // 2)); x += t.width + pad
+    return board
+
+
+def judge_visual(cards, temperature, rain, occasion):
+    """Juge visuel de l'Obj3 (judge_vision_v3) sur la planche de la tenue. Informatif : n'entre pas dans le vote de l'arbitre."""
+    llm = vision_llm()
+    if llm is None:
+        why = ("activer DRESSME_JURY_LLM=1" if os.environ.get("DRESSME_JURY_LLM") != "1"
+               else "ajouter GEMINI_API_KEY dans gateway/.env (Groq est texte seul)")
+        return {"score01": None, "status": "unavailable", "message": f"Juge visuel {NON_DISPONIBLE} : {why}."}
+    from dressme.context import make_context
+    from dressme.judges2 import judge_vision_v3
+    t = "météo non précisée" if temperature is None else f"{temperature:g} °C{', pluie' if rain else ''}"
+    board = outfit_board(cards, f"Tenue 1 - {t} - occasion : {occasion}")
+    if board is None:
+        return {"score01": None, "status": "unavailable", "message": f"Juge visuel {NON_DISPONIBLE} : aucune photo pour ces pièces."}
+    try:
+        v = judge_vision_v3(llm, board, make_context(temperature, rain, occasion))
+    except Exception as e:   # quota Gemini, réseau, réponse illisible
+        return {"score01": None, "status": "unavailable", "message": f"Juge visuel {NON_DISPONIBLE} ({type(e).__name__} : {str(e)[:120]})."}
+    lv = {k: c["niveau"] for k, c in v["criteres"].items()}
+    notes = [f"{k} : {c['raison']}" for k, c in v["criteres"].items() if c["niveau"] < 2]
+    return {"score01": round(sum(lv.values()) / (2 * len(lv)), 2), "status": JURY_STATUS[min(lv.values())],   # une réserve visible = « Réserves »
+            "message": f"{v.get('modele') or 'Gemini'} (photos) : " + (" · ".join(notes) or "rien à signaler sur les photos.")
+                       + " Avis informatif, hors vote."}
+
+
 def jury_llm():
     """Jury Obj3 complet (règles + LLM + hybride) si DRESSME_JURY_LLM=1 et une clé GEMINI_API_KEY ou LLM_API_KEY (Groq) ;
     None sinon (règles seules). Réservé à Outfit Studio : Today juge plusieurs tenues par appel (latence, quota 40/h)."""
@@ -558,6 +635,7 @@ def jury_llm():
     if "jl" not in _cache:
         jury()   # chemin de l'Obj3
         from dressme.service import DressMeService, build_llm
+        os.environ.setdefault("GEMINI_MODELS", GEMINI_VISION_MODELS)   # la liste par défaut de l'Obj3 cite un modèle Gemini retiré
         llm = build_llm(str(OBJ3 / "app_data" / "llm_cache"))   # cache des réponses (app_data/ ignoré par git)
         _cache["jl"] = DressMeService({c["id"]: to_obj3_piece(c) for c in catalog()}, llm=llm) if llm else None
         if llm is None:
@@ -682,11 +760,15 @@ def outfit_judge(body: JudgeRequest):
         raise HTTPException(422, f"occasion inconnue : {body.occasion} (attendu : {list(OCC_OBJ3)})")
     ids = list(dict.fromkeys(body.item_ids))
     svc = jury_llm()
-    try:
-        j = (svc or jury()).judge(ids, body.temperatureC, body.rain, OCC_OBJ3[body.occasion], mode="complet" if svc else "regles")
-    except ValueError as e:   # tenue vide ou identifiant inconnu
-        raise HTTPException(422, str(e))
     by_id = {c["id"]: c for c in catalog()}
+    from concurrent.futures import ThreadPoolExecutor
+    with ThreadPoolExecutor(max_workers=1) as pool:   # le juge visuel (Gemini) tourne pendant les autres juges
+        vis = pool.submit(judge_visual, [by_id[i] for i in ids if i in by_id], body.temperatureC, body.rain, OCC_OBJ3[body.occasion])
+        try:
+            j = (svc or jury()).judge(ids, body.temperatureC, body.rain, OCC_OBJ3[body.occasion], mode="complet" if svc else "regles")
+        except ValueError as e:   # tenue vide ou identifiant inconnu
+            raise HTTPException(422, str(e))
+        visual = vis.result()
     crit, niveau = j["criteres"], j["niveau"]
     votes, par_juge, notes = j.get("votes", {}), j.get("raisons_par_juge", {}), j.get("notes", [])
     complet = j.get("mode_utilise") == "complet"
@@ -715,9 +797,7 @@ def outfit_judge(body: JudgeRequest):
             "judges": {
                 "rules": {"status": JURY_STATUS[rules_lvl],
                           "message": " · ".join(rules_msg) or "Tous les critères sont satisfaisants."},
-                "visual": {"score01": None, "status": "unavailable",
-                           "message": f"Juge visuel {NON_DISPONIBLE} : le juge vision de l'Obj3 demande une clé Gemini (modèle qui voit "
-                                      "les images) et une photo de la tenue ; Groq est texte seul."},
+                "visual": visual,
                 "llm": llm,
                 "context": {"matchWeather": None if body.temperatureC is None else crit["meteo"]["niveau"] == 2,
                             "matchOccasion": crit["formalite"]["niveau"] == 2,
