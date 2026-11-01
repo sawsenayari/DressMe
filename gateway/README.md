@@ -18,4 +18,4 @@ Test : `python -m pytest -q gateway/tests` (catalogue synthétique, FashionCLIP 
 
 Obj6 : service séparé (ses chemins sont relatifs à `obj6_app` et son `.env` est chargé en mode override), lancé par `run_all.bat` ; la passerelle reste le seul backend du front (port 8000). Variable `OBJ6_URL` (défaut http://127.0.0.1:8006).
 
-Démo avec de vraies photos (store de l'Obj1 : 11 pièces, photos + embeddings FashionCLIP) : `set DRESSME_STORE=obj1_reconnaissance\data\store` puis `set DRESSME_PROFILE_MODEL=%TEMP%\style_model_demo.joblib` (pour ne pas réentraîner le modèle versionné de l'Obj5) avant `run_all.bat`.
+Démo avec de vraies photos (store de l'Obj1 : 11 pièces, photos + embeddings FashionCLIP), sur une COPIE pour ne pas modifier les fichiers suivis par git : `xcopy /E /I /Y obj1_reconnaissance\data\store %TEMP%\dressme_store`, puis `set DRESSME_STORE=%TEMP%\dressme_store`, `set DRESSME_PROFILE_MODEL=%TEMP%\style_model_demo.joblib` et `set HF_HUB_OFFLINE=1` avant `run_all.bat`. Ajout d'une photo : l'Obj1 tourne en kNN sur sa base locale (`data/agent_final`) si Kaggle / Qwen manquent (`DRESSME_OBJ1_MODE=auto`).

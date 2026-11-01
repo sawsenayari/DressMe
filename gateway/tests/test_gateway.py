@@ -36,6 +36,7 @@ def test_routes(tmp_path, monkeypatch):
     gp = c.get("/gaps"); assert gp.status_code in (200, 503)
     if gp.status_code == 200:
         assert all(g["slot"] == g["category"] and g["slot"] in ("top", "bottom", "onepiece", "outer", "footwear", "bag", "accessory") for g in gp.json())
+    monkeypatch.setattr(g, "OBJ6_URL", "http://127.0.0.1:9")   # Obj6 absent (même si un vrai service tourne sur 8006)
     assert c.get("/outfits/today").status_code == 501
     monkeypatch.setattr(g, "OBJ1", tmp_path / "absent")                              # Obj1 non lançable -> 501
     r = c.post("/wardrobe/items", files={"image": ("x.jpg", b"x")}); assert r.status_code == 501 and "Objectif 1" in r.json()["detail"]
@@ -132,3 +133,42 @@ def test_outfit_judge_obj3_obj2(tmp_path, monkeypatch):
     assert judge(item_ids=[]).status_code == 422
     assert judge(item_ids=["inconnu"]).status_code == 422
     assert judge(item_ids=[pick("top")], occasion="plage").status_code == 422
+
+def test_profile_small_wardrobe_is_503_not_500(tmp_path, monkeypatch):
+    """Garde-robe sous le minimum de l'Obj5 (18 pièces) : erreur claire 503, jamais 500."""
+    store = make_store(tmp_path)
+    cat = json.load(open(store / "wardrobe.json", encoding="utf-8"))[:10]
+    json.dump(cat, open(store / "wardrobe.json", "w", encoding="utf-8"))
+    monkeypatch.setenv("DRESSME_PROFILE_MODEL", str(tmp_path / "absent.joblib"))
+    sys.path.insert(0, str(REPO / "gateway"))
+    import app as g
+    from fastapi.testclient import TestClient
+    monkeypatch.setattr(g, "STORE", store); monkeypatch.setattr(g, "_cache", {})
+    from dressme_profile import service as obj5
+    def no_model(*a, **k): raise OSError("pas de modèle")          # force le réentraînement (sinon un modèle d'un test précédent sert)
+    monkeypatch.setattr(obj5.StyleModel, "load", staticmethod(no_model))
+    r = TestClient(g.app).get("/profile")
+    assert r.status_code == 503 and "Obj5" in r.json()["detail"]
+
+def _hf_cached(name):
+    from pathlib import Path as P
+    return (P.home() / ".cache" / "huggingface" / "hub" / ("models--" + name.replace("/", "--"))).exists()
+
+
+def test_add_item_obj1_local_knn(tmp_path, monkeypatch):
+    """Obj1 réel en mode kNN local (sans Kaggle ni LLM) : photo produit -> fiche ItemCard + vrai embedding FashionCLIP."""
+    import pytest
+    if not (_hf_cached("patrickjohncyh/fashion-clip") and _hf_cached("mattmdjaga/segformer_b2_clothes")
+            and (REPO / "obj1_reconnaissance" / "data" / "agent_final" / "kb_emb.npy").exists()):
+        pytest.skip("FashionCLIP / SegFormer non téléchargés ou base kNN de l'Obj1 absente")
+    store = make_store(tmp_path)
+    monkeypatch.setenv("DRESSME_OBJ1_MODE", "knn"); monkeypatch.setenv("HF_HUB_OFFLINE", "1")
+    sys.path.insert(0, str(REPO / "gateway"))
+    import app as g
+    from fastapi.testclient import TestClient
+    monkeypatch.setattr(g, "STORE", store); monkeypatch.setattr(g, "_cache", {})
+    photo = (REPO / "frontend" / "public" / "images" / "cream-trousers.jpg").read_bytes()
+    r = TestClient(g.app).post("/wardrobe/items", files={"image": ("p.jpg", photo, "image/jpeg")})
+    assert r.status_code == 200, r.text
+    it = r.json(); assert it["slot"] == "bottom" and it["source"] == "obj1.knn"
+    v = np.load(store / f"emb/{it['id']}.npy"); assert v.shape == (512,) and abs(float(np.linalg.norm(v)) - 1) < 1e-3

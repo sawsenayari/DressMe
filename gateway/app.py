@@ -18,7 +18,8 @@ Dossiers (variables d'environnement, défauts relatifs à la racine du dépôt) 
   DRESSME_OBJ1   dossier de la reconnaissance     (défaut : obj1_reconnaissance)
   DRESSME_OBJ3   dossier du jury de tenues        (défaut : obj3_jury)
   OBJ6_URL       service de l'objectif 6          (défaut : http://127.0.0.1:8006 ; lancé depuis obj6_app, voir run_all.bat)
-  DRESSME_OBJ1_MODE  full (Qwen si DRESSME_OBJ1_LLM=1, sinon kNN FashionCLIP seul) | mock (fiches factices, embedding ALÉATOIRE : tests seulement)
+  DRESSME_OBJ1_MODE  auto (défaut : service complet, sinon kNN sur la base locale) | full (Kaggle ; Qwen si DRESSME_OBJ1_LLM=1)
+                     | knn (base locale data/agent_final, sans Kaggle ni LLM) | mock (fiches factices, embedding ALÉATOIRE : tests seulement)
 """
 import io
 import json
@@ -90,13 +91,16 @@ SLOT_PROMPTS = {  # catégories Polyvore de l'objectif 2 -> texte (zéro-shot, c
 }
 
 
-def embed_photo(data: bytes):
-    """Renvoie (vecteur 512 normalisé, catégorie devinée). Premier appel : télécharge FashionCLIP (~600 Mo)."""
+CLIP_NAME = "patrickjohncyh/fashion-clip"
+
+
+def clip():
+    """(modèle, transformation, vecteurs texte des catégories) de FashionCLIP, chargés une fois (partagés avec l'Obj1)."""
     if "clip" not in _cache:
         import torch
         import torchvision.transforms as T
         from transformers import CLIPModel, CLIPProcessor, CLIPImageProcessor
-        name = "patrickjohncyh/fashion-clip"
+        name = CLIP_NAME
         m = CLIPModel.from_pretrained(name).eval()
         pr, ip = CLIPProcessor.from_pretrained(name), CLIPImageProcessor.from_pretrained(name)
         tf = T.Compose([T.Resize(224, interpolation=T.InterpolationMode.BICUBIC), T.CenterCrop(224), T.ToTensor(),
@@ -106,10 +110,15 @@ def embed_photo(data: bytes):
             t = t if isinstance(t, torch.Tensor) else t.pooler_output   # transformers >= 5 : sortie structurée
             t = t / t.norm(dim=-1, keepdim=True)
         _cache["clip"] = (m, tf, t)
+    return _cache["clip"]
+
+
+def embed_photo(data: bytes):
+    """Renvoie (vecteur 512 normalisé, catégorie devinée). Premier appel : télécharge FashionCLIP (~600 Mo)."""
+    m, tf, txt = clip()
     import torch
     sys.path.insert(0, str(OBJ2))
     from embed_cards import load_img
-    m, tf, txt = _cache["clip"]
     tmp = io.BytesIO(data)
     with torch.no_grad():
         o = m.get_image_features(pixel_values=tf(load_img(tmp)).unsqueeze(0))
@@ -168,7 +177,7 @@ _write_lock = threading.Lock()
 
 def recognizer():
     """Service de reconnaissance de l'Obj1, chargé une fois. Toute erreur de chargement -> 501 (Obj1 non lançable)."""
-    mode = os.environ.get("DRESSME_OBJ1_MODE", "full")
+    mode = os.environ.get("DRESSME_OBJ1_MODE", "auto")
     if ("obj1", mode) not in _cache:
         try:
             if not (OBJ1 / "recognition").is_dir():
@@ -178,10 +187,18 @@ def recognizer():
             if mode == "mock":
                 from recognition.mock import MockRecognizer
                 svc = MockRecognizer()
-            else:
-                from recognition.config import CFG
-                from recognition.service import RecognitionService
-                svc = RecognitionService.from_config(CFG, load_llm=os.environ.get("DRESSME_OBJ1_LLM") == "1")
+            elif mode == "knn":
+                svc = _obj1_local_knn()
+            else:  # full, ou auto : service complet (base Kaggle, Qwen si DRESSME_OBJ1_LLM=1), sinon kNN sur la base locale
+                try:
+                    from recognition.config import CFG
+                    from recognition.service import RecognitionService
+                    svc = RecognitionService.from_config(CFG, load_llm=os.environ.get("DRESSME_OBJ1_LLM") == "1")
+                except Exception as e:
+                    if mode != "auto":
+                        raise
+                    print(f"[obj1] service complet indisponible ({type(e).__name__}) : kNN sur la base locale.", file=sys.stderr)
+                    svc = _obj1_local_knn()
             _cache[("obj1", mode)] = (svc, None)
         except Exception as e:  # dépendances (torch, transformers, kagglehub…), modèles ou base kNN absents
             _cache[("obj1", mode)] = (None, f"{type(e).__name__}: {e}")
@@ -189,6 +206,25 @@ def recognizer():
     if svc is None:
         raise HTTPException(501, f"Objectif 1 non lançable ({err}).")
     return svc
+
+
+def _obj1_local_knn():
+    """Obj1 en mode « knn_only » sans Kaggle ni LLM : crop (SegFormer / rembg) -> FashionCLIP gelé -> vote des voisins
+    sur la base locale data/agent_final (kb_meta.csv + kb_emb.npy) -> ItemCard v1. Même encodeur que la passerelle."""
+    import pandas as pd
+    from transformers import CLIPProcessor
+    from recognition.agent import RecognitionAgent
+    from recognition.config import CFG
+    from recognition.crop import Cropper
+    from recognition.embedder import FashionClipEmbedder
+    from recognition.retrieval import Retriever
+    from recognition.service import RecognitionService
+    meta, emb = CFG.out / "kb_meta.csv", CFG.out / "kb_emb.npy"
+    if not (meta.exists() and emb.exists()):
+        raise FileNotFoundError(f"base kNN de l'Obj1 absente : {meta} / {emb}")
+    shared = FashionClipEmbedder(model=clip()[0], proc=CLIPProcessor.from_pretrained(CLIP_NAME), device="cpu")
+    agent = RecognitionAgent(None, shared, Retriever(np.load(emb), pd.read_csv(meta)), CFG)
+    return RecognitionService(agent, shared, CFG, None, "knn_only", cropper=Cropper.from_config(CFG))
 
 
 def _next_id():
@@ -222,7 +258,12 @@ def add_item(image: UploadFile = File(...)):
         src, kw = raw, {}
         cropper = getattr(svc, "cropper", None)
         if cropper is not None:  # vrai service : une seule pièce par photo (la plus grande)
-            piece = cropper.crop(raw, strategy="main")[0]
+            try:
+                piece = cropper.crop(raw, strategy="main")[0]
+            except Exception as e:  # modèle de segmentation indisponible : photo entière, signalée
+                print(f"[obj1] découpe impossible ({type(e).__name__}) : photo entière.", file=sys.stderr)
+                piece = cropper.crop(raw, mode="none")[0]
+                piece.quality = {"ok": False, "reasons": ["crop_unavailable"]}
             src = Path(tmp) / "piece.png"
             piece.image.save(src)
             kw = dict(crop_reasons=(piece.quality or {}).get("reasons"), slot_hint=piece.slot_hint)
@@ -284,7 +325,10 @@ _prefs = {"axis": None, "budgetMode": False}
 def _profile_service():
     if "p" not in _cache:
         from dressme_profile import ProfileService
-        _cache["p"] = ProfileService(catalog_path=STORE / "wardrobe.json", assets_dir=STORE)
+        try:
+            _cache["p"] = ProfileService(catalog_path=STORE / "wardrobe.json", assets_dir=STORE)
+        except ValueError as e:   # ex. garde-robe trop petite pour entraîner les clusters de l'Obj5
+            raise HTTPException(503, f"Profil de style (Obj5) indisponible : {e}")
     return _cache["p"]
 
 

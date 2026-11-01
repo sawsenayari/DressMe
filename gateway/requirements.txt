@@ -13,3 +13,4 @@ scikit-learn
 joblib
 pydantic
 scipy
+pandas # base kNN de l'Obj1 (ajout de photo)

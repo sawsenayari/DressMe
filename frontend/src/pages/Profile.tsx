@@ -46,7 +46,7 @@ const FORMALITY_LEVELS = [
 ];
 
 export default function Profile() {
-  const { profile: contextProfile, setProfile: setContextProfile } = useApp();
+  const { profile: contextProfile, setProfile: setContextProfile, useDemoData } = useApp();
   const state = useAsync(getProfile);
   const [profile, setProfileState] = useState<StyleProfile>(contextProfile);
   const [formality, setFormality] = useState(profile.formalityPref ?? 1);
@@ -132,6 +132,15 @@ export default function Profile() {
           </div>
         )}
       </header>
+
+      {!useDemoData && state.error && (
+        <div
+          role="alert"
+          style={{ background: 'var(--danger-bg)', color: 'var(--danger)', padding: '12px 18px', borderRadius: '16px', marginBottom: '20px', fontSize: '0.9rem' }}
+        >
+          Profil réel indisponible ({state.error.message}). Les valeurs ci-dessous sont celles enregistrées précédemment, pas un calcul de l'Objectif 5.
+        </div>
+      )}
 
       {/* User Persona & Metrics Card */}
       <section
