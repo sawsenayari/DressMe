@@ -142,6 +142,13 @@ export default function Profile() {
         </div>
       )}
 
+      {!useDemoData && state.data?.model === 'référence' && (
+        <div role="status" className="card" style={{ marginBottom: '20px', fontSize: '0.9rem', color: 'var(--muted)' }}>
+          Moins de 18 pièces : profil calculé avec le modèle de référence de l'Objectif 5 (entraîné sur le catalogue). Il sera
+          réentraîné sur votre garde-robe à partir de 18 pièces.
+        </div>
+      )}
+
       {/* User Persona & Metrics Card */}
       <section
         className="card"

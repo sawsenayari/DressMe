@@ -98,7 +98,8 @@ run_all.bat
 
 À tester : Today (changer d'occasion), Wardrobe (« Ajouter une pièce » avec une photo), Outfit Studio (composer une tenue),
 Does it match? (`frontend\public\images\cream-trousers.jpg`, puis `obj1_reconnaissance\data\store\items\it_0001_raw.jpg` pour un doublon), Gaps.
-Le profil (Obj5) demande au moins 18 pièces : avec ce store il affiche un message 503, c'est normal.
+Style Profile : sous 18 pièces, l'Obj5 ne peut pas s'entraîner sur la garde-robe ; le profil est alors calculé avec son modèle
+de référence (`obj5_profil/models/style_model.joblib`, lecture seule) et la page l'indique.
 
 ## 4. Tests
 

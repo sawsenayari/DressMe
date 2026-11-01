@@ -322,28 +322,51 @@ AXIS = {"efficacite": "efficiency", "economie": "economy", "image": "brand", "mi
 _prefs = {"axis": None, "budgetMode": False}
 
 
+OBJ5_REF_MODEL = REPO / "obj5_profil" / "models" / "style_model.joblib"   # modèle de référence versionné (423 fiches, attributs)
+
+
 def _profile_service():
+    """Service Obj5 entraîné sur la garde-robe ; None si elle est trop petite (moins de 18 pièces vectorisées)."""
     if "p" not in _cache:
         from dressme_profile import ProfileService
         try:
             _cache["p"] = ProfileService(catalog_path=STORE / "wardrobe.json", assets_dir=STORE)
-        except ValueError as e:   # ex. garde-robe trop petite pour entraîner les clusters de l'Obj5
-            raise HTTPException(503, f"Profil de style (Obj5) indisponible : {e}")
+        except ValueError as e:
+            print(f"[obj5] {e} -> modèle de référence.", file=sys.stderr)
+            _cache["p"] = None
     return _cache["p"]
+
+
+def _obj5_profile(ids):
+    """Profil Obj5 : modèle entraîné sur la garde-robe, sinon modèle de référence en lecture seule (petite garde-robe)."""
+    from dressme_profile import ProfileRequest
+    svc = _profile_service()
+    if svc is not None:
+        return svc.profile(ProfileRequest(user_id="me", item_ids=ids)).model_dump(), "garde-robe"
+    from dressme_profile.clustering import StyleModel
+    from dressme_profile.profile import build_profile
+    from dressme_profile.service import load_items
+    try:
+        if "pref" not in _cache:
+            _cache["pref"] = StyleModel.load(OBJ5_REF_MODEL)
+        items = [i for i in load_items(STORE / "wardrobe.json") if i.id in set(ids)]
+        return build_profile(items, _cache["pref"], "me", None).model_dump(), "référence"
+    except Exception as e:
+        raise HTTPException(503, f"Profil de style (Obj5) indisponible : {type(e).__name__}: {e}")
 
 
 @app.get("/profile")
 def get_profile():
-    from dressme_profile import ProfileRequest
     ids = [c["id"] for c in catalog()]
-    p = _profile_service().profile(ProfileRequest(user_id="me", item_ids=ids)).model_dump()
+    p, model = _obj5_profile(ids)
     s = p["scores"]
     pct = lambda v: None if v is None else round(100 * v)
     return {"axis": _prefs["axis"] or AXIS.get(p["persona"], "mixte"), "budgetMode": _prefs["budgetMode"],
             "scores": {"efficacite": pct(s["efficacite"]), "economie": pct(s["economie"]), "image": pct(s["image"])},
             "diversityScore": pct(p["diversity"]), "formalityPref": p["formality_pref"],
             "dominantCluster": (p.get("dominant_cluster") or {}).get("name"),
-            "palette": [{"color": e["colour"], "weight": e["weight"]} for e in p["palette"]]}
+            "palette": [{"color": e["colour"], "weight": e["weight"]} for e in p["palette"]],
+            "model": model}   # "garde-robe" (entraîné sur vos pièces) ou "référence" (moins de 18 pièces)
 
 
 @app.put("/profile")

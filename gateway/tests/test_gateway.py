@@ -134,8 +134,8 @@ def test_outfit_judge_obj3_obj2(tmp_path, monkeypatch):
     assert judge(item_ids=["inconnu"]).status_code == 422
     assert judge(item_ids=[pick("top")], occasion="plage").status_code == 422
 
-def test_profile_small_wardrobe_is_503_not_500(tmp_path, monkeypatch):
-    """Garde-robe sous le minimum de l'Obj5 (18 pièces) : erreur claire 503, jamais 500."""
+def test_profile_small_wardrobe_uses_reference_model(tmp_path, monkeypatch):
+    """Garde-robe sous le minimum de l'Obj5 (18 pièces) : profil calculé avec le modèle de référence ; sans lui, 503 (jamais 500)."""
     store = make_store(tmp_path)
     cat = json.load(open(store / "wardrobe.json", encoding="utf-8"))[:10]
     json.dump(cat, open(store / "wardrobe.json", "w", encoding="utf-8"))
@@ -145,10 +145,16 @@ def test_profile_small_wardrobe_is_503_not_500(tmp_path, monkeypatch):
     from fastapi.testclient import TestClient
     monkeypatch.setattr(g, "STORE", store); monkeypatch.setattr(g, "_cache", {})
     from dressme_profile import service as obj5
-    def no_model(*a, **k): raise OSError("pas de modèle")          # force le réentraînement (sinon un modèle d'un test précédent sert)
-    monkeypatch.setattr(obj5.StyleModel, "load", staticmethod(no_model))
-    r = TestClient(g.app).get("/profile")
-    assert r.status_code == 503 and "Obj5" in r.json()["detail"]
+    class NoModel:                                                   # le service doit réentraîner (sinon un modèle d'un test précédent sert)
+        @staticmethod
+        def load(*a, **k): raise OSError("pas de modèle")
+    monkeypatch.setattr(obj5, "StyleModel", NoModel)                 # le modèle de référence (clustering.StyleModel) reste chargeable
+    ref = g.OBJ5_REF_MODEL.read_bytes()
+    c = TestClient(g.app); r = c.get("/profile")
+    assert r.status_code == 200 and r.json()["model"] == "référence" and r.json()["palette"], r.text
+    assert g.OBJ5_REF_MODEL.read_bytes() == ref                                    # modèle versionné jamais réécrit
+    monkeypatch.setattr(g, "OBJ5_REF_MODEL", tmp_path / "absent.joblib"); monkeypatch.setattr(g, "_cache", {})
+    r = c.get("/profile"); assert r.status_code == 503 and "Obj5" in r.json()["detail"]
 
 def _hf_cached(name):
     from pathlib import Path as P

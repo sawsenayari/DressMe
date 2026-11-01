@@ -116,4 +116,5 @@ export interface StyleProfile {
   formalityPref?: number; // 0 to 3
   dominantCluster?: string;
   palette?: { color: string; weight: number }[];
+  model?: 'garde-robe' | 'référence'; // référence = moins de 18 pièces : modèle Obj5 pré-entraîné
 }
