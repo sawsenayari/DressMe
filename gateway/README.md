@@ -10,6 +10,7 @@ Un seul backend (port 8000) pour le front. Lancement depuis la racine du dépôt
 | GET /gaps | Obj4 `gap_report.json` (liste ou contrat v1 `{gaps: [...]}`) | rapport statique (repli) ; slots Polyvore ramenés aux slots du front |
 | GET/PUT /profile | Obj5 | OK (espace « attributs » tant que les embeddings manquent) |
 | GET /outfits/today | Obj6 (HTTP, port 8006 : candidats + météo) -> jury Obj3 (règles) + Obj2 `/pairs` | OK si obj6_app est lancé, sinon 501 ; `compat01` null sans embeddings |
+| POST /outfits/judge | Obj3 (règles + réparations) + Obj2 `/pairs` -> `OutfitJuryResult` | OK ; score = niveau x 50, juges visuel et LLM marqués « non disponible », `score01` absent sans embeddings |
 
 Limites : `newOutfits` vaut 0 (à fournir par l'Obj4) ; la garde-robe est plafonnée à 40 articles (MAX_WARDROBE) car le
 temps de calcul croît avec son carré (~3 s à 40 articles sur CPU) ; le premier appel de /compatibility/score télécharge FashionCLIP (~600 Mo).

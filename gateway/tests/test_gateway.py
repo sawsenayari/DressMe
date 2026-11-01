@@ -88,3 +88,47 @@ def test_outfit_today_obj6_obj3_obj2(tmp_path, monkeypatch):
     assert out["items"] and all({"id", "slot", "imageUrl"} <= set(i) for i in out["items"])
     assert 0 <= out["compat01"] <= 1 and "Jury (Obj3)" in out["reason"] and out["weather"]["temperatureC"] == 21
     assert c.get("/outfits/today", params={"occasion": "plage"}).status_code == 422
+
+
+def test_outfit_judge_obj3_obj2(tmp_path, monkeypatch):
+    """Tenue composée -> jury Obj3 (règles) et compatibilité Obj2 réels -> type OutfitJuryResult du front ; rien d'inventé."""
+    store = make_store(tmp_path)
+    monkeypatch.setenv("DRESSME_PROFILE_MODEL", str(store / "style_model.joblib"))
+    sys.path.insert(0, str(REPO / "gateway"))
+    import app as g
+    from fastapi.testclient import TestClient
+    monkeypatch.setattr(g, "STORE", store); monkeypatch.setattr(g, "_cache", {})
+    c = TestClient(g.app)
+    cat = json.load(open(store / "wardrobe.json", encoding="utf-8"))
+    card = lambda s: next(x for x in cat if x["slot"] == s)
+    pick = lambda s: card(s)["id"]
+    judge = lambda **kw: c.post("/outfits/judge", json={"occasion": "casual", **kw})
+
+    r = judge(item_ids=[pick("top"), pick("bottom"), pick("footwear"), pick("accessory")], occasion="work", temperatureC=21, rain=False)
+    assert r.status_code == 200, r.text
+    o = r.json(); n = {"convient": 2, "a_ameliorer": 1, "deconseille": 0}[o["verdict"]]
+    assert o["score"] == n * 50 and o["verdictLabel"] and o["rationale"]
+    js = o["judges"]
+    assert js["rules"]["status"] in ("pass", "warn", "fail") and js["rules"]["message"]
+    assert js["visual"]["score01"] is None and js["visual"]["status"] == "unavailable" and "non disponible" in js["visual"]["message"]
+    assert js["llm"]["verdict"] == "non disponible" and "non disponible" in js["llm"]["critique"]
+    assert isinstance(js["context"]["matchWeather"], bool) and isinstance(js["context"]["matchOccasion"], bool)
+    assert 0 <= js["compatibility"]["score01"] <= 1
+
+    # une seule pièce, sans chaussures : réparations de l'Obj3, compatibilité absente, météo non évaluée sans température
+    o = judge(item_ids=[pick("top")]).json()
+    assert o["verdict"] != "convient" and o["score"] < 100 and o["repairs"]
+    assert "score01" not in o["judges"]["compatibility"] and "non disponible" in o["judges"]["compatibility"]["message"]
+    assert o["judges"]["context"]["matchWeather"] is None and o["judges"]["rules"]["status"] in ("warn", "fail")
+    for rep in o["repairs"]:
+        assert rep["reason"] and (rep["problemItemId"] or rep["suggestedReplacements"])
+        assert all({"id", "slot", "imageUrl"} <= set(s) for s in rep["suggestedReplacements"])
+
+    # un embedding manquant : compatibilité absente, pas de 500
+    os.remove(store / card("top")["embedding"])
+    o = judge(item_ids=[pick("top"), pick("bottom"), pick("footwear")], temperatureC=21).json()
+    assert "score01" not in o["judges"]["compatibility"]
+
+    assert judge(item_ids=[]).status_code == 422
+    assert judge(item_ids=["inconnu"]).status_code == 422
+    assert judge(item_ids=[pick("top")], occasion="plage").status_code == 422
