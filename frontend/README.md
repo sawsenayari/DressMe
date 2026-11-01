@@ -28,6 +28,7 @@ src/
 | Wardrobe | DSO1 | `GET /wardrobe/items`, `POST /wardrobe/items` (multipart `image`) | `ClothingItem[]`, `ClothingItem` |
 | Does it match? | DSO2 | `POST /compatibility/score` (multipart `image`) | `CompatibilityResult` |
 | Today | DSO3, DSO6 | `GET /outfits/today?occasion=&budget=` | `Outfit` |
+| Outfit Studio | DSO3, DSO2 | `POST /outfits/judge` (JSON `item_ids`, `occasion`, `temperatureC?`, `rain?`) | `OutfitJuryResult` |
 | Gaps | DSO4 | `GET /gaps` | `GapSuggestion[]` |
 | Profile | DSO5 | `GET/PUT /profile` | `StyleProfile` |
 

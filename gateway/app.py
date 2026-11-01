@@ -8,6 +8,7 @@ Routes attendues par le front (frontend/src/services) :
   GET  /gaps                      -> rapport de l'objectif 4 (gap_report.json)
   GET/PUT /profile                -> profil de style de l'objectif 5
   GET  /outfits/today             -> Obj6 (service HTTP, candidats + contexte météo) -> jury Obj3 (règles) + compatibilité Obj2 -> Outfit ; 501 si l'Obj6 ne répond pas
+  POST /outfits/judge             -> tenue composée -> jury Obj3 (règles + réparations) + compatibilité Obj2 -> OutfitJuryResult
   /files/...                      -> images du catalogue
 
 Dossiers (variables d'environnement, défauts relatifs à la racine du dépôt) :
@@ -32,6 +33,7 @@ import numpy as np
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
 
 REPO = Path(__file__).resolve().parent.parent
 STORE = Path(os.environ.get("DRESSME_STORE", REPO / "obj5_profil" / "data"))
@@ -392,3 +394,60 @@ def outfit_today(occasion: str = "casual", budget: bool = False, city: str = "Tu
     return {"id": "-".join(c["id"] for c in cards), "items": [to_front_item(c) for c in cards], "compat01": c01,
             "reason": " · ".join(reasons), "weather": {"temperatureC": round(temp), "label": f"{city}, pluie {rain:.0%} ({ctx.get('weather_source', '?')})"},
             "agenda": ctx.get("occasion"), "warnings": warns}
+
+
+# ---------------------------------------------------------------- objectif 3 : jury d'une tenue composée (Outfit Studio)
+JURY_VERDICT = {0: "deconseille", 1: "a_ameliorer", 2: "convient"}   # niveau Obj3 -> JuryVerdict du front
+JURY_STATUS = {0: "fail", 1: "warn", 2: "pass"}
+JURY_SCORE = 50                                                       # score = niveau x 50 : l'Obj3 ne note pas plus finement
+NON_DISPONIBLE = "non disponible"
+
+
+class JudgeRequest(BaseModel):
+    item_ids: list[str]
+    occasion: str
+    temperatureC: Optional[float] = None
+    rain: bool = False
+
+
+def jury_compat(cards):
+    """Compatibilité Obj2 de la tenue : {score01, message}, sans score01 si elle n'est pas calculable."""
+    try:
+        c01 = outfit_compat01(cards)
+    except Exception as e:
+        return {"message": f"Compatibilité (Obj2) {NON_DISPONIBLE} ({type(e).__name__})."}
+    if c01 is None:
+        return {"message": f"Compatibilité (Obj2) {NON_DISPONIBLE} : moins de 2 pièces ou embeddings manquants."}
+    return {"score01": c01, "message": "Moyenne des paires de la tenue (Obj2 /pairs, centile parmi 300 références)."}
+
+
+def jury_repair(r, by_id):
+    return {"problemItemId": r["retirer"], "reason": r["explication"],
+            "suggestedReplacements": [to_front_item(by_id[r["ajouter"]])] if r["ajouter"] else []}
+
+
+@app.post("/outfits/judge")
+def outfit_judge(body: JudgeRequest):
+    if body.occasion not in OCC_OBJ3:
+        raise HTTPException(422, f"occasion inconnue : {body.occasion} (attendu : {list(OCC_OBJ3)})")
+    ids = list(dict.fromkeys(body.item_ids))
+    try:
+        j = jury().judge(ids, body.temperatureC, body.rain, OCC_OBJ3[body.occasion], mode="regles")
+    except ValueError as e:   # tenue vide ou identifiant inconnu
+        raise HTTPException(422, str(e))
+    by_id = {c["id"]: c for c in catalog()}
+    crit, niveau = j["criteres"], j["niveau"]
+    bad = [f"{k} : {v['raison']}" for k, v in crit.items() if v["niveau"] < 2]
+    return {"score": niveau * JURY_SCORE, "verdict": JURY_VERDICT[niveau], "verdictLabel": j["verdict"].capitalize(),
+            "rationale": f"{' · '.join(j['raisons'])} (Score = niveau {niveau}/2 du jury Obj3, règles seules.)",
+            "judges": {
+                "rules": {"status": JURY_STATUS[min(v["niveau"] for v in crit.values())],
+                          "message": " · ".join(bad) or "Tous les critères sont satisfaisants."},
+                "visual": {"score01": None, "status": "unavailable",
+                           "message": f"Juge visuel {NON_DISPONIBLE} : la passerelle lance l'Obj3 en règles seules."},
+                "llm": {"verdict": NON_DISPONIBLE, "critique": f"Juge LLM {NON_DISPONIBLE} : la passerelle lance l'Obj3 sans LLM."},
+                "context": {"matchWeather": None if body.temperatureC is None else crit["meteo"]["niveau"] == 2,
+                            "matchOccasion": crit["formalite"]["niveau"] == 2,
+                            "message": f"{crit['meteo']['raison']} · {crit['formalite']['raison']}"},
+                "compatibility": jury_compat([by_id[i] for i in ids])},
+            "repairs": [jury_repair(r, by_id) for r in j["reparations"]]}

@@ -78,13 +78,13 @@ export interface OutfitJuryResult {
   rationale: string;
   judges: {
     rules: { status: 'pass' | 'warn' | 'fail'; message: string };
-    visual: { score01: number; status: 'pass' | 'warn' | 'fail'; message: string };
+    visual: { score01: number | null; status: 'pass' | 'warn' | 'fail' | 'unavailable'; message: string }; // null = non disponible
     llm: { verdict: string; critique: string };
-    context: { matchWeather: boolean; matchOccasion: boolean; message: string };
-    compatibility: { score01: number; message: string };
+    context: { matchWeather: boolean | null; matchOccasion: boolean; message: string }; // null = température non fournie
+    compatibility: { score01?: number; message: string }; // absent = non calculable (Obj2)
   };
   repairs: {
-    problemItemId: string;
+    problemItemId: string | null; // null = ajouter une pièce ; suggestedReplacements vide = retirer problemItemId
     reason: string;
     suggestedReplacements: ClothingItem[];
   }[];

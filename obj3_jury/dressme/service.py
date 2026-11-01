@@ -133,7 +133,8 @@ class DressMeService:
         unknown = [i for i in ids if i not in self.pieces]
         if unknown:
             raise ValueError("Pièce(s) inconnue(s) : " + ", ".join(unknown))
-        ctx = make_context(float(temperature), bool(pluie), occasion)   # ValueError si occasion inconnue
+        # ValueError si occasion inconnue ; température None : le critère météo n'est pas évalué
+        ctx = make_context(None if temperature is None else float(temperature), bool(pluie), occasion)
         pieces = [self.pieces[i] for i in ids]
 
         rules = judge_rules(pieces, ctx)
