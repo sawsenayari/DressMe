@@ -450,3 +450,46 @@ def test_gaps_analysis_and_shopping(tmp_path, monkeypatch):
     r = c.get("/gaps/shopping", params={"description": "baskets blanches", "max_price": 100}).json()
     assert r["options"][0]["price"] == 89.0 and r["options"][0]["url"].startswith("https://")
     assert c.get("/gaps/shopping", params={"description": " "}).status_code == 422
+
+
+def test_crop_photo_then_add(tmp_path, monkeypatch):
+    """Découpage de l'Obj6 (simulé, sans modèle) : photo portée -> une image par vêtement (morceaux isolés retirés),
+    photo propre -> needed False, photo à plat sur fond chargé -> détourée ; puis ajout avec la pièce choisie."""
+    import io, types
+    from PIL import Image
+    store = make_store(tmp_path)
+    monkeypatch.setenv("DRESSME_OBJ1_MODE", "mock")
+    sys.path.insert(0, str(REPO / "gateway"))
+    import app as g
+    from fastapi.testclient import TestClient
+    monkeypatch.setattr(g, "STORE", store); monkeypatch.setattr(g, "_cache", {})
+    real = g._obj6_segment()                                       # vrai module de l'Obj6 : PARTS, PERSON et _cut réels
+    labels = {0: "Background", 1: "Upper-clothes", 2: "Pants", 3: "Face"}
+    state = {"seg": None}
+    fake = types.SimpleNamespace(PARTS=real.PARTS, PERSON=real.PERSON, _cut=real._cut,
+                                 _segment=lambda img: (state["seg"], labels),
+                                 cutout=lambda img: img.crop((10, 10, 60, 60)))
+    g._cache["seg6"] = fake
+    c = TestClient(g.app)
+    def jpg(colour, bg=None):
+        im = Image.new("RGB", (100, 100), bg or colour)
+        if bg: im.paste(colour, (30, 30, 70, 70))
+        b = io.BytesIO(); im.save(b, "JPEG"); return b.getvalue()
+    seg = np.zeros((100, 100), int); seg[0:10, 40:60] = 3; seg[10:50, 20:80] = 1; seg[50:95, 30:70] = 2; seg[97:99, 0:2] = 1   # morceau isolé
+    state["seg"] = seg
+    j = c.post("/wardrobe/crop", files={"image": ("p.jpg", jpg((90, 90, 200)), "image/jpeg")}).json()
+    assert j["needed"] and j["kind"] == "portée" and [p["slot"] for p in j["parts"]] == ["top", "bottom"]
+    assert all(p["image"].startswith("data:image/jpeg;base64,") for p in j["parts"])
+    state["seg"] = np.zeros((100, 100), int)                                                    # pas de personne
+    assert c.post("/wardrobe/crop", files={"image": ("p.jpg", jpg((250, 250, 250)), "image/jpeg")}).json() == {"needed": False, "kind": "propre", "parts": []}
+    j = c.post("/wardrobe/crop", files={"image": ("p.jpg", jpg((200, 30, 30), bg=(120, 90, 60)), "image/jpeg")}).json()
+    assert j["needed"] and j["kind"] == "à plat" and j["parts"][0]["part"] == "photo"
+    assert c.post("/wardrobe/crop", files={"image": ("x.jpg", b"pas une image", "image/jpeg")}).status_code == 422
+    # ajout : photo d'origine + pièce choisie (analysée telle quelle)
+    import base64
+    piece = base64.b64decode(j["parts"][0]["image"].split(",", 1)[1])
+    r = c.post("/wardrobe/items", files={"image": ("o.jpg", jpg((200, 30, 30), bg=(120, 90, 60)), "image/jpeg"),
+                                         "crop": ("piece.jpg", piece, "image/jpeg")}, data={"slot_hint": "top"})
+    assert r.status_code == 200, r.text
+    card = next(x for x in json.load(open(store / "wardrobe.json", encoding="utf-8")) if x["id"] == r.json()["id"])
+    assert (store / card["image"]).exists() and (store / card["image_crop"]).exists()

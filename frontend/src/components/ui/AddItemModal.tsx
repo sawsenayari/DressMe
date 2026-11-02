@@ -1,24 +1,34 @@
 import { useRef, useState } from 'react';
 import type { ClothingItem } from '../../types';
-import type { ItemPatch } from '../../services/wardrobe';
+import type { CropPart, CropResult, ItemPatch } from '../../services/wardrobe';
 import { ItemFields, formFromItem, patchFromForm, type ItemForm } from './ItemFields';
+
+type Crop = { image: Blob; slot?: string | null };
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
-  /** Analyse la photo (reconnaissance automatique) et crée la pièce ; renvoie ses caractéristiques détectées. */
-  onAnalyze: (file: File) => Promise<ClothingItem>;
+  /** Analyse la photo (reconnaissance automatique) et crée la pièce ; crop = pièce découpée choisie. */
+  onAnalyze: (file: File, crop?: Crop) => Promise<ClothingItem>;
+  /** Améliore la photo avant l'analyse (découpage de l'objectif 6) ; absent en mode démonstration. */
+  onCrop?: (file: File) => Promise<CropResult>;
   /** Enregistre les caractéristiques vérifiées / corrigées par l'utilisateur. */
   onConfirm: (id: string, patch: ItemPatch) => Promise<unknown>;
   /** Annulation après analyse : la pièce créée est retirée. */
   onDiscard: (id: string) => Promise<unknown>;
 }
 
-type Step = 'photo' | 'analysing' | 'review' | 'saving';
+type Step = 'photo' | 'improving' | 'choose' | 'analysing' | 'review' | 'saving';
+const ORIGINAL = -1;
 
-export function AddItemModal({ isOpen, onClose, onAnalyze, onConfirm, onDiscard }: Props) {
+const toBlob = async (dataUrl: string) => (await fetch(dataUrl)).blob();
+
+export function AddItemModal({ isOpen, onClose, onAnalyze, onCrop, onConfirm, onDiscard }: Props) {
   const [step, setStep] = useState<Step>('photo');
+  const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState('');
+  const [crop, setCrop] = useState<CropResult | null>(null);
+  const [choice, setChoice] = useState(0);
   const [item, setItem] = useState<ClothingItem | null>(null);
   const [form, setForm] = useState<ItemForm | null>(null);
   const [error, setError] = useState('');
@@ -26,22 +36,39 @@ export function AddItemModal({ isOpen, onClose, onAnalyze, onConfirm, onDiscard 
 
   if (!isOpen) return null;
 
-  const reset = () => { setStep('photo'); setPreviewUrl(''); setItem(null); setForm(null); setError(''); };
+  const reset = () => {
+    setStep('photo'); setFile(null); setPreviewUrl(''); setCrop(null); setChoice(0); setItem(null); setForm(null); setError('');
+  };
   const close = () => { reset(); onClose(); };
+  const busy = step === 'improving' || step === 'analysing' || step === 'saving';
 
-  // 1) photo choisie -> analyse immédiate
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    e.target.value = '';
-    if (!file) return;
-    setPreviewUrl(URL.createObjectURL(file)); setError(''); setStep('analysing');
+  // 2) analyse de la photo d'origine ou de la pièce découpée choisie
+  const analyse = async (f: File, part?: CropPart) => {
+    setStep('analysing'); setError('');
     try {
-      const created = await onAnalyze(file);
+      const created = await onAnalyze(f, part ? { image: await toBlob(part.image), slot: part.slot } : undefined);
       setItem(created); setForm(formFromItem(created)); setStep('review');
     } catch (err) {
       setError(`La photo n'a pas pu être analysée : ${err instanceof Error ? err.message : err}`);
-      setStep('photo');
+      setStep(crop?.needed ? 'choose' : 'photo');
     }
+  };
+
+  // 1) photo choisie -> amélioration (découpage) si utile, sinon analyse directe
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    e.target.value = '';
+    if (!f) return;
+    setFile(f); setPreviewUrl(URL.createObjectURL(f)); setError(''); setCrop(null); setChoice(0);
+    if (!onCrop) { analyse(f); return; }
+    setStep('improving');
+    try {
+      const r = await onCrop(f);
+      if (r.needed && r.parts.length) { setCrop(r); setStep('choose'); return; }
+    } catch {
+      /* amélioration indisponible : la photo est analysée telle quelle */
+    }
+    analyse(f);
   };
 
   // 3) enregistrement des caractéristiques vérifiées
@@ -68,18 +95,31 @@ export function AddItemModal({ isOpen, onClose, onAnalyze, onConfirm, onDiscard 
   };
 
   const lowConfidence = !!item && ((item.confidence?.slot ?? 1) < 0.75 || (item.confidence?.colour ?? 1) < 0.75);
+  const chosen = crop && choice !== ORIGINAL ? crop.parts[choice] : undefined;
+  const subtitle = step === 'review' || step === 'saving'
+    ? 'Voici ce que nous avons reconnu sur la photo. Vérifiez et corrigez si besoin, puis enregistrez.'
+    : step === 'choose'
+      ? crop?.kind === 'portée'
+        ? 'Plusieurs vêtements sont visibles : choisissez celui à ajouter (vous pourrez ajouter les autres ensuite avec la même photo).'
+        : 'Le fond de la photo a été retiré pour mieux reconnaître le vêtement. Gardez la version qui vous convient.'
+      : 'Choisissez une photo : nous améliorons la photo si besoin, reconnaissons le vêtement et remplissons sa fiche pour vous.';
+
+  const tile = (idx: number, src: string, label: string) => (
+    <button key={idx} type="button" onClick={() => setChoice(idx)} aria-pressed={choice === idx}
+            style={{ border: choice === idx ? '2px solid var(--pastel-pink-deep)' : '1px solid var(--line)', borderRadius: '14px',
+                     background: '#FFFFFF', padding: '8px', cursor: 'pointer', display: 'grid', gap: '6px', justifyItems: 'center' }}>
+      <img src={src} alt={label} style={{ height: '120px', maxWidth: '100%', objectFit: 'contain' }} />
+      <span style={{ fontSize: '0.8rem', fontWeight: choice === idx ? 700 : 500 }}>{choice === idx ? '✓ ' : ''}{label}</span>
+    </button>
+  );
 
   return (
     <div className="modal-backdrop" onClick={step === 'photo' ? close : undefined}>
-      <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '560px', maxHeight: '92vh', overflowY: 'auto' }}>
-        <button className="modal-close" onClick={cancel} aria-label="Fermer" disabled={step === 'analysing' || step === 'saving'}>✕</button>
+      <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '600px', maxHeight: '92vh', overflowY: 'auto' }}>
+        <button className="modal-close" onClick={cancel} aria-label="Fermer" disabled={busy}>✕</button>
 
         <h2 style={{ marginBottom: '6px' }}>Ajouter une pièce</h2>
-        <p style={{ color: 'var(--muted)', fontSize: '0.88rem', marginBottom: '18px' }}>
-          {step === 'review' || step === 'saving'
-            ? 'Voici ce que nous avons reconnu sur la photo. Vérifiez et corrigez si besoin, puis enregistrez.'
-            : 'Choisissez une photo : nous reconnaissons le vêtement et remplissons sa fiche pour vous.'}
-        </p>
+        <p style={{ color: 'var(--muted)', fontSize: '0.88rem', marginBottom: '18px' }}>{subtitle}</p>
 
         {error && (
           <div role="alert" style={{ padding: '10px 14px', borderRadius: '12px', background: 'var(--danger-bg)', color: 'var(--danger)', fontSize: '0.85rem', marginBottom: '16px' }}>
@@ -87,28 +127,37 @@ export function AddItemModal({ isOpen, onClose, onAnalyze, onConfirm, onDiscard 
           </div>
         )}
 
-        <div
-          style={{ border: '2px dashed var(--pastel-pink)', borderRadius: '20px', padding: previewUrl ? '12px' : '26px 16px', textAlign: 'center',
-                   background: 'var(--pastel-pink-subtle)', cursor: step === 'photo' ? 'pointer' : 'default', marginBottom: '18px' }}
-          onClick={() => step === 'photo' && fileInputRef.current?.click()}
-        >
-          <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFileChange} />
-          {previewUrl ? (
-            <div>
-              <img src={item?.imageCrop || previewUrl} alt="Aperçu du vêtement"
-                   style={{ maxHeight: '170px', width: 'auto', margin: '0 auto', borderRadius: '14px', display: 'block', boxShadow: 'var(--shadow-card)' }} />
-              <span style={{ display: 'inline-block', marginTop: '8px', fontSize: '0.8rem', color: 'var(--muted)', fontWeight: 600 }}>
-                {step === 'analysing' ? '🔎 Analyse de la photo… (quelques secondes)' : step === 'photo' ? 'Changer la photo' : '✓ Photo analysée'}
-              </span>
-            </div>
-          ) : (
-            <div>
-              <div style={{ fontSize: '30px', marginBottom: '6px' }}>📸</div>
-              <div style={{ fontWeight: 600, fontSize: '0.92rem', color: 'var(--ink)' }}>Prendre ou importer une photo</div>
-              <div style={{ fontSize: '0.78rem', color: 'var(--muted)', marginTop: '2px' }}>Portée sur soi ou posée à plat</div>
-            </div>
-          )}
-        </div>
+        {step === 'choose' && crop ? (
+          <div role="group" aria-label="Choix de la photo" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '10px', marginBottom: '18px' }}>
+            {crop.parts.map((p, i) => tile(i, p.image, p.label))}
+            {tile(ORIGINAL, previewUrl, "Photo d'origine")}
+          </div>
+        ) : (
+          <div
+            style={{ border: '2px dashed var(--pastel-pink)', borderRadius: '20px', padding: previewUrl ? '12px' : '26px 16px', textAlign: 'center',
+                     background: 'var(--pastel-pink-subtle)', cursor: step === 'photo' ? 'pointer' : 'default', marginBottom: '18px' }}
+            onClick={() => step === 'photo' && fileInputRef.current?.click()}
+          >
+            {previewUrl ? (
+              <div>
+                <img src={item?.imageCrop || chosen?.image || previewUrl} alt="Aperçu du vêtement"
+                     style={{ maxHeight: '170px', width: 'auto', margin: '0 auto', borderRadius: '14px', display: 'block', boxShadow: 'var(--shadow-card)' }} />
+                <span style={{ display: 'inline-block', marginTop: '8px', fontSize: '0.8rem', color: 'var(--muted)', fontWeight: 600 }}>
+                  {step === 'improving' ? '✂️ Amélioration de la photo… (quelques secondes)'
+                    : step === 'analysing' ? '🔎 Analyse de la photo… (quelques secondes)'
+                    : step === 'photo' ? 'Changer la photo' : '✓ Photo analysée'}
+                </span>
+              </div>
+            ) : (
+              <div>
+                <div style={{ fontSize: '30px', marginBottom: '6px' }}>📸</div>
+                <div style={{ fontWeight: 600, fontSize: '0.92rem', color: 'var(--ink)' }}>Prendre ou importer une photo</div>
+                <div style={{ fontSize: '0.78rem', color: 'var(--muted)', marginTop: '2px' }}>Portée sur soi ou posée à plat</div>
+              </div>
+            )}
+          </div>
+        )}
+        <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFileChange} />
 
         {form && (step === 'review' || step === 'saving') && (
           <>
@@ -125,13 +174,20 @@ export function AddItemModal({ isOpen, onClose, onAnalyze, onConfirm, onDiscard 
         )}
 
         <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
-          <button type="button" className="btn btn-secondary" style={{ flex: 1 }} onClick={cancel} disabled={step === 'analysing' || step === 'saving'}>
+          <button type="button" className="btn btn-secondary" style={{ flex: 1 }} onClick={cancel} disabled={busy}>
             Annuler
           </button>
           {step === 'photo' && (
             <button type="button" className="btn" style={{ flex: 1 }} onClick={() => fileInputRef.current?.click()}>Choisir une photo</button>
           )}
-          {step === 'analysing' && <button type="button" className="btn" style={{ flex: 1 }} disabled>Analyse en cours…</button>}
+          {step === 'choose' && file && (
+            <button type="button" className="btn" style={{ flex: 1 }} onClick={() => analyse(file, chosen)}>
+              {chosen ? `Analyser : ${chosen.label.toLowerCase()}` : "Analyser la photo d'origine"}
+            </button>
+          )}
+          {(step === 'improving' || step === 'analysing') && (
+            <button type="button" className="btn" style={{ flex: 1 }} disabled>{step === 'improving' ? 'Amélioration…' : 'Analyse en cours…'}</button>
+          )}
           {(step === 'review' || step === 'saving') && (
             <button type="button" className="btn" style={{ flex: 1 }} onClick={save} disabled={step === 'saving'}>
               {step === 'saving' ? 'Enregistrement…' : 'Enregistrer dans ma garde-robe'}

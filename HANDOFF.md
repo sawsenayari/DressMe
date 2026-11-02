@@ -13,7 +13,7 @@ branché, testé et poussé sur `main` (GitHub `sawsenayari/DressMe`, dépôt **
 | Écran du front | Route de la passerelle | Objectifs appelés |
 |---|---|---|
 | **Today** (tenue du jour) | `GET /outfits/options`, `POST /outfits/recommend`, `POST /outfits/feedback` | Obj6 (agent de l'agenda, météo, 3 tenues) → jury Obj3 (règles) → compatibilité Obj2 |
-| **Wardrobe** | `GET/POST /wardrobe/items`, `PUT/DELETE /wardrobe/items/{id}` | Obj1 (reconnaissance de la photo) |
+| **Wardrobe** | `POST /wardrobe/crop`, `GET/POST /wardrobe/items`, `PUT/DELETE /wardrobe/items/{id}` | découpage de l'Obj6 (amélioration de la photo) puis Obj1 (reconnaissance) |
 | **Composer une tenue** (Outfit Studio) | `POST /outfits/judge` | jury Obj3 (règles + IA + photos en option) + Obj2 |
 | **Does it match ?** | `POST /compatibility/score` | Obj2 (FashionCLIP + PairMLP) |
 | **Pièces à ajouter** (Gaps) | `GET /gaps`, `GET /gaps/shopping` | Obj4 (candidats IA, proxies, comptage des tenues) + Obj2 (scores) |
@@ -73,7 +73,7 @@ Automatique (chaque dossier séparément, venv activé) :
 
 | Dossier | Commande (depuis ce dossier) | Attendu |
 |---|---|---|
-| `gateway` | `python -m pytest -q tests` | 14 réussis (≈ 9 min) |
+| `gateway` | `python -m pytest -q tests` | 15 réussis (≈ 9 min) |
 | `obj1_reconnaissance` | `python -m pytest -q` | 30 |
 | `obj2_compat` | `python -m pytest -q tests` puis `python recette.py` | 13 + recette PASS |
 | `obj3_jury` | `python -m pytest -q` | 11 |
@@ -87,7 +87,7 @@ ni dans le modèle Obj5, ni dans le cache Obj1.
 
 À la main (front) : **Today** → Femme / Homme, ville, agenda en français, arabe ou anglais (exemples cliquables), envies,
 « Explications de la styliste IA », « Proposer des tenues » ; vérifier la ligne de contexte, les avertissements,
-« Orchestration » (durée des étapes), puis 👍 / 🔀 / 👎 sur une tenue ; **Wardrobe** → « Ajouter une pièce » (formulaire pré-rempli puis modifiable), recherche, filtres,
+« Orchestration » (durée des étapes), puis 👍 / 🔀 / 👎 sur une tenue ; **Wardrobe** → « Ajouter une pièce » (photo portée : choix du vêtement ; fond chargé : photo détourée ; puis formulaire pré-rempli et modifiable), recherche, filtres,
 ✏️ Modifier, 🗑️ Supprimer ; **Composer une tenue** → choisir haut / bas / chaussures, changer contexte et température ;
 **Does it match ?** → `frontend\public\images\cream-trousers.jpg`, puis une photo déjà dans la garde-robe (doublon) ;
 **Pièces à ajouter** ; **Mon profil de style** → filtrer les pièces suggérées par catégorie et Femme / Homme,
@@ -111,6 +111,10 @@ ni dans le modèle Obj5, ni dans le cache Obj1.
 
 - **Catalogue par défaut sans photos** : `obj5_profil/data/wardrobe.json` (423 fiches) n'a ni images ni embeddings ;
   utiliser le store de démo de l'Obj1 (section 3) ou récupérer le `store/` du passage Colab de l'Obj1.
+- **Découpage (module de l'Obj6, dans la passerelle)** : SegFormer `mattmdjaga/segformer_b2_clothes` + rembg `u2netp`
+  (téléchargés au premier usage, 4,6 Mo pour u2netp ; rembg sert aussi à l'Obj1 avec `u2net`, 176 Mo). Bon sur les photos
+  portées occidentales et les photos à plat ; approximatif sur les tenues traditionnelles portées (l'utilisateur peut
+  garder la photo d'origine). Photo produit sur fond clair : pas d'étape.
 - **Obj1** : une pièce traditionnelle est toujours rangée en « robe / pièce unique » ; chaleur et formalité sont des
   valeurs par défaut (dictionnaire officiel jamais fourni). Mesure sur 28 photos portées : couleur juste 89 % avec Gemini
   (29 % sans). Le store de démo contient `it_0010`, une photo de baskets reconnue comme vêtement traditionnel (à corriger).

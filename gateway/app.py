@@ -3,6 +3,7 @@
 Routes attendues par le front (frontend/src/services) :
   GET  /health
   GET  /wardrobe/items            -> fiches du catalogue (ItemCard -> ClothingItem)         [Obj1 : lecture seule]
+  POST /wardrobe/crop              -> améliorer une photo avant l'ajout (découpage de l'objectif 6)
   POST /wardrobe/items            -> photo -> Obj1 (crop + ItemCard v1 + emb/<id>.npy) -> ajout au catalogue ; 501 si l'Obj1 n'est pas lançable
   POST /compatibility/score       -> photo (+ champ facultatif `category`) -> embedding FashionCLIP -> Obj2 /compat
   GET  /gaps                      -> pièces manquantes de l'objectif 4 (calculées sur la garde-robe)
@@ -441,10 +442,107 @@ def delete_item(item_id: str):
     return {"deleted": item_id, "items": len(items)}
 
 
+# ---------------------------------------------------------------- découpage des photos (module de l'objectif 6)
+CROP_PART_SLOT = {"haut": "top", "bas": "bottom", "robe": "onepiece", "chaussures": "footwear", "sac": "bag",
+                  "ceinture": "accessory", "chapeau": "accessory", "écharpe": "accessory", "lunettes": "accessory"}
+CROP_PART_FR = {"haut": "Haut", "bas": "Bas", "robe": "Robe / pièce unique", "chaussures": "Chaussures", "sac": "Sac",
+                "ceinture": "Ceinture", "chapeau": "Chapeau", "écharpe": "Écharpe", "lunettes": "Lunettes"}
+
+
+def _obj6_segment():
+    """Module de découpage de l'Obj6 (obj6_app/app/segment.py : SegFormer « clothes » + rembg u2netp), chargé par chemin."""
+    if "seg6" not in _cache:
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("obj6_segment", REPO / "obj6_app" / "app" / "segment.py")
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        _cache["seg6"] = mod
+    return _cache["seg6"]
+
+
+def _clean_mask(mask):
+    """Masque d'une pièce : zones principales seulement (au moins 20 % de la plus grande), trous comblés -> pas de
+    morceaux isolés quand la segmentation hésite (tenues traditionnelles, motifs)."""
+    from scipy import ndimage as ndi
+    m = ndi.binary_closing(mask, iterations=2)
+    lab, n = ndi.label(m)
+    if n == 0:
+        return mask
+    sizes = ndi.sum(m, lab, range(1, n + 1))
+    keep = np.isin(lab, [i + 1 for i, s_ in enumerate(sizes) if s_ >= 0.2 * sizes.max()])
+    return ndi.binary_fill_holes(keep)
+
+
+def _plain_background(img):
+    """Photo déjà sur fond clair et uni (photo produit) : au moins 85 % de la bordure à ±12 d'une teinte claire
+    (le vêtement peut toucher un bord)."""
+    a = np.asarray(img.convert("L"), dtype=np.float32)
+    b = max(2, min(a.shape) // 40)
+    border = np.concatenate([a[:b].ravel(), a[-b:].ravel(), a[:, :b].ravel(), a[:, -b:].ravel()])
+    med = float(np.median(border))
+    return med >= 228 and float((np.abs(border - med) <= 12).mean()) >= 0.85
+
+
+def _data_url(im, side=900):
+    from PIL import Image
+    im = im.convert("RGB")
+    im.thumbnail((side, side), Image.LANCZOS)
+    buf = io.BytesIO()
+    im.save(buf, "JPEG", quality=90)
+    return "data:image/jpeg;base64," + __import__("base64").b64encode(buf.getvalue()).decode()
+
+
+@app.post("/wardrobe/crop")
+def crop_photo(image: UploadFile = File(...)):
+    """Améliore une photo avant l'ajout (découpage de l'Obj6) : photo portée -> une image par vêtement détecté (fond
+    blanc) ; photo à plat sur fond chargé -> vêtement détouré. needed = False quand la photo est déjà propre."""
+    from PIL import Image
+    try:
+        img = Image.open(io.BytesIO(image.file.read())).convert("RGB")
+    except Exception:
+        raise HTTPException(422, "Ce fichier n'est pas une image lisible.")
+    img.thumbnail((1600, 1600))
+    seg = _obj6_segment()
+    try:
+        labels, id2l = seg._segment(img)
+    except Exception as e:
+        log(f"découpage (Obj6) indisponible : {type(e).__name__}: {e}")
+        raise HTTPException(503, "L'amélioration automatique de la photo n'est pas disponible pour le moment.")
+    n2i = {v: k for k, v in id2l.items()}
+    total = labels.size
+    person = sum(int((labels == n2i[n]).sum()) for n in seg.PERSON if n in n2i) / total
+    parts = []
+    if person >= 0.02:   # photo portée (même seuil que l'Obj6) : une image par vêtement
+        for part, names in seg.PARTS.items():
+            m = np.isin(labels, [n2i[x] for x in names if x in n2i])
+            if m.mean() >= 0.015:
+                m = _clean_mask(m)
+                parts.append((int(m.sum()), part, seg._cut(img, m)))
+        parts.sort(key=lambda x: -x[0])
+    if parts:
+        kind = "portée"
+    elif _plain_background(img):
+        return {"needed": False, "kind": "propre", "parts": []}
+    else:
+        try:
+            cut = seg.cutout(img)
+        except Exception as e:
+            log(f"détourage (rembg) indisponible : {type(e).__name__}: {e}")
+            return {"needed": False, "kind": "à plat", "parts": []}
+        if cut is img:
+            return {"needed": False, "kind": "à plat", "parts": []}
+        kind, parts = "à plat", [(0, "photo", cut)]
+    return {"needed": True, "kind": kind, "parts": [
+        {"part": p, "label": CROP_PART_FR.get(p, "Vêtement détouré"), "slot": CROP_PART_SLOT.get(p), "image": _data_url(im)}
+        for _, p, im in parts]}
+
+
 @app.post("/wardrobe/items")
-def add_item(image: UploadFile = File(...)):
+def add_item(image: UploadFile = File(...), crop: Optional[UploadFile] = File(None), slot_hint: Optional[str] = Form(None)):
+    """image : photo d'origine ; crop (facultatif) : pièce choisie après /wardrobe/crop, analysée telle quelle."""
     svc = recognizer()
     data = image.file.read()
+    crop_data = crop.file.read() if crop is not None else None
     suffix = Path(image.filename or "photo.jpg").suffix.lower() or ".jpg"
     with _write_lock, tempfile.TemporaryDirectory() as tmp:
         raw = Path(tmp) / f"photo{suffix}"
@@ -452,7 +550,13 @@ def add_item(image: UploadFile = File(...)):
         item_id = _next_id()
         src, kw = raw, {}
         cropper = getattr(svc, "cropper", None)
-        if cropper is not None:  # vrai service : une seule pièce par photo (la plus grande)
+        if crop_data:   # pièce déjà découpée et choisie par l'utilisateur : pas de second découpage
+            src = Path(tmp) / "piece.jpg"
+            src.write_bytes(crop_data)
+            import inspect
+            if slot_hint in SLOTS and "slot_hint" in inspect.signature(svc.recognize).parameters:
+                kw = dict(slot_hint=slot_hint)   # catégorie trouvée par le découpage (si le service de l'Obj1 la prend)
+        elif cropper is not None:  # vrai service : une seule pièce par photo (la plus grande)
             try:
                 piece = cropper.crop(raw, strategy="main")[0]
             except Exception as e:  # modèle de segmentation indisponible : photo entière, signalée

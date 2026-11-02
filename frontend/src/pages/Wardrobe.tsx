@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useAsync } from '../hooks/useAsync';
-import { addItem, deleteItem, listItems, updateItem, type ItemPatch } from '../services/wardrobe';
+import { addItem, cropPhoto, deleteItem, listItems, updateItem, type ItemPatch } from '../services/wardrobe';
 import type { Slot, Season, ClothingItem } from '../types';
 import { ItemTile } from '../components/ui/ItemTile';
 import { ItemDetailModal } from '../components/ui/ItemDetailModal';
@@ -46,19 +46,19 @@ export default function Wardrobe() {
   // Ajout : l'Obj1 reconnaît la photo, puis les caractéristiques saisies (champs non « Auto ») remplacent sa détection
   // Ajout en 2 temps : la photo est analysée (pièce créée, caractéristiques détectées), puis l'utilisateur vérifie
   // le formulaire pré-rempli et enregistre (handleSave) ou annule (handleDelete).
-  async function handleAnalyze(file: File): Promise<ClothingItem> {
+  async function handleAnalyze(file: File, crop?: { image: Blob; slot?: string | null }): Promise<ClothingItem> {
     setError('');
     if (useDemoData) {   // démo : pas de reconnaissance, fiche de départ à compléter
       const item: ClothingItem = {
         id: `it_${Date.now()}`, name: 'Nouvelle pièce', type: 'Tshirts', slot: 'top', category: 'top', colour: ['beige'], color: 'beige',
         season: 'all', usage: 'Casual', formality: 1, warmth: 1, traditional: false,
-        imageUrl: URL.createObjectURL(file), imageCrop: URL.createObjectURL(file),
+        imageUrl: URL.createObjectURL(file), imageCrop: URL.createObjectURL(crop?.image ?? file),
         source: 'obj1.knn', confidence: { slot: 0.6, colour: 0.6, type: 0.6 },
       };
       addWardrobeItem(item);
       return item;
     }
-    const created = await addItem(file);
+    const created = await addItem(file, crop);
     setVersion(v => v + 1);
     return created;
   }
@@ -305,6 +305,7 @@ export default function Wardrobe() {
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
         onAnalyze={handleAnalyze}
+        onCrop={useDemoData ? undefined : cropPhoto}
         onConfirm={handleSave}
         onDiscard={handleDelete}
       />
