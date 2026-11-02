@@ -1976,8 +1976,9 @@ def _tryon_call(space, *args, api_name):
         log(f"essayage ({space}) : {type(e).__name__}: {msg[:300]}")
         if "quota" in msg.lower():
             m = re.search(r"Try again in (\d+):(\d+):\d+", msg)
-            wait = "quelques minutes" if not m or m.groups() == ("0", "00") else                 (f"{int(m[1])} h {int(m[2]):02d}" if int(m[1]) else f"{int(m[2])} min")
-            raise TryOnUnavailable(f"Le quota gratuit de calcul (Hugging Face) est épuisé : réessayez dans {wait}"
+            # « Try again in 0:00:00 » : le quota se recharge peu à peu, mais pas assez pour l'étape demandée
+            wait = "plus tard (le quota gratuit se recharge au fil de la journée)" if not m or m.groups() == ("0", "00")                 else "dans " + (f"{int(m[1])} h {int(m[2]):02d}" if int(m[1]) else f"{int(m[2])} min")
+            raise TryOnUnavailable(f"Le quota gratuit de calcul (Hugging Face) est épuisé : réessayez {wait}"
                                    + ("." if os.environ.get("HF_TOKEN") else
                                       ", ou ajoutez un jeton gratuit HF_TOKEN dans gateway/.env (quota bien plus large)."))
         raise TryOnUnavailable("Le service d'essayage est momentanément indisponible : réessayez plus tard.")
@@ -2038,24 +2039,30 @@ def outfit_tryon(body: TryOnIn):
     person = str(TRYON_ASSETS / ("mannequin_men.jpg" if gender == "Men" else "mannequin_women.jpg"))
     t0, done, note = time.time(), [], None
     with _tryon_lock:   # un essayage à la fois : le quota GPU gratuit est partagé
-        try:
-            # bas / robe d'abord : OOTDiffusion travaille bien sur la photo du mannequin, mal sur une image déjà
-            # retouchée (taches) ; IDM-VTON, plus robuste, pose ensuite le haut sur le résultat
-            for c, cat in ((bottom, "Lower-body"), (dress, "Dress")):
-                if c:
-                    r = _tryon_call(TRYON_OOTD_SPACE, handle_file(person), handle_file(_garment_input(c)), cat, 1, 20, 2.0, TRYON_OOTD_SEED,
-                                    api_name="/process_dc")
+        # bas / robe d'abord : OOTDiffusion travaille bien sur la photo du mannequin, mal sur une image déjà retouchée
+        # (taches) ; IDM-VTON, plus robuste, pose ensuite le haut. Une étape refusée (quota) n'empêche pas les suivantes.
+        err = None
+        for c, cat in ((bottom, "Lower-body"), (dress, "Dress")):
+            if c:
+                try:
+                    r = _tryon_call(TRYON_OOTD_SPACE, handle_file(person), handle_file(_garment_input(c)), cat, 1, 20, 2.0,
+                                    TRYON_OOTD_SEED, api_name="/process_dc")
                     person = r[0]["image"] if isinstance(r[0], dict) else r[0]
                     done.append(c)
-            if top:
+                except TryOnUnavailable as e:
+                    err = e
+        if top:
+            try:
                 person = _tryon_call(TRYON_TOP_SPACE, dict(background=handle_file(person), layers=[], composite=None),
                                      handle_file(_garment_input(top)), _garment_text(top), True, False, 30, 42,
                                      api_name="/tryon")[0]
                 done.append(top)
-        except TryOnUnavailable as e:
-            if not done:
-                raise HTTPException(503, str(e))
-            note = f"Essayage partiel : {', '.join(_tryon_name(c) for c in worn if c not in done)} non porté(s). {e}"
+            except TryOnUnavailable as e:
+                err = e
+        if err and not done:
+            raise HTTPException(503, str(err))
+        if err:
+            note = f"Essayage partiel : {', '.join(_tryon_name(c) for c in worn if c not in done)} non porté(s). {err}"
     if note:   # résultat partiel : montré mais pas mis en cache, pour retenter l'essayage complet plus tard
         rel = f"tryon/{fp}_partiel.png"
         out = STORE / rel

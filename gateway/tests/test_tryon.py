@@ -49,3 +49,7 @@ def test_tryon_chain_cache_and_partial(tmp_path, monkeypatch):
     assert r["worn"] == ["b1"] and "partiel" in r["note"] and "chemise bleue" in r["note"] and "_partiel" in r["imageUrl"]
     monkeypatch.setattr(g, "_tryon_call", lambda *a, **k: (_ for _ in ()).throw(g.TryOnUnavailable("quota épuisé")))
     r = c.post("/outfits/tryon", json={"item_ids": ["t1"]}); assert r.status_code == 503 and "quota" in r.json()["detail"]
+    monkeypatch.setattr(g, "_tryon_call", lambda space, *a, api_name: (_ for _ in ()).throw(g.TryOnUnavailable("quota épuisé"))
+                        if api_name == "/process_dc" else fake_call(space, *a, api_name=api_name))
+    r = c.post("/outfits/tryon", json={"item_ids": ["t1", "b1"], "gender": "Women"}).json()   # bas refusé : le haut est quand même porté
+    assert r["worn"] == ["t1"] and "pantalon gris" in r["note"]
