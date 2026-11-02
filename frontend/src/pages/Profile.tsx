@@ -49,7 +49,7 @@ function bilan(p: StyleProfile): BilanRow[] {
     rows.push({ icon: '🎨', title: 'Couleurs', value: pal.slice(0, 2).map(c => colourLabel(c.color).toLowerCase()).join(' et '),
                 detail: 'les plus présentes', swatches: pal.map(c => c.color) });
   if (p.diversityScore != null)
-    rows.push({ icon: '🌈', title: 'Variété', value: p.diversityScore >= 70 ? 'variée' : p.diversityScore >= 40 ? 'assez variée' : 'peu variée',
+    rows.push({ icon: '🧩', title: 'Variété', value: p.diversityScore >= 70 ? 'variée' : p.diversityScore >= 40 ? 'assez variée' : 'peu variée',
                 detail: `${p.diversityScore} % : vos pièces se répartissent entre plusieurs styles` });
   if (p.formalityPref != null)
     rows.push({ icon: '👔', title: 'Style', value: FORMALITY[Math.round(p.formalityPref)].toLowerCase(),
