@@ -53,28 +53,41 @@ class ShoppingSearchConfig:
         return cls(api_key=api_key, endpoint=endpoint)
 
 
+# Montant : groupes de milliers (« 1,299 », « 23.400 », « 2 500 ») puis décimales facultatives, ou nombre simple.
+_AMOUNT = r"\d{1,3}(?:[.,\u00a0 ]\d{3})+(?:[.,]\d{1,2})?|\d+(?:[.,]\d{1,2})?"
 _PRICE_PATTERN = re.compile(
-    r"(?P<symbol>[$€£])\s?(?P<amount>\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?|\d+(?:[.,]\d{1,2})?)"
-    r"|(?P<amount_before>\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?|\d+(?:[.,]\d{1,2})?)\s?(?P<code>USD|EUR|GBP)",
+    rf"(?P<symbol>[$€£])\s?(?P<amount>{_AMOUNT})"
+    rf"|(?P<amount_before>{_AMOUNT})\s?(?P<code>USD|EUR|GBP|[$€£])",
     re.IGNORECASE,
 )
 
 
+def _to_amount(raw: str) -> float:
+    """« 1,299.99 », « 1.299,99 », « 23.400,00 », « 19,99 », « 1,400 » -> nombre. Le dernier séparateur suivi de
+    1 ou 2 chiffres est la virgule décimale ; un séparateur suivi de 3 chiffres sépare les milliers."""
+    raw = raw.replace("\u00a0", "").replace(" ", "")
+    if "," in raw and "." in raw:
+        decimal = "," if raw.rfind(",") > raw.rfind(".") else "."
+        raw = raw.replace("." if decimal == "," else ",", "").replace(decimal, ".")
+    else:
+        sep = "," if "," in raw else "." if "." in raw else None
+        if sep:
+            head, _, tail = raw.rpartition(sep)
+            raw = head.replace(sep, "") + (tail if len(tail) == 3 else "." + tail)
+    return float(raw)
+
+
 def _extract_price(text: str) -> tuple[float | None, str | None]:
-    matches = list(_PRICE_PATTERN.finditer(text))
-    if not matches:
-        return None, None
     prices = []
-    for match in matches:
-        raw_amount = match.group("amount") or match.group("amount_before")
-        if "," in raw_amount and len(raw_amount.rsplit(",", 1)[1]) == 3:
-            raw_amount = raw_amount.replace(",", "")
-        else:
-            raw_amount = raw_amount.replace(",", ".")
-        prices.append((
-            float(raw_amount),
-            (match.group("symbol") or match.group("code")).upper(),
-        ))
+    for match in _PRICE_PATTERN.finditer(text):
+        try:   # un prix illisible est ignoré : il ne doit pas faire échouer toute la recherche
+            amount = _to_amount(match.group("amount") or match.group("amount_before"))
+        except ValueError:
+            continue
+        unit = (match.group("symbol") or match.group("code")).upper()
+        prices.append((amount, unit))
+    if not prices:
+        return None, None
     return min(prices, key=lambda item: item[0])
 
 

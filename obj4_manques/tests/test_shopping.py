@@ -62,6 +62,15 @@ class ShoppingTests(unittest.TestCase):
         self.assertEqual(_extract_price("From $1,400 down to $14"), (14, "$"))
         self.assertEqual(_extract_price("$50 shipping, product $19.99"), (19.99, "$"))
 
+    def test_price_parser_handles_european_formats_without_failing(self):
+        # milliers et décimales dans les deux conventions, symbole avant ou après ; « $1,299.99 » faisait planter la recherche
+        self.assertEqual(_extract_price("$1,299.99"), (1299.99, "$"))
+        self.assertEqual(_extract_price("Prix 23.400,00 €"), (23400.0, "€"))
+        self.assertEqual(_extract_price("23.400,00 EUR"), (23400.0, "EUR"))
+        self.assertEqual(_extract_price("€ 1.299,99"), (1299.99, "€"))
+        self.assertEqual(_extract_price("19,99 €"), (19.99, "€"))
+        self.assertEqual(_extract_price("aucun prix ici"), (None, None))
+
     def test_search_preserves_provider_image_url(self):
         response = {
             "results": [{
