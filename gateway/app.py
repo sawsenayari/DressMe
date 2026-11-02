@@ -1942,6 +1942,7 @@ def outfit_judge(body: JudgeRequest):
 TRYON_ASSETS = Path(__file__).resolve().parent / "assets" / "tryon"
 TRYON_TOP_SPACE = os.environ.get("DRESSME_TRYON_TOP", "yisol/IDM-VTON")
 TRYON_OOTD_SPACE = os.environ.get("DRESSME_TRYON_OOTD", "levihsu/OOTDiffusion")
+TRYON_LOW_SPACE = os.environ.get("DRESSME_TRYON_LOW", "franciszzj/Leffa")   # bas / robe (DressCode) ; OOTDiffusion en secours
 TRYON_OOTD_SEED = int(os.environ.get("DRESSME_TRYON_OOTD_SEED", "7"))   # graine retenue : rendu propre sur nos essais (42 : taches)
 _tryon_lock = threading.Lock()
 
@@ -2029,7 +2030,7 @@ def outfit_tryon(body: TryOnIn):
         g = [c.get("gender") for c in cards if c.get("gender") in ("Women", "Men")]
         gender = "Men" if g and g.count("Men") > g.count("Women") else "Women"
     worn = [c for c in (dress, top, bottom) if c]
-    fp = hashlib.sha1(json.dumps(["v4", TRYON_OOTD_SEED, gender, TRYON_TOP_SPACE, TRYON_OOTD_SPACE,
+    fp = hashlib.sha1(json.dumps(["v5", TRYON_LOW_SPACE, TRYON_OOTD_SEED, gender, TRYON_TOP_SPACE, TRYON_OOTD_SPACE,
                                   *[(c["id"], str(_garment_photo(c).stat().st_mtime)) for c in worn]]).encode()).hexdigest()[:20]
     rel = f"tryon/{fp}.png"
     out = STORE / rel
@@ -2042,12 +2043,10 @@ def outfit_tryon(body: TryOnIn):
         # bas / robe d'abord : OOTDiffusion travaille bien sur la photo du mannequin, mal sur une image déjà retouchée
         # (taches) ; IDM-VTON, plus robuste, pose ensuite le haut. Une étape refusée (quota) n'empêche pas les suivantes.
         err = None
-        for c, cat in ((bottom, "Lower-body"), (dress, "Dress")):
+        for c, kind in ((bottom, "lower_body"), (dress, "dresses")):
             if c:
                 try:
-                    r = _tryon_call(TRYON_OOTD_SPACE, handle_file(person), handle_file(_garment_input(c)), cat, 1, 20, 2.0,
-                                    TRYON_OOTD_SEED, api_name="/process_dc")
-                    person = r[0]["image"] if isinstance(r[0], dict) else r[0]
+                    person = _tryon_lower(person, c, kind, handle_file)
                     done.append(c)
                 except TryOnUnavailable as e:
                     err = e
@@ -2071,6 +2070,28 @@ def outfit_tryon(body: TryOnIn):
     log(f"essayage {fp} : {len(done)}/{len(worn)} pièce(s) en {time.time() - t0:.0f} s")
     return {**result, "worn": [c["id"] for c in done], "notWorn": [c["id"] for c in cards if c not in done], "note": note,
             "imageUrl": f"/files/{rel}{_file_version(rel)}", "cached": False}
+
+
+def _image_path(r):
+    """Premier résultat d'un Space (liste, galerie ou fichier) -> chemin local de l'image."""
+    while isinstance(r, (list, tuple)):
+        r = r[0]
+    return r.get("image") or r.get("path") if isinstance(r, dict) else r
+
+
+def _tryon_lower(person, c, kind, handle_file):
+    """Bas ou robe : Leffa (2025, modèle DressCode : jupes, shorts, pantalons, robes avec leur longueur), puis
+    OOTDiffusion si Leffa ne répond pas (le refus pour quota épuisé est remonté tel quel, OOTDiffusion en demanderait plus)."""
+    garment = handle_file(_garment_input(c))
+    try:
+        return _image_path(_tryon_call(TRYON_LOW_SPACE, handle_file(person), garment, False, 30, 2.5, 42, "dress_code", kind, False,
+                                       api_name="/leffa_predict_vt"))
+    except TryOnUnavailable as e:
+        if "quota" in str(e):
+            raise
+    cat = "Lower-body" if kind == "lower_body" else "Dress"
+    return _image_path(_tryon_call(TRYON_OOTD_SPACE, handle_file(person), garment, cat, 1, 20, 2.0, TRYON_OOTD_SEED,
+                                   api_name="/process_dc"))
 
 
 def _tryon_name(c):

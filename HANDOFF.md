@@ -139,12 +139,12 @@ ni dans le modèle Obj5, ni dans le cache Obj1.
 - **Essayage réaliste** (« Aperçu de la tenue » de Composer une tenue et Tenue du jour, bouton « 📸 Essayage réaliste »,
   `POST /outfits/tryon`) : essayage virtuel par diffusion sur des Spaces Hugging Face gratuits (`gradio_client`). Les
   photos des pièces sont « portées » par un mannequin photo (`gateway/assets/tryon/`, femme ou homme selon les pièces) :
-  bas (« Lower-body ») ou robe (« Dress ») d'abord avec OOTDiffusion, puis haut ou veste avec IDM-VTON (OOTDiffusion
-  donne des taches sur une image déjà retouchée). Photos posées sur fond blanc au format 3:4 avant l'envoi. Chaussures et
+  bas ou robe d'abord avec Leffa (modèle DressCode, `lower_body` / `dresses` ; OOTDiffusion en secours s'il ne répond
+  pas), puis haut ou veste avec IDM-VTON. Photos posées sur fond blanc au format 3:4 avant l'envoi. Chaussures et
   accessoires sont montrés à côté. ≈ 20-30 s par pièce ; résultat en cache dans `tryon/` de la garde-robe ; si le quota
   GPU gratuit coupe au milieu, la pièce déjà portée est montrée (résultat partiel, non mis en cache). Les Spaces sont
-  appelés par leur adresse directe (`*.hf.space`), ce qui marche aussi avec `HF_HUB_OFFLINE=1`. Limites : une jupe ou un
-  short prend la longueur du pantalon du mannequin ; le quota gratuit d'un compte Hugging Face ne permet que quelques
+  appelés par leur adresse directe (`*.hf.space`), ce qui marche aussi avec `HF_HUB_OFFLINE=1`. Limites : avec
+  OOTDiffusion, une jupe prend la longueur du pantalon du mannequin ; le quota gratuit d'un compte Hugging Face ne permet que quelques
   essayages par jour. Les photos partent chez Hugging Face.
 - **Obj5** : profil et suggestions utilisent la taxonomie de référence (16 styles appris sur 423 fiches, espace
   d'attributs, pas FashionCLIP faute d'embeddings du catalogue) ; palette = part des pièces par couleur ; suggestions
