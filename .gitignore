@@ -46,3 +46,6 @@ obj6_app/models/clip_visual_ft.pt
 
 # comptes et garde-robes des utilisateurs (mots de passe hachés, photos)
 gateway/users_data/
+
+# fichiers de verrou de Word / Excel
+~$*
