@@ -12,12 +12,12 @@ branché, testé et poussé sur `main` (GitHub `sawsenayari/DressMe`, dépôt **
 
 | Écran du front | Route de la passerelle | Objectifs appelés |
 |---|---|---|
-| **Today** (tenue du jour) | `GET /outfits/options`, `POST /outfits/recommend`, `POST /outfits/feedback` | Obj6 (agent de l'agenda, météo, 3 tenues) → jury Obj3 (règles) → compatibilité Obj2 |
-| **Wardrobe** | `POST /wardrobe/crop`, `GET/POST /wardrobe/items`, `PUT/DELETE /wardrobe/items/{id}` | découpage de l'Obj6 (amélioration de la photo) puis Obj1 (reconnaissance) |
-| **Composer une tenue** (Outfit Studio) | `POST /outfits/judge` | jury Obj3 (règles + IA + photos en option) + Obj2 |
-| **Does it match ?** | `POST /compatibility/score` | Obj2 (FashionCLIP + PairMLP) |
-| **Pièces à ajouter** (Gaps) | `GET /gaps`, `GET /gaps/shopping` | Obj4 (candidats IA, proxies, comptage des tenues) + Obj2 (scores) |
-| **Mon profil de style** | `GET /profile`, `GET /profile/recommendations` | Obj5 (profil, pièces suggérées) |
+| **Tenue du jour** (`/`) | `GET /outfits/options`, `POST /outfits/recommend`, `POST /outfits/feedback` | Obj6 (agent de l'agenda, météo, 3 tenues) → jury Obj3 (règles) → compatibilité Obj2 |
+| **Ma garde-robe** (`/wardrobe`) | `POST /wardrobe/crop`, `GET/POST /wardrobe/items`, `PUT/DELETE /wardrobe/items/{id}` | découpage de l'Obj6 (amélioration de la photo) puis Obj1 (reconnaissance) |
+| **Composer une tenue** (`/studio`) | `POST /outfits/judge` | jury Obj3 (règles + IA + photos en option) + Obj2 |
+| **Ça va avec ?** (`/match`) | `POST /compatibility/score` | Obj2 (FashionCLIP + PairMLP) |
+| **Pièces à ajouter** (`/gaps`) | `GET /gaps`, `GET /gaps/shopping` | Obj4 (candidats IA, proxies, comptage des tenues) + Obj2 (scores) |
+| **Mon style** (`/profile`) | `GET /profile`, `GET /profile/recommendations` | Obj5 (profil, pièces suggérées) |
 
 Ports : 8000 passerelle (seul backend du front), 8006 Obj6 (service HTTP lancé par `run_all.bat`), 5173 front (Vite).
 Les autres objectifs sont appelés **en interne** par la passerelle (pas de serveur à lancer).

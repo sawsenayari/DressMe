@@ -131,7 +131,7 @@ export default function DoesItMatch() {
       <header className="page-head">
         <div>
           <h1 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            Does It Match? <span style={{ fontSize: '1.6rem' }}>🛍️</span>
+            Ça va avec ma garde-robe ? <span style={{ fontSize: '1.6rem' }}>🛍️</span>
           </h1>
           <p className="page-subtitle">
             Avant d'acheter, prenez la pièce en photo : nous vérifions si elle s'accorde avec votre garde-robe et si vous possédez déjà la même.
@@ -189,7 +189,7 @@ export default function DoesItMatch() {
           }}
         >
           <div style={{ fontSize: '48px', marginBottom: '16px' }}>🛍️</div>
-          <h2>Analyseur de Compatibilité d'Achat</h2>
+          <h2>Testez une pièce avant de l'acheter</h2>
           <p style={{ color: 'var(--muted)', maxWidth: '440px', margin: '8px auto 24px', fontSize: '0.95rem' }}>
             Prenez en photo un article, en magasin ou en ligne : nous le comparons à toute votre garde-robe et vous montrons avec quelles pièces il ira le mieux.
           </p>
@@ -214,7 +214,7 @@ export default function DoesItMatch() {
                 marginBottom: '12px',
               }}
             >
-              Article Candidat Scanné
+              Pièce testée
             </span>
 
             <div style={{ width: '100%', aspectRatio: '3/4', borderRadius: '18px', overflow: 'hidden', background: 'var(--paper)' }}>
@@ -335,7 +335,7 @@ export default function DoesItMatch() {
               <div className="card card-mint" style={{ marginBottom: '20px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
                   <span style={{ fontSize: '18px' }}>💡</span>
-                  <h4 style={{ fontSize: '1.05rem', color: 'var(--pastel-mint-deep)' }}>Analyse du Styliste</h4>
+                  <h4 style={{ fontSize: '1.05rem', color: 'var(--pastel-mint-deep)' }}>Notre analyse</h4>
                 </div>
                 <div style={{ display: 'grid', gap: '10px' }}>
                   {result.notes.map((n, i) => (

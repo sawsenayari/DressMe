@@ -130,7 +130,7 @@ export default function Wardrobe() {
       <header className="page-head">
         <div>
           <h1 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            Dressing Numérique <span style={{ fontSize: '1.6rem' }}>🧺</span>
+            Ma garde-robe <span style={{ fontSize: '1.6rem' }}>🧺</span>
           </h1>
           <p className="page-subtitle">
             Toutes vos pièces au même endroit : ajoutez une photo, nous reconnaissons le vêtement pour vous.

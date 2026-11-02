@@ -29,7 +29,7 @@ export function PhotoPicker({
       />
       <button className={className} disabled={busy} onClick={() => ref.current?.click()}>
         <span style={{ fontSize: '1.1rem' }}>📸</span>
-        <span>{busy ? 'Scanning…' : label}</span>
+        <span>{busy ? 'Analyse…' : label}</span>
       </button>
     </>
   );

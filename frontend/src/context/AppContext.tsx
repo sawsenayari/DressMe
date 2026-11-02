@@ -16,8 +16,6 @@ interface AppContextType {
   scoreDemoCandidate: (file: File) => Promise<CompatibilityResult>;
   searchQuery: string;
   setSearchQuery: (q: string) => void;
-  isAuthModalOpen: boolean;
-  setIsAuthModalOpen: (open: boolean) => void;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -41,7 +39,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   });
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   useEffect(() => {
     localStorage.setItem('dressme_demo_mode', String(useDemoData));
@@ -113,8 +110,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         scoreDemoCandidate,
         searchQuery,
         setSearchQuery,
-        isAuthModalOpen,
-        setIsAuthModalOpen,
       }}
     >
       {children}

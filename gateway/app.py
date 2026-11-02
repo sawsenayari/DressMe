@@ -168,10 +168,52 @@ SEASON_FRONT = {"spring": "spring", "summer": "summer", "fall": "autumn", "autum
 SEASON_STORE = {"autumn": "fall"}   # le contrat ItemCard (Obj1) écrit "fall" ; le front affiche "autumn"
 
 
+# Noms générés en anglais par l'Obj1 (« Grey pants ») -> français (« Pantalon gris ») ; un nom saisi par l'utilisateur
+# (au moins un mot inconnu) est gardé tel quel. Nom : (français, genre f/m, pluriel)
+NAME_NOUN = {
+    "traditional garment": ("tenue traditionnelle", "f", False), "track pants": ("pantalon de jogging", "m", False),
+    "handbag": ("sac à main", "m", False), "shirt": ("chemise", "f", False), "blouse": ("chemisier", "m", False),
+    "pants": ("pantalon", "m", False), "trousers": ("pantalon", "m", False), "jeans": ("jean", "m", False),
+    "shorts": ("short", "m", False), "sweater": ("pull", "m", False), "sweatshirt": ("sweat", "m", False),
+    "hoodie": ("sweat à capuche", "m", False), "tshirt": ("t-shirt", "m", False), "t-shirt": ("t-shirt", "m", False),
+    "top": ("haut", "m", False), "dress": ("robe", "f", False), "skirt": ("jupe", "f", False),
+    "jacket": ("veste", "f", False), "blazer": ("blazer", "m", False), "coat": ("manteau", "m", False),
+    "shoes": ("chaussures", "f", True), "sneakers": ("baskets", "f", True), "boots": ("bottes", "f", True),
+    "heels": ("talons", "m", True), "sandals": ("sandales", "f", True), "flats": ("ballerines", "f", True),
+    "bag": ("sac", "m", False), "scarf": ("écharpe", "f", False), "belt": ("ceinture", "f", False),
+    "hat": ("chapeau", "m", False), "cap": ("casquette", "f", False),
+}
+NAME_COLOUR = {   # (masculin, féminin, masc. pluriel, fém. pluriel)
+    "black": ("noir", "noire", "noirs", "noires"), "white": ("blanc", "blanche", "blancs", "blanches"),
+    "grey": ("gris", "grise", "gris", "grises"), "gray": ("gris", "grise", "gris", "grises"),
+    "beige": ("beige", "beige", "beiges", "beiges"), "brown": ("marron",) * 4, "blue": ("bleu", "bleue", "bleus", "bleues"),
+    "navy": ("bleu marine",) * 4, "red": ("rouge", "rouge", "rouges", "rouges"), "pink": ("rose", "rose", "roses", "roses"),
+    "green": ("vert", "verte", "verts", "vertes"), "yellow": ("jaune", "jaune", "jaunes", "jaunes"),
+    "purple": ("violet", "violette", "violets", "violettes"), "orange": ("orange",) * 4, "cream": ("crème",) * 4,
+    "khaki": ("kaki",) * 4, "multicolor": ("multicolore", "multicolore", "multicolores", "multicolores"),
+    "multicolour": ("multicolore", "multicolore", "multicolores", "multicolores"),
+}
+
+
+def name_fr(name):
+    """« Grey pants » -> « Pantalon gris » ; None si le nom n'est pas un nom anglais généré (couleur + type connus)."""
+    words = str(name or "").strip().lower().split()
+    if not words:
+        return None
+    for k in (2, 1):   # type en 1 ou 2 mots à la fin, couleurs devant
+        noun, cols = " ".join(words[-k:]), words[:-k]
+        if noun in NAME_NOUN and all(c in NAME_COLOUR for c in cols):
+            fr, g, pl = NAME_NOUN[noun]
+            adj = " ".join(NAME_COLOUR[c][(g == "f") + 2 * pl] for c in cols)
+            out = f"{fr} {adj}".strip()
+            return out[0].upper() + out[1:]
+    return None
+
+
 def to_front_item(c):
     img = lambda p: f"/files/{p}" if p else None
     col = c.get("colour") or []
-    return {"id": c["id"], "name": c.get("name") or c.get("type"), "slot": c["slot"], "category": c["slot"],
+    return {"id": c["id"], "name": name_fr(c.get("name")) or c.get("name") or c.get("type"), "slot": c["slot"], "category": c["slot"],
             "type": c.get("type"), "colour": col, "color": col[0] if col else "", "usage": c.get("usage"),
             "warmth": c.get("warmth"), "formality": c.get("formality"), "waterproof": c.get("waterproof"),
             "open_toe": c.get("open_toe"), "gender": c.get("gender"), "imageUrl": img(c.get("image")) or "",
@@ -248,7 +290,25 @@ def compat_for(vec, category, wardrobe, name="candidate"):
 def health():
     cat = catalog() if (STORE / "wardrobe.json").exists() else []
     return {"ok": True, "store": str(STORE), "items": len(cat), "items_avec_embedding": len(wardrobe_with_embeddings()) if cat else 0,
-            "gaps": GAPS.exists()}
+            "gaps": GAPS.exists(),
+            # état des services pour l'interface (clés présentes, pas leur valeur)
+            "ia": bool(os.environ.get("GEMINI_API_KEY") or os.environ.get("LLM_API_KEY")),
+            "shopping": bool(os.environ.get("DRESSME_TAVILY_API_KEY", "").strip()), "tenueDuJour": _obj6_up()}
+
+
+def _obj6_up():
+    """Le service de tenue du jour (Obj6) répond-il ? (contrôle rapide, gardé 30 s)."""
+    import httpx
+    import time
+    hit = _cache.get("obj6_up")
+    if hit and time.time() - hit[0] < 30:
+        return hit[1]
+    try:
+        ok = httpx.get(f"{OBJ6_URL}/health", timeout=1.5).status_code == 200
+    except Exception:
+        ok = False
+    _cache["obj6_up"] = (time.time(), ok)
+    return ok
 
 
 @app.get("/wardrobe/items")
@@ -910,7 +970,7 @@ def _obj5_profile(ids):
     members = [by[i] for i, lab in zip(vid, model.assign(stack(vecs, vid))) if int(lab) == prof.dominant_cluster.id] if vid else []
     if members:
         p["dominant_cluster"]["name"] = _name_cluster(members)
-    p["dominant_pieces"] = [{"id": m.id, "name": m.name} for m in members]
+    p["dominant_pieces"] = [{"id": m.id, "name": name_fr(m.name) or m.name} for m in members]
     # Palette : chaque pièce compte pour 1, partagée entre ses couleurs (l'Obj5 pondère par la confiance de l'Obj1 sur
     # la couleur, ce qui faisait passer une couleur fréquente mais incertaine derrière une couleur rare).
     share, pieces = Counter(), Counter()
@@ -1000,7 +1060,7 @@ def profile_recommendations(slot: Optional[str] = None, k: int = 8, gender: Opti
             seen.add(sig); recs.append(r)
     REASON = {"couleur neutre": "couleur neutre", "pièce basique": "pièce basique", "dans votre style dominant": "dans votre style dominant"}
     return {"axis": AXIS.get(prof.persona, "mixte"), "gender": gender, "items": [
-        {"id": r.id, "name": by_id[r.id].name, "slot": by_id[r.id].slot, "type": by_id[r.id].type,
+        {"id": r.id, "name": name_fr(by_id[r.id].name) or by_id[r.id].name, "slot": by_id[r.id].slot, "type": by_id[r.id].type,
          "colour": list(by_id[r.id].colour), "usage": by_id[r.id].usage, "formality": by_id[r.id].formality,
          "match": round(100 * max(0.0, min(1.0, r.score))), "reasons": [REASON.get(x, x) for x in r.reasons]}
         for r in recs]}

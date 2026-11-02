@@ -26,6 +26,10 @@ def test_routes(tmp_path, monkeypatch):
     from fastapi.testclient import TestClient
     c = TestClient(g.app)
     h = c.get("/health").json(); assert h["ok"] and h["items_avec_embedding"] > 100
+    assert {"ia", "shopping", "tenueDuJour"} <= set(h)                                  # état des services affiché dans le menu
+    # noms anglais générés par l'Obj1 -> français (accords) ; nom saisi par l'utilisateur inchangé
+    assert (g.name_fr("Grey pants"), g.name_fr("Blue shirt"), g.name_fr("White shoes")) == ("Pantalon gris", "Chemise bleue", "Chaussures blanches")
+    assert g.name_fr("White traditional garment") == "Tenue traditionnelle blanche" and g.name_fr("panta djean") is None
     items = c.get("/wardrobe/items").json(); assert items[0]["color"] is not None and items[0]["category"] == items[0]["slot"]
     ref = np.load(REPO / "obj2_compat" / "reference.npz")
     g.embed_photo = lambda data: (ref["pool_img"][5].astype(np.float32), "tops")     # remplace FashionCLIP

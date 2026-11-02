@@ -48,7 +48,7 @@ export function ItemTile({ item, index = 0, onClick, eager = false }: Props) {
 
         {item?.wearCount !== undefined && (
           <span className="tile-badge" title={`Worn ${item.wearCount} times`}>
-            ✨ {item.wearCount} wears
+            ✨ porté {item.wearCount} fois
           </span>
         )}
       </div>

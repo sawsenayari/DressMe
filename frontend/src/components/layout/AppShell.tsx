@@ -1,9 +1,9 @@
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
-import { AuthModal } from '../ui/AuthModal';
 import { useEffect, useState } from 'react';
 import { useAsync } from '../../hooks/useAsync';
 import { getWeather, loadCity, weatherLabel } from '../../services/weather';
+import { getHealth } from '../../services/health';
 
 // Modern clean SVG icons
 const Icons = {
@@ -51,25 +51,26 @@ const Icons = {
       <path d="m21 21-4.3-4.3"/>
     </svg>
   ),
-  bell: (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/>
-      <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>
-    </svg>
-  ),
 };
 
+// short : libellé de la barre d'onglets sur mobile
 const NAV_LINKS = [
-  { to: '/', label: 'Today', icon: Icons.today },
-  { to: '/wardrobe', label: 'Wardrobe', icon: Icons.wardrobe },
-  { to: '/studio', label: 'Outfit Studio', icon: Icons.studio },
-  { to: '/match', label: 'Does it match?', icon: Icons.match },
-  { to: '/gaps', label: 'Gaps', icon: Icons.gaps },
-  { to: '/profile', label: 'Style Profile', icon: Icons.profile },
+  { to: '/', label: 'Tenue du jour', short: 'Aujourd\'hui', icon: Icons.today },
+  { to: '/wardrobe', label: 'Ma garde-robe', short: 'Garde-robe', icon: Icons.wardrobe },
+  { to: '/studio', label: 'Composer une tenue', short: 'Composer', icon: Icons.studio },
+  { to: '/match', label: 'Ça va avec ?', short: 'Ça va ?', icon: Icons.match },
+  { to: '/gaps', label: 'Pièces à ajouter', short: 'À ajouter', icon: Icons.gaps },
+  { to: '/profile', label: 'Mon style', short: 'Mon style', icon: Icons.profile },
 ];
 
+const dot = (on?: boolean) => (
+  <span aria-hidden style={{ width: '8px', height: '8px', borderRadius: '50%', flex: 'none',
+                              background: on ? 'var(--pastel-mint-deep)' : 'var(--muted)', opacity: on ? 1 : 0.5 }} />
+);
+
 export function AppShell() {
-  const { useDemoData, setUseDemoData, searchQuery, setSearchQuery, setIsAuthModalOpen } = useApp();
+  const { useDemoData, setUseDemoData, searchQuery, setSearchQuery } = useApp();
+  const health = useAsync(() => (useDemoData ? Promise.resolve(null) : getHealth()), [useDemoData]);
   // météo réelle de la ville choisie dans « Tenue du jour »
   const [city, setCity] = useState(loadCity);
   useEffect(() => {
@@ -94,11 +95,11 @@ export function AppShell() {
           <div className="brand-icon">✨</div>
           <div>
             <div className="brand-title">DressMe</div>
-            <div className="brand-subtitle">Styling Studio</div>
+            <div className="brand-subtitle">Studio de style</div>
           </div>
         </div>
 
-        <nav aria-label="Main Navigation">
+        <nav aria-label="Navigation principale">
           {NAV_LINKS.map(link => (
             <NavLink
               key={link.to}
@@ -112,34 +113,27 @@ export function AppShell() {
           ))}
         </nav>
 
-        {/* Sidebar promotional card inspired by PinHome */}
-        <div className="side-promo">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-            <span style={{ fontSize: '18px' }}>🌸</span>
-            <span className="side-promo-title">AI Stylist Pro</span>
-          </div>
-          <div className="side-promo-desc">
-            Get personalized season palettes and smart shopping compatibility.
-          </div>
-          <button className="side-promo-btn" onClick={() => setIsAuthModalOpen(true)}>
-            <span>View Benefits</span>
-            <span>→</span>
-          </button>
-        </div>
-
-        {/* User Profile item at sidebar bottom */}
-        <div className="side-user" onClick={() => setIsAuthModalOpen(true)} title="Manage Profile & Account">
-          <img
-            src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80"
-            alt="Camille Stinson"
-            className="user-avatar"
-          />
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div className="user-name" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              Camille Stinson
+        {/* État réel des services (GET /health de la passerelle) */}
+        <div className="side-promo" aria-label="État des services">
+          <div className="side-promo-title" style={{ marginBottom: '8px' }}>État des services</div>
+          {useDemoData ? (
+            <div className="side-promo-desc">Mode démonstration : exemples, aucun service utilisé.</div>
+          ) : health.error ? (
+            <div className="side-promo-desc" style={{ color: 'var(--danger)' }}>Serveur injoignable : lancez run_all.bat.</div>
+          ) : !health.data ? (
+            <div className="side-promo-desc">Vérification…</div>
+          ) : (
+            <div style={{ display: 'grid', gap: '6px', fontSize: '0.8rem' }}>
+              {([
+                [true, `${health.data.items} pièce${health.data.items > 1 ? 's' : ''}, ${health.data.items_avec_embedding} analysée${health.data.items_avec_embedding > 1 ? 's' : ''}`],
+                [health.data.tenueDuJour, health.data.tenueDuJour ? 'Tenue du jour : disponible' : 'Tenue du jour : service arrêté'],
+                [health.data.ia, health.data.ia ? 'IA : activée' : 'IA : sans clé (règles seules)'],
+                [health.data.shopping, health.data.shopping ? 'Boutiques en ligne : activées' : 'Boutiques en ligne : non configurées'],
+              ] as const).map(([on, text]) => (
+                <div key={text} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>{dot(on)}<span>{text}</span></div>
+              ))}
             </div>
-            <div className="user-role">Free Member • Pro Mode</div>
-          </div>
+          )}
         </div>
       </aside>
 
@@ -161,7 +155,7 @@ export function AppShell() {
 
           <div className="topbar-actions">
             {/* Live weather badge */}
-            <div className="topbar-pill" title="Current weather for outfit styling">
+            <div className="topbar-pill" title="Météo du jour (ville choisie dans « Tenue du jour »)">
               <span className="pill-dot"></span>
               <span>{city} <strong>· {weatherLabel(wx.data)}</strong></span>
             </div>
@@ -175,15 +169,6 @@ export function AppShell() {
               <span>{useDemoData ? '✨ Mode démo' : '👗 Ma garde-robe'}</span>
             </button>
 
-            {/* Notification bell button */}
-            <button
-              className="topbar-pill"
-              style={{ padding: '8px 12px', cursor: 'pointer' }}
-              onClick={() => setIsAuthModalOpen(true)}
-              aria-label="Notifications"
-            >
-              {Icons.bell}
-            </button>
           </div>
         </header>
 
@@ -192,7 +177,7 @@ export function AppShell() {
       </main>
 
       {/* Mobile Tabbar (<860px) */}
-      <nav className="tabbar" aria-label="Mobile Navigation">
+      <nav className="tabbar" aria-label="Navigation mobile">
         {NAV_LINKS.map(link => (
           <NavLink
             key={link.to}
@@ -201,13 +186,11 @@ export function AppShell() {
             className={({ isActive }) => (isActive ? 'active' : '')}
           >
             <span className="nav-icon">{link.icon}</span>
-            <span>{link.label === 'Style Profile' ? 'Profile' : link.label}</span>
+            <span>{link.short}</span>
           </NavLink>
         ))}
       </nav>
 
-      {/* Global Auth / Onboarding Modal */}
-      <AuthModal />
     </div>
   );
 }
