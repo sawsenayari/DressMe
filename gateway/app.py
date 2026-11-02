@@ -203,16 +203,44 @@ def crit_text(entries):
     return out
 
 
+PAIR_USER = {"va bien": "va bien", "moyen": "moyen", "peu probable": "à éviter"}   # verdicts /pairs de l'Obj2
+CAT_SLOT = {"tops": "top", "bottoms": "bottom", "all-body": "onepiece", "outerwear": "outer", "shoes": "footwear", "bags": "bag"}
+
+
+def _wearable_together(cat, slot):
+    """Deux pièces portées dans une même tenue : jamais deux de la même catégorie, ni une robe avec un haut ou un bas."""
+    a = CAT_SLOT.get(cat, "accessory")
+    if a == slot and a != "accessory":
+        return False
+    return {a, slot} not in ({"onepiece", "top"}, {"onepiece", "bottom"})
+
+
 def compat_for(vec, category, wardrobe, name="candidate"):
+    """/compat de l'Obj2 (score de la pièce avec toute la garde-robe, doublon) + /pairs (accord avec chaque pièce
+    d'une autre catégorie, verdicts calibrés de l'Obj2 : >= 0,75 va bien, < 0,35 peu probable)."""
+    from core import pair_verdict
+    eng = engine()
     cand = {"id": name, "category": category, "embedding": vec.tolist()}
     W = [{"id": c["id"], "slot": c["slot"], "embedding": c["embedding"]} for c in wardrobe]
-    r = engine().compat(cand, W)
+    r = eng.compat(cand, W)
     if "error" in r:
         raise HTTPException(422, r["error"])
+    others = [w for w in W if eng.category_of(w) != category and _wearable_together(category, w["slot"])]
+    pairs = []
+    if others:
+        row = eng.pairs([cand], others)[0]
+        pairs = sorted(({"id": w["id"], "pair_score01": round(float(sc), 2), "verdict": PAIR_USER[pair_verdict(float(sc))]}
+                        for w, sc in zip(others, row)), key=lambda x: -x["pair_score01"])
+    good = [x for x in pairs if x["verdict"] == "va bien"]
+    notes = [f"Plus assortie à votre garde-robe que {r['rank100']} % des pièces du même type prises au hasard (50 % = moyenne)."]
+    if pairs:
+        notes.append(f"Elle va bien avec {len(good)} des {len(pairs)} pièces de votre garde-robe qui peuvent se porter avec elle.")
     return {"score": r["rank100"], "score01": r["score01"], "verdict": VERDICT.get(r["verdict"], r["verdict"]),
-            "newOutfits": 0, "partners": [{"id": p["id"], "pair_score01": p["pair_score01"]} for p in r["partners"]],
-            "duplicate": r["duplicate"], "clashingItems": [],
-            "notes": [f"Pièce reconnue comme {CAT_USER.get(category, 'un vêtement')}."]}
+            "category": category, "categories": [c for c in eng.cats if c in CAT_USER],
+            "newOutfits": len(good),
+            "partners": (good or pairs)[:4], "pairs": pairs,
+            "clashing": [x for x in pairs if x["verdict"] == "à éviter"][-3:][::-1],
+            "duplicate": r["duplicate"], "clashingItems": [], "notes": notes, "compared": len(W)}
 
 
 # ---------------------------------------------------------------- routes
@@ -591,12 +619,19 @@ async def compat_score(image: UploadFile = File(...), category: Optional[str] = 
         raise HTTPException(503, "Pas encore assez de pièces analysées dans votre garde-robe pour comparer (2 au minimum).")
     W = W[:int(os.environ.get("MAX_WARDROBE", "40"))]   # le calcul croît avec le carré de la taille de la garde-robe
     data = await image.read()
+    if category and category not in CAT_USER:
+        raise HTTPException(422, "Type de pièce inconnu.")
     try:
         vec, guessed = embed_photo(data)
     except ImportError as e:
         log(f"torch/transformers manquants : {e}")
         raise HTTPException(503, "La comparaison n'est pas disponible pour le moment.")
-    return compat_for(vec, category or guessed, W)
+    except Exception as e:
+        log(f"photo illisible pour la comparaison : {type(e).__name__}: {e}")
+        raise HTTPException(422, "Ce fichier n'est pas une image lisible.")
+    res = compat_for(vec, category or guessed, W)
+    res["guessedCategory"] = guessed   # type deviné par FashionCLIP ; « category » = celui utilisé (corrigé par l'utilisateur)
+    return res
 
 
 FRONT_SLOT = {  # slots / catégories Polyvore de l'Obj4 -> Slot du front

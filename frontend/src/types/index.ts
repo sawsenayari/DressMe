@@ -60,7 +60,7 @@ export interface CompatibilityResult {
   score01?: number; // 0–1
   verdict?: 'compatible' | 'moyenne' | 'peu compatible';
   newOutfits: number;
-  partners?: { id: string; pair_score01: number }[];
+  partners?: PairScore[];
   duplicate?: {
     id: string;
     similarity: number;
@@ -69,7 +69,15 @@ export interface CompatibilityResult {
   };
   clashingItems: ClothingItem[];
   notes: string[];
+  category?: string; // catégorie Obj2 utilisée (tops, bottoms, shoes…)
+  guessedCategory?: string; // catégorie devinée sur la photo
+  categories?: string[]; // catégories que l'utilisateur peut choisir pour corriger
+  pairs?: PairScore[]; // accord avec chaque pièce d'une autre catégorie (/pairs de l'Obj2)
+  clashing?: PairScore[]; // pièces à éviter avec elle
+  compared?: number; // pièces de la garde-robe comparées
 }
+
+export interface PairScore { id: string; pair_score01: number; verdict?: 'va bien' | 'moyen' | 'à éviter' }
 
 /** DSO3: Jury de Tenues (Objectif 3 — TAYSSIR) */
 export type JuryVerdict = 'convient' | 'a_ameliorer' | 'deconseille';

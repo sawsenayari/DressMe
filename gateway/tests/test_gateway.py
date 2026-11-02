@@ -31,6 +31,14 @@ def test_routes(tmp_path, monkeypatch):
     g.embed_photo = lambda data: (ref["pool_img"][5].astype(np.float32), "tops")     # remplace FashionCLIP
     r = c.post("/compatibility/score", files={"image": ("x.jpg", b"x", "image/jpeg")}); assert r.status_code == 200, r.text
     j = r.json(); assert 0 <= j["score"] <= 100 and j["verdict"] in ("compatible", "moyenne", "peu compatible") and "duplicate" in j
+    # /pairs de l'Obj2 : accord avec chaque pièce d'une autre catégorie, verdicts calibrés, triés ; pièces à éviter
+    assert j["category"] == j["guessedCategory"] == "tops" and "bottoms" in j["categories"] and j["compared"] >= 2
+    sc = [x["pair_score01"] for x in j["pairs"]]; assert sc == sorted(sc, reverse=True) and j["pairs"]
+    assert all(x["verdict"] in ("va bien", "moyen", "à éviter") for x in j["pairs"])
+    assert all(x["verdict"] == "à éviter" for x in j["clashing"]) and j["newOutfits"] == sum(x["verdict"] == "va bien" for x in j["pairs"])
+    r = c.post("/compatibility/score", files={"image": ("x.jpg", b"x", "image/jpeg")}, data={"category": "shoes"})
+    assert r.status_code == 200 and r.json()["category"] == "shoes" and r.json()["guessedCategory"] == "tops"   # catégorie corrigée
+    assert c.post("/compatibility/score", files={"image": ("x.jpg", b"x", "image/jpeg")}, data={"category": "zz"}).status_code == 422
     p = c.get("/profile").json(); assert p["axis"] in ("efficiency", "economy", "brand", "mixte") and p["palette"]
     assert p["axis"] == p["persona"]                                                    # orientation calculée par l'Obj5
     # palette = part des pièces par couleur (pas la confiance de l'Obj1) : triée, cohérente avec le nombre de pièces
