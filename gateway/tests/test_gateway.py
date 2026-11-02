@@ -301,6 +301,7 @@ def test_outfit_judge_visual_with_fake_gemini(tmp_path, monkeypatch):
     from PIL import Image
     store = make_store(tmp_path)
     monkeypatch.setenv("DRESSME_PROFILE_MODEL", str(store / "style_model.joblib")); monkeypatch.setenv("DRESSME_JURY_LLM", "0")
+    monkeypatch.setenv("DRESSME_JURY_VISUAL", "1")   # juge visuel : activable, hors interface
     sys.path.insert(0, str(REPO / "gateway"))
     import app as g
     from fastapi.testclient import TestClient

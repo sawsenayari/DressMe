@@ -1506,7 +1506,10 @@ def outfit_board(cards, legend):
 
 
 def judge_visual(cards, temperature, rain, occasion):
-    """Juge visuel de l'Obj3 (judge_vision_v3) sur la planche de la tenue. Informatif : n'entre pas dans le vote de l'arbitre."""
+    """Juge visuel de l'Obj3 (judge_vision_v3) sur la planche de la tenue. Informatif : n'entre pas dans le vote de l'arbitre.
+    Retiré de l'interface : n'appelle Gemini que si DRESSME_JURY_VISUAL=1 (sinon ni latence ni quota consommé)."""
+    if os.environ.get("DRESSME_JURY_VISUAL") != "1":
+        return {"score01": None, "status": "unavailable", "message": "Analyse des photos non activée."}
     llm = vision_llm()
     if llm is None:
         log("juge visuel : DRESSME_JURY_LLM=1 et GEMINI_API_KEY requis (gateway/.env)")

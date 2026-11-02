@@ -328,20 +328,6 @@ export default function OutfitStudio() {
                     </span>
                   </div>
 
-                  <div style={{ paddingBottom: '8px', borderBottom: '1px solid var(--line)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span>🎨 <strong>Analyse des photos</strong></span>
-                      <span style={{ fontWeight: 600, color: juryResult.judges.visual.score01 == null ? 'var(--muted)' : juryResult.judges.visual.status === 'pass' ? 'var(--pastel-mint-deep)' : juryResult.judges.visual.status === 'warn' ? 'var(--pastel-butter-deep)' : 'var(--danger)' }}>
-                        {juryResult.judges.visual.score01 == null
-                          ? 'Non disponible'
-                          : `${juryResult.judges.visual.status === 'pass' ? '✓' : juryResult.judges.visual.status === 'warn' ? '⚠️' : '✗'} ${(juryResult.judges.visual.score01 * 100).toFixed(0)} %`}
-                      </span>
-                    </div>
-                    <p style={{ margin: '4px 0 0', fontSize: '0.78rem', color: 'var(--muted)', fontStyle: juryResult.judges.visual.score01 == null ? 'normal' : 'italic' }}>
-                      {juryResult.judges.visual.message}
-                    </p>
-                  </div>
-
                   <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid var(--line)' }}>
                     <span>🔗 <strong>Accord entre les pièces</strong></span>
                     <span style={{ fontWeight: 600 }} title={juryResult.judges.compatibility.message}>

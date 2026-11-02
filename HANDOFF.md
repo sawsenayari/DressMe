@@ -14,7 +14,7 @@ branché, testé et poussé sur `main` (GitHub `sawsenayari/DressMe`, dépôt **
 |---|---|---|
 | **Tenue du jour** (`/`) | `GET /outfits/options`, `POST /outfits/recommend`, `POST /outfits/feedback` | Obj6 (agent de l'agenda, météo, 3 tenues) → jury Obj3 (règles) → compatibilité Obj2 |
 | **Ma garde-robe** (`/wardrobe`) | `POST /wardrobe/crop`, `GET/POST /wardrobe/items`, `PUT/DELETE /wardrobe/items/{id}` | découpage de l'Obj6 (amélioration de la photo) puis Obj1 (reconnaissance) |
-| **Composer une tenue** (`/studio`) | `POST /outfits/judge` | jury Obj3 (règles + IA + photos en option) + Obj2 |
+| **Composer une tenue** (`/studio`) | `POST /outfits/judge` | jury Obj3 (règles + IA en option) + Obj2 |
 | **Ça va avec ?** (`/match`) | `POST /compatibility/score` | Obj2 (FashionCLIP + PairMLP) |
 | **Pièces à ajouter** (`/gaps`) | `GET /gaps`, `GET /gaps/shopping` | Obj4 (candidats IA, proxies, comptage des tenues) + Obj2 (scores) |
 | **Mon style** (`/profile`) | `GET /profile`, `GET /profile/recommendations` | Obj5 (profil, pièces suggérées) |
@@ -65,9 +65,9 @@ run_all.bat
 
 | Variable | Effet |
 |---|---|
-| `DRESSME_JURY_LLM=1` | active l'avis de l'IA et l'analyse des photos dans « Composer une tenue » |
+| `DRESSME_JURY_LLM=1` | active l'avis de l'IA dans « Composer une tenue » (`DRESSME_JURY_VISUAL=1` : juge visuel Gemini, hors interface) |
 | `LLM_API_KEY` (Groq) | juges texte de l'Obj3 |
-| `GEMINI_API_KEY` | juges texte (prioritaire), **analyse des photos** (jury), **reconnaissance des photos ajoutées** (Obj1 en mode complet) |
+| `GEMINI_API_KEY` | juges texte (prioritaire), **reconnaissance des photos ajoutées** (Obj1 en mode complet) |
 
 Sans clé : tout fonctionne en règles seules et l'Obj1 reconnaît par « voisins » (moins précis). `obj6_app\.env` (clé Groq de
 l'Obj6, facultative) est séparé. Vérifier avant chaque commit : aucun `.env`, aucune clé dans `git diff --cached`.
