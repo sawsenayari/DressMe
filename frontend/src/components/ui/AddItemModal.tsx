@@ -155,7 +155,9 @@ export function AddItemModal({ isOpen, onClose, onAnalyze, onCrop, onConfirm, on
           >
             {previewUrl ? (
               <div>
-                <img src={item?.imageCrop || chosen?.image || previewUrl} alt="Aperçu du vêtement"
+                {/* la photo choisie par l'utilisateur (originale, ou version améliorée) ; jamais le carré 512 px de
+                    travail de l'Obj1 (image_crop), agrandi et flou quand la photo est petite */}
+                <img src={chosen?.image || previewUrl} alt="Aperçu du vêtement"
                      style={{ maxHeight: '170px', width: 'auto', margin: '0 auto', borderRadius: '14px', display: 'block', boxShadow: 'var(--shadow-card)' }} />
                 <span style={{ display: 'inline-block', marginTop: '8px', fontSize: '0.8rem', color: 'var(--muted)', fontWeight: 600 }}>
                   {step === 'improving' ? '✂️ Amélioration de la photo… (quelques secondes)'

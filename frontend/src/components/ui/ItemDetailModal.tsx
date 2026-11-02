@@ -80,7 +80,7 @@ export function ItemDetailModal({ item, onClose, onSave, onDelete }: Props) {
                style={{ width: '100%', height: '100%', objectFit: editing ? 'contain' : 'cover' }} />
           <button onClick={() => setShowCrop(!showCrop)}
                   style={{ position: 'absolute', bottom: '10px', right: '10px', background: 'rgba(255,255,255,0.92)', padding: '6px 12px', borderRadius: '999px', fontSize: '0.76rem', fontWeight: 700, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
-            {showCrop ? '🖼️ Voir la photo' : '✂️ Voir la découpe'}
+            {showCrop ? '🖼️ Voir la photo' : '🔎 Voir la version analysée'}
           </button>
         </div>
 
