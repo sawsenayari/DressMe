@@ -210,8 +210,17 @@ def name_fr(name):
     return None
 
 
+def _file_version(rel):
+    """« ?v=… » d'après la date du fichier : une image remplacée (ou un identifiant déjà vu) n'est jamais resservie
+    depuis le cache du navigateur."""
+    try:
+        return f"?v={int((STORE / rel).stat().st_mtime)}"
+    except OSError:
+        return ""
+
+
 def to_front_item(c):
-    img = lambda p: f"/files/{p}" if p else None
+    img = lambda p: f"/files/{p}{_file_version(p)}" if p else None
     col = c.get("colour") or []
     return {"id": c["id"], "name": name_fr(c.get("name")) or c.get("name") or c.get("type"), "slot": c["slot"], "category": c["slot"],
             "type": c.get("type"), "colour": col, "color": col[0] if col else "", "usage": c.get("usage"),
@@ -410,10 +419,21 @@ def _obj1_local_knn():
 
 
 def _next_id():
+    """Nouvel identifiant, jamais réutilisé : le dernier numéro attribué est gardé dans le store (une pièce
+    supprimée ou annulée ne rend pas son numéro, sinon la suivante reprendrait les mêmes adresses d'images)."""
     used = {c["id"] for c in catalog()}
-    n = 1 + max([int(i[3:]) for i in used if i.startswith("it_") and i[3:].isdigit()] or [0])
-    while f"it_{n:04d}" in used:
+    counter = STORE / "_last_id.txt"
+    try:
+        last = int(counter.read_text().strip())
+    except (OSError, ValueError):
+        last = 0
+    n = 1 + max([int(i[3:]) for i in used if i.startswith("it_") and i[3:].isdigit()] + [last])
+    while f"it_{n:04d}" in used or (STORE / "items" / f"it_{n:04d}_raw.jpg").exists():
         n += 1
+    try:
+        counter.write_text(str(n))
+    except OSError:
+        pass
     return f"it_{n:04d}"
 
 
@@ -652,7 +672,8 @@ def add_item(image: UploadFile = File(...), crop: Optional[UploadFile] = File(No
             piece.image.save(src)
             kw = dict(crop_reasons=(piece.quality or {}).get("reasons"), slot_hint=piece.slot_hint)
         try:
-            r = svc.recognize(src, item_id=item_id, raw_path=str(raw), out_dir=STORE, **kw)
+            # photo de la pièce : la version améliorée choisie (pièce découpée / détourée), sinon la photo d'origine
+            r = svc.recognize(src, item_id=item_id, raw_path=str(src if crop_data else raw), out_dir=STORE, **kw)
         except Exception as e:
             log(f"Reconnaissance (Obj1) en échec : {type(e).__name__}: {e}")
             raise HTTPException(500, "L'analyse de la photo a échoué. Réessayez avec une autre photo.")
@@ -663,7 +684,7 @@ def add_item(image: UploadFile = File(...), crop: Optional[UploadFile] = File(No
             if not (STORE / rel).exists():
                 (STORE / rel).parent.mkdir(parents=True, exist_ok=True)
                 from PIL import Image
-                Image.open(io.BytesIO(data)).convert("RGB").save(STORE / rel)
+                Image.open(io.BytesIO(crop_data or data)).convert("RGB").save(STORE / rel)
         _append_to_catalog(card)
     return {**to_front_item(card), "status": r.status, "reasons": r.reasons}
 

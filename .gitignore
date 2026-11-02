@@ -40,3 +40,6 @@ obj6_app/models/clip_visual_ft.pt
 .ipynb_checkpoints/
 *.egg-info/
 *.log
+
+# compteur des identifiants de pièces (écrit à côté du catalogue)
+**/_last_id.txt

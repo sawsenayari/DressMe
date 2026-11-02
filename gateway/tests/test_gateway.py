@@ -527,3 +527,10 @@ def test_crop_photo_then_add(tmp_path, monkeypatch):
     assert r.status_code == 200, r.text
     card = next(x for x in json.load(open(store / "wardrobe.json", encoding="utf-8")) if x["id"] == r.json()["id"])
     assert (store / card["image"]).exists() and (store / card["image_crop"]).exists()
+    assert Image.open(store / card["image"]).size == Image.open(io.BytesIO(piece)).size     # photo de la pièce = version améliorée
+    assert "?v=" in r.json()["imageUrl"]                                                    # adresse versionnée (cache du navigateur)
+    # un identifiant supprimé (pièce annulée) n'est jamais réattribué : sinon l'ancienne photo resterait en cache
+    first = r.json()["id"]
+    assert c.delete(f"/wardrobe/items/{first}").status_code == 200
+    r2 = c.post("/wardrobe/items", files={"image": ("o.jpg", jpg((10, 10, 10)), "image/jpeg")}); assert r2.status_code == 200, r2.text
+    assert r2.json()["id"] != first and int(r2.json()["id"][3:]) > int(first[3:])
