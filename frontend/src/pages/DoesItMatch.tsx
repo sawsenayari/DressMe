@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { scoreCandidate } from '../services/compatibility';
+import { adviseCandidate, scoreCandidate, type CompatAdvice } from '../services/compatibility';
 import { listItems } from '../services/wardrobe';
 import { useAsync } from '../hooks/useAsync';
 import type { CompatibilityResult, ClothingItem, PairScore } from '../types';
@@ -26,6 +26,9 @@ export default function DoesItMatch() {
   const [result, setResult] = useState<CompatibilityResult | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [selectedItem, setSelectedItem] = useState<ClothingItem | null>(null);
+  const [advice, setAdvice] = useState<CompatAdvice | null>(null);
+  const [adviceBusy, setAdviceBusy] = useState(false);
+  const [adviceNote, setAdviceNote] = useState('');
   const live = useAsync(listItems);   // garde-robe réelle (mode API) pour retrouver les partenaires renvoyés par /compat
 
   // Partenaires = ceux renvoyés par l'Objectif 2 (meilleurs scores de paire), retrouvés dans la garde-robe affichée
@@ -41,6 +44,7 @@ export default function DoesItMatch() {
     setBusy(true);
     setError('');
     setResult(null);
+    setAdvice(null); setAdviceNote('');
     try {
       setResult(await scoreCandidate(f, category));
     } catch (e) {
@@ -49,6 +53,20 @@ export default function DoesItMatch() {
       setBusy(false);
     }
   }
+
+  async function askAdvice() {
+    if (!file || !result) return;
+    setAdviceBusy(true); setAdviceNote('');
+    try {
+      const r = await adviseCandidate(file, result.category);
+      setAdvice(r.advice); setAdviceNote(r.adviceNote || '');
+    } catch (e) {
+      setAdviceNote(`Conseil indisponible : ${e instanceof Error ? e.message : e}`);
+    } finally {
+      setAdviceBusy(false);
+    }
+  }
+  const nameOf = (id: string) => source.find(i => i.id === id)?.name || id;
 
   function onPick(f: File) {
     setFile(f);
@@ -272,6 +290,25 @@ export default function DoesItMatch() {
                       <span>{n}</span>
                     </div>
                   ))}
+                </div>
+                <div style={{ marginTop: '14px', paddingTop: '12px', borderTop: '1px solid var(--line)' }}>
+                  {!advice && (
+                    <button className="btn-sm btn-secondary" style={{ borderRadius: '999px' }} disabled={adviceBusy || !file} onClick={askAdvice}
+                            title="La photo est envoyée à l’IA (Gemini) pour un conseil ; le score ne change pas">
+                      {adviceBusy ? 'La styliste regarde votre pièce…' : '💬 Conseil de la styliste IA'}
+                    </button>
+                  )}
+                  {advice && (
+                    <div style={{ display: 'grid', gap: '6px', fontSize: '0.9rem' }}>
+                      <strong>💬 Conseil de la styliste IA</strong>
+                      {advice.observation && <span style={{ color: 'var(--muted)', fontSize: '0.85rem' }}>Vu sur la photo : {advice.observation}</span>}
+                      <span>{advice.conseil}</span>
+                      {advice.tenue.length > 0 && <span style={{ fontSize: '0.85rem' }}>À essayer avec : {advice.tenue.map(nameOf).join(', ')}</span>}
+                      {advice.aEviter && <span style={{ fontSize: '0.85rem' }}>À éviter avec : {nameOf(advice.aEviter)}</span>}
+                      <span style={{ fontSize: '0.75rem', color: 'var(--muted)' }}>Rédigé par l’IA à partir du score du modèle, qui reste la référence.</span>
+                    </div>
+                  )}
+                  {adviceNote && <p style={{ fontSize: '0.85rem', color: 'var(--muted)', marginTop: '6px' }}>{adviceNote}</p>}
                 </div>
               </div>
 

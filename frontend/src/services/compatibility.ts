@@ -9,3 +9,13 @@ export const scoreCandidate = (photo: File, category?: string) => {
   body.append('category', category);
   return http<CompatibilityResult>('/compatibility/score', { method: 'POST', body });
 };
+
+export interface CompatAdvice { observation: string | null; conseil: string; tenue: string[]; aEviter: string | null }
+
+/** Conseil de la styliste IA (sur demande) : le score reste celui du modèle ; Gemini voit la photo et l'explique. */
+export const adviseCandidate = (photo: File, category?: string) => {
+  const body = new FormData();
+  body.append('image', photo);
+  if (category) body.append('category', category);
+  return http<CompatibilityResult & { advice: CompatAdvice | null; adviceNote: string | null }>('/compatibility/advice', { method: 'POST', body });
+};

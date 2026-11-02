@@ -80,7 +80,7 @@ Automatique (chaque dossier séparément, venv activé) :
 
 | Dossier | Commande (depuis ce dossier) | Attendu |
 |---|---|---|
-| `gateway` | `python -m pytest -q tests` | 17 réussis (≈ 9 min) |
+| `gateway` | `python -m pytest -q tests` | 20 réussis (≈ 9 min) |
 | `obj1_reconnaissance` | `python -m pytest -q` | 30 |
 | `obj2_compat` | `python -m pytest -q tests` puis `python recette.py` | 13 + recette PASS |
 | `obj3_jury` | `python -m pytest -q` | 11 |
@@ -147,6 +147,9 @@ ni dans le modèle Obj5, ni dans le cache Obj1.
   appelés par leur adresse directe (`*.hf.space`), ce qui marche aussi avec `HF_HUB_OFFLINE=1`. Limites : avec
   OOTDiffusion, une jupe prend la longueur du pantalon du mannequin ; le quota gratuit d'un compte Hugging Face ne permet que quelques
   essayages par jour. Les photos partent chez Hugging Face.
+- **Conseil de la styliste IA** (« Ça va avec ? », bouton « 💬 Conseil de la styliste IA », `POST /compatibility/advice`) :
+  couche LLM de l'Obj2. Le score reste celui du PairMLP ; Gemini vision voit la photo et reçoit les faits calculés (verdict,
+  pièces qui vont / à éviter, doublon) ; sortie JSON vérifiée par le code (ids hors liste retirés), en cache par photo.
 - **Tenue inspirée** (onglet « ✨ Inspirée », `POST /outfits/inspire`) : sans quota GPU. Gemini décrit chaque photo
   (couleurs, matière, motif, coupe, longueur ; description en cache dans `tryon/desc_*.txt`, sinon champs de la fiche),
   puis FLUX schnell (Cloudflare Workers AI) génère une photo de mode de la tenue. Image inspirée des photos, moins
