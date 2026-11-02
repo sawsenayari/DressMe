@@ -70,10 +70,10 @@ export default function Today() {
   const request = (extra: Partial<RecommendRequest> = {}): RecommendRequest =>
     ({ gender, city, agenda: agenda.trim() || undefined, colours, types, explain, k: 3, ...extra });
 
-  const propose = async () => {
+  const propose = async (extra: Partial<RecommendRequest> = {}) => {
     setLoading(true); setError(''); setCards({});
     try {
-      const r = await recommendOutfits(request());
+      const r = await recommendOutfits(request(extra));
       setResult(r); seen.current = r.outfits.map(o => o.excludeKey);
     } catch (e) {
       setResult(null); setError(e instanceof Error ? e.message : String(e));
@@ -208,10 +208,15 @@ export default function Today() {
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '18px', flexWrap: 'wrap' }}>
           <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem', cursor: 'pointer' }}>
-            <input type="checkbox" checked={explain} onChange={e => setExplain(e.target.checked)} />
+            <input type="checkbox" checked={explain} disabled={loading}
+                   onChange={e => {   // cocher / décocher relance la proposition, avec ou sans les explications
+                     const v = e.target.checked;
+                     setExplain(v);
+                     if (result && !useDemoData) propose({ explain: v });
+                   }} />
             Explications de la styliste IA
           </label>
-          <button className="btn" onClick={propose} disabled={loading || useDemoData}>
+          <button className="btn" onClick={() => propose()} disabled={loading || useDemoData}>
             {loading ? 'Recherche des tenues…' : '✨ Proposer des tenues'}
           </button>
           {useDemoData && <span style={{ fontSize: '0.82rem', color: 'var(--muted)' }}>Mode démonstration : connectez la garde-robe pour des propositions réelles.</span>}
@@ -240,15 +245,6 @@ export default function Today() {
               </ul>
             </div>
           )}
-
-          <details style={box}>
-            <summary style={{ cursor: 'pointer', fontWeight: 600, fontSize: '0.9rem' }}>
-              ⚙️ Orchestration · {result.steps.reduce((t, s) => t + s.ms, 0)} ms
-            </summary>
-            <ol style={{ margin: '8px 0 0', paddingLeft: '22px', fontSize: '0.85rem', lineHeight: 1.7 }}>
-              {result.steps.map(s => <li key={s.label}>{s.label} — <strong>{s.ms} ms</strong></li>)}
-            </ol>
-          </details>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
             <div style={{ display: 'flex', background: 'var(--surface)', padding: '4px', borderRadius: '999px', border: '1px solid var(--line)' }}>
