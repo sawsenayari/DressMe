@@ -8,7 +8,6 @@ import { ItemDetailModal } from '../components/ui/ItemDetailModal';
 import { MannequinView } from '../components/ui/MannequinView';
 import { colourLabel, typeLabel } from '../components/ui/ItemFields';
 import { getWeather, loadCity, saveCity } from '../services/weather';
-import { useApp } from '../context/AppContext';
 
 const CITIES = ['Tunis', 'Sfax', 'Sousse', 'Bizerte', 'Nabeul', 'Djerba'];
 // Exemples d'agenda (un clic remplit le texte, que l'on peut ensuite modifier) : le texte est le seul contexte
@@ -39,7 +38,6 @@ const loadGender = (): Gender => {
 type CardState = { status: 'idle' | 'busy' | 'worn' | 'asking'; msg?: string };
 
 export default function Today() {
-  const { useDemoData, getDemoOutfit } = useApp();
   const [gender, setGender] = useState<Gender>(loadGender);
   const [city, setCity] = useState(() => (CITIES.includes(loadCity()) ? loadCity() : 'Tunis'));
   const [agenda, setAgenda] = useState('');
@@ -55,7 +53,7 @@ export default function Today() {
   const [selectedItem, setSelectedItem] = useState<ClothingItem | null>(null);
   const [displayMode, setDisplayMode] = useState<'grid' | 'mannequin'>('grid');
 
-  const options = useAsync(() => getOutfitOptions(gender), [gender, useDemoData]);
+  const options = useAsync(() => getOutfitOptions(gender), [gender]);
   const wx = useAsync(() => getWeather(city), [city]);
   useEffect(() => saveCity(city), [city]);
 
@@ -81,7 +79,7 @@ export default function Today() {
   };
 
   // premier affichage : une proposition avec les réglages par défaut
-  useEffect(() => { if (!useDemoData) propose(); }, [useDemoData]);   // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { propose(); }, []);   // eslint-disable-line react-hooks/exhaustive-deps
 
   const setCard = (i: number, s: CardState) => setCards(c => ({ ...c, [i]: s }));
 
@@ -125,7 +123,6 @@ export default function Today() {
     set(list.includes(v) ? list.filter(x => x !== v) : [...list, v]);
 
   const ctx = result?.context;
-  const demo = useDemoData ? getDemoOutfit('casual', false) : null;
 
   return (
     <>
@@ -169,7 +166,7 @@ export default function Today() {
             id="today-agenda" className="form-input" dir="auto" value={agenda} maxLength={300}
             placeholder="ex. réunion client à 10h · عرس في الليل · dinner with friends"
             onChange={e => setAgenda(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter' && !loading && !useDemoData) propose(); }}
+            onKeyDown={e => { if (e.key === 'Enter' && !loading) propose(); }}
             style={{ width: '100%' }}
           />
           <div className="chips" role="group" aria-label="Exemples d'agenda" style={{ marginTop: '8px', marginBottom: 0 }}>
@@ -212,14 +209,13 @@ export default function Today() {
                    onChange={e => {   // cocher / décocher relance la proposition, avec ou sans les explications
                      const v = e.target.checked;
                      setExplain(v);
-                     if (result && !useDemoData) propose({ explain: v });
+                     if (result) propose({ explain: v });
                    }} />
             Explications de la styliste IA
           </label>
-          <button className="btn" onClick={() => propose()} disabled={loading || useDemoData}>
+          <button className="btn" onClick={() => propose()} disabled={loading}>
             {loading ? 'Recherche des tenues…' : '✨ Proposer des tenues'}
           </button>
-          {useDemoData && <span style={{ fontSize: '0.82rem', color: 'var(--muted)' }}>Mode démonstration : connectez la garde-robe pour des propositions réelles.</span>}
         </div>
       </section>
 
@@ -329,16 +325,6 @@ export default function Today() {
         </section>
       )}
 
-      {/* Mode démonstration : tenue d'exemple, sans service */}
-      {demo && (
-        <section className="card" style={{ background: '#FFFFFF' }}>
-          <h3 style={{ fontSize: '1.1rem', marginBottom: '10px' }}>Exemple de tenue</h3>
-          <div className="grid">
-            {demo.items.map((it, idx) => <ItemTile eager key={it.id} item={it} index={idx} onClick={setSelectedItem} />)}
-          </div>
-          {demo.reason && <p style={{ fontSize: '0.9rem', marginTop: '10px' }}>{demo.reason}</p>}
-        </section>
-      )}
 
       <ItemDetailModal item={selectedItem} onClose={() => setSelectedItem(null)} />
     </>

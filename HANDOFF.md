@@ -42,9 +42,14 @@ cd frontend
 npm run dev
 ```
 
-Dans le front, le badge en haut à droite doit afficher **« 👗 Ma garde-robe »** (sinon : données de démonstration).
+**Comptes** : à l'ouverture, l'écran de connexion s'affiche ; « Créer un compte » (nom, e-mail, mot de passe de
+8 caractères au moins). Chaque compte a sa propre garde-robe, rangée dans `gateway\users_data\stores\<id>\` (hors git) ;
+mots de passe hachés (PBKDF2-SHA256 salé), session dans un cookie HttpOnly de 30 jours. **Le tout premier compte créé
+reprend la garde-robe existante** (dossier `DRESSME_STORE`) ; les suivants démarrent vides. Variables : `DRESSME_USERS_DIR`
+(dossier des comptes), `DRESSME_AUTH=0` (désactive les comptes : garde-robe unique `DRESSME_STORE`, utilisé par les tests).
 
-**Démo avec de vraies photos** (store de l'Obj1, 11 pièces), sur une copie pour ne pas toucher aux fichiers suivis par git :
+**Garde-robe de départ avec de vraies photos** (store de l'Obj1), à fixer **avant** de créer le premier compte, sur une
+copie pour ne pas toucher aux fichiers suivis par git :
 
 ```bat
 xcopy /E /I /Y obj1_reconnaissance\data\store %TEMP%\dressme_store
@@ -73,7 +78,7 @@ Automatique (chaque dossier séparément, venv activé) :
 
 | Dossier | Commande (depuis ce dossier) | Attendu |
 |---|---|---|
-| `gateway` | `python -m pytest -q tests` | 15 réussis (≈ 9 min) |
+| `gateway` | `python -m pytest -q tests` | 16 réussis (≈ 9 min) |
 | `obj1_reconnaissance` | `python -m pytest -q` | 30 |
 | `obj2_compat` | `python -m pytest -q tests` puis `python recette.py` | 13 + recette PASS |
 | `obj3_jury` | `python -m pytest -q` | 11 |

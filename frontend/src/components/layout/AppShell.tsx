@@ -69,8 +69,8 @@ const dot = (on?: boolean) => (
 );
 
 export function AppShell() {
-  const { useDemoData, setUseDemoData, searchQuery, setSearchQuery } = useApp();
-  const health = useAsync(() => (useDemoData ? Promise.resolve(null) : getHealth()), [useDemoData]);
+  const { user, logout, searchQuery, setSearchQuery } = useApp();
+  const health = useAsync(getHealth, []);
   // météo réelle de la ville choisie dans « Tenue du jour »
   const [city, setCity] = useState(loadCity);
   useEffect(() => {
@@ -116,9 +116,7 @@ export function AppShell() {
         {/* État réel des services (GET /health de la passerelle) */}
         <div className="side-promo" aria-label="État des services">
           <div className="side-promo-title" style={{ marginBottom: '8px' }}>État des services</div>
-          {useDemoData ? (
-            <div className="side-promo-desc">Mode démonstration : exemples, aucun service utilisé.</div>
-          ) : health.error ? (
+          {health.error ? (
             <div className="side-promo-desc" style={{ color: 'var(--danger)' }}>Serveur injoignable : lancez run_all.bat.</div>
           ) : !health.data ? (
             <div className="side-promo-desc">Vérification…</div>
@@ -139,7 +137,7 @@ export function AppShell() {
 
       {/* Main Content Area */}
       <main className="content">
-        {/* Top bar with search, weather, demo mode toggle, and notification bell */}
+        {/* Bandeau : recherche, météo, compte connecté */}
         <header className="topbar">
           <div className="topbar-search">
             <span className="topbar-search-icon">{Icons.search}</span>
@@ -160,15 +158,12 @@ export function AppShell() {
               <span>{city} <strong>· {weatherLabel(wx.data)}</strong></span>
             </div>
 
-            {/* Demo / Live Backend Toggle */}
-            <button
-              className={`demo-toggle-btn ${useDemoData ? 'active' : 'inactive'}`}
-              onClick={() => setUseDemoData(!useDemoData)}
-              title={useDemoData ? 'Exemples de démonstration. Cliquez pour afficher votre garde-robe.' : 'Votre garde-robe. Cliquez pour voir les exemples de démonstration.'}
-            >
-              <span>{useDemoData ? '✨ Mode démo' : '👗 Ma garde-robe'}</span>
-            </button>
-
+            {/* Compte connecté */}
+            {user && !user.authDisabled && (
+              <button className="topbar-pill" style={{ cursor: 'pointer' }} onClick={logout} title={`Connecté : ${user.email}`}>
+                <span aria-hidden>👤</span><span>{user.name}</span><strong>· Se déconnecter</strong>
+              </button>
+            )}
           </div>
         </header>
 

@@ -39,9 +39,11 @@ except ImportError:
 from typing import Optional
 
 import numpy as np
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+import contextvars
+
+from fastapi import FastAPI, File, Form, HTTPException, Request, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 
 REPO = Path(__file__).resolve().parent.parent
@@ -57,33 +59,163 @@ def _load_env_file(path):
 
 
 _load_env_file(Path(__file__).resolve().parent / ".env")
-STORE = Path(os.environ.get("DRESSME_STORE", REPO / "obj5_profil" / "data"))
+LEGACY_STORE = Path(os.environ.get("DRESSME_STORE", REPO / "obj5_profil" / "data"))   # garde-robe d'avant les comptes
+USERS_DIR = Path(os.environ.get("DRESSME_USERS_DIR", REPO / "gateway" / "users_data"))  # comptes et garde-robes (hors git)
+_current_store = contextvars.ContextVar("dressme_store", default=None)
+_current_user = contextvars.ContextVar("dressme_user", default=None)
+
+
+class _UserStore(os.PathLike):
+    """Dossier de garde-robe de l'utilisateur connecté (fixé à chaque requête par le middleware d'authentification) ;
+    sans compte (authentification désactivée : DRESSME_AUTH=0), le dossier unique DRESSME_STORE."""
+    def path(self):
+        return _current_store.get() or LEGACY_STORE
+
+    def __fspath__(self):
+        return str(self.path())
+
+    def __str__(self):
+        return str(self.path())
+
+    def __repr__(self):
+        return f"<garde-robe {self.path()}>"
+
+    def __truediv__(self, other):
+        return self.path() / other
+
+    def __getattr__(self, name):   # exists(), resolve(), stat()…
+        return getattr(self.path(), name)
+
+
+STORE = _UserStore()
 OBJ2 = Path(os.environ.get("DRESSME_OBJ2", REPO / "obj2_compat"))
 GAPS = Path(os.environ.get("DRESSME_GAPS", REPO / "obj4_manques" / "gap_report.json"))
 OBJ1 = Path(os.environ.get("DRESSME_OBJ1", REPO / "obj1_reconnaissance"))
 OBJ3 = Path(os.environ.get("DRESSME_OBJ3", REPO / "obj3_jury"))
 OBJ6_URL = os.environ.get("OBJ6_URL", "http://127.0.0.1:8006")
 os.environ.setdefault("DRESSME_ROOT", str(OBJ1 / "data"))          # base kNN de l'Obj1 (data/agent_final)
-os.environ.setdefault("DRESSME_STORE", str(STORE))
-os.environ.setdefault("DRESSME_CATALOG", str(STORE / "wardrobe.json"))
-os.environ.setdefault("DRESSME_ASSETS_DIR", str(STORE))
+os.environ.setdefault("DRESSME_STORE", str(LEGACY_STORE))
+os.environ.setdefault("DRESSME_CATALOG", str(LEGACY_STORE / "wardrobe.json"))
+os.environ.setdefault("DRESSME_ASSETS_DIR", str(LEGACY_STORE))
 sys.path.insert(0, str(OBJ2))
 sys.path.insert(0, str(REPO / "obj5_profil"))
 
 from core import CompatEngine, CardStore  # noqa: E402  (objectif 2)
 
+from auth import AuthError, Users  # noqa: E402  (comptes : gateway/auth.py)
+
 app = FastAPI(title="DressMe – passerelle front")
-app.add_middleware(CORSMiddleware, allow_origins=os.environ.get("CORS_ORIGINS", "*").split(","),
-                   allow_methods=["*"], allow_headers=["*"])
-if STORE.exists():
-    app.mount("/files", StaticFiles(directory=str(STORE)), name="files")
+USERS = Users(USERS_DIR)
+SESSION_COOKIE = "dressme_session"
+PUBLIC_PATHS = ("/auth/", "/health", "/weather", "/docs", "/openapi.json")
+
+
+def _auth_on():
+    return os.environ.get("DRESSME_AUTH", "1") != "0"
+
+
+@app.middleware("http")
+async def _authenticate(request: Request, call_next):
+    """Chaque requête est rattachée au compte de son cookie de session : sa garde-robe devient STORE."""
+    if request.method == "OPTIONS":
+        return await call_next(request)
+    user = USERS.user_for_token(request.cookies.get(SESSION_COOKIE)) if _auth_on() else None
+    if user is None and _auth_on() and not request.url.path.startswith(PUBLIC_PATHS):
+        return JSONResponse({"detail": "Connectez-vous pour accéder à votre garde-robe."}, status_code=401)
+    tokens = (_current_store.set(USERS.store_of(user)), _current_user.set(user)) if user else None
+    try:
+        return await call_next(request)
+    finally:
+        if tokens:
+            _current_store.reset(tokens[0]); _current_user.reset(tokens[1])
+
+
+# cookie de session envoyé par le front (localhost, autre port) : origines explicites + credentials
+_origins = os.environ.get("CORS_ORIGINS")
+app.add_middleware(CORSMiddleware, allow_credentials=True, allow_methods=["*"], allow_headers=["*"],
+                   **({"allow_origins": _origins.split(",")} if _origins else
+                      {"allow_origin_regex": r"https?://(localhost|127\.0\.0\.1)(:\d+)?"}))
 
 _cache = {}
 
 
+def _ucache():
+    """Cache propre à la garde-robe courante (catalogue, jurys, analyses) : jamais partagé entre utilisateurs."""
+    return _cache.setdefault(("garde-robe", str(STORE)), {})
+
+
+def _obj6_uid():
+    """Utilisateur côté Obj6 (préférences, rotation des tenues portées) : le compte connecté."""
+    u = _current_user.get()
+    return u["id"] if u else "me"
+
+
+@app.get("/files/{rel:path}")
+def files(rel: str):
+    """Images de la garde-robe : uniquement celles du compte connecté."""
+    f = _store_file(rel)
+    if f is None or not f.is_file():
+        raise HTTPException(404, "Image introuvable.")
+    return FileResponse(f)
+
+
+# ---------------------------------------------------------------- comptes
+class RegisterIn(BaseModel):
+    name: str
+    email: str
+    password: str
+
+
+class LoginIn(BaseModel):
+    email: str
+    password: str
+
+
+def _open_session(user, response: Response):
+    token = USERS.new_session(user)
+    response.set_cookie(SESSION_COOKIE, token, httponly=True, samesite="lax", max_age=30 * 86400, path="/")
+    return USERS.public(user)
+
+
+@app.post("/auth/register")
+def auth_register(body: RegisterIn, response: Response):
+    """Création de compte ; le tout premier compte reprend la garde-robe existante (DRESSME_STORE)."""
+    try:
+        user = USERS.register(body.name, body.email, body.password, import_from=LEGACY_STORE)
+    except AuthError as e:
+        raise HTTPException(409 if "existe déjà" in str(e) else 422, str(e))
+    return _open_session(user, response)
+
+
+@app.post("/auth/login")
+def auth_login(body: LoginIn, response: Response):
+    try:
+        user = USERS.authenticate(body.email, body.password)
+    except AuthError as e:
+        raise HTTPException(401, str(e))
+    return _open_session(user, response)
+
+
+@app.post("/auth/logout")
+def auth_logout(request: Request, response: Response):
+    USERS.drop_session(request.cookies.get(SESSION_COOKIE))
+    response.delete_cookie(SESSION_COOKIE, path="/")
+    return {"ok": True}
+
+
+@app.get("/auth/me")
+def auth_me(request: Request):
+    if not _auth_on():
+        return {"id": "local", "name": "Moi", "email": "", "authDisabled": True}
+    user = USERS.user_for_token(request.cookies.get(SESSION_COOKIE))
+    if user is None:
+        raise HTTPException(401, "Non connecté.")
+    return USERS.public(user)
+
+
 def engine():
     if "e" not in _cache:
-        _cache["e"] = CompatEngine(base=str(OBJ2), store=CardStore(str(STORE)))
+        _cache["e"] = CompatEngine(base=str(OBJ2), store=CardStore(None))   # partagé : chemins absolus fournis
     return _cache["e"]
 
 
@@ -99,17 +231,17 @@ def norm_colour(c):
 
 
 def catalog():
-    if "c" not in _cache:
+    if "c" not in _ucache():
         p = STORE / "wardrobe.json"
         if not p.exists():
             log(f"catalogue introuvable : {p} (variable DRESSME_STORE)")
             raise HTTPException(503, "La garde-robe est introuvable sur le serveur.")
         d = json.load(open(p, encoding="utf-8"))
-        _cache["c"] = d if isinstance(d, list) else d.get("items", [])
-        for c in _cache["c"]:
+        _ucache()["c"] = d if isinstance(d, list) else d.get("items", [])
+        for c in _ucache()["c"]:
             if c.get("colour"):
                 c["colour"] = [norm_colour(x) for x in c["colour"]]
-    return _cache["c"]
+    return _ucache()["c"]
 
 
 def wardrobe_with_embeddings():
@@ -273,7 +405,7 @@ def compat_for(vec, category, wardrobe, name="candidate"):
     from core import pair_verdict
     eng = engine()
     cand = {"id": name, "category": category, "embedding": vec.tolist()}
-    W = [{"id": c["id"], "slot": c["slot"], "embedding": c["embedding"]} for c in wardrobe]
+    W = [{"id": c["id"], "slot": c["slot"], "embedding": str(STORE / c["embedding"])} for c in wardrobe]
     r = eng.compat(cand, W)
     if "error" in r:
         raise HTTPException(422, r["error"])
@@ -299,7 +431,7 @@ def compat_for(vec, category, wardrobe, name="candidate"):
 @app.get("/health")
 def health():
     cat = catalog() if (STORE / "wardrobe.json").exists() else []
-    return {"ok": True, "store": str(STORE), "items": len(cat), "items_avec_embedding": len(wardrobe_with_embeddings()) if cat else 0,
+    return {"ok": True, "items": len(cat), "items_avec_embedding": len(wardrobe_with_embeddings()) if cat else 0,
             "gaps": GAPS.exists(),
             # état des services pour l'interface (clés présentes, pas leur valeur)
             "ia": bool(os.environ.get("GEMINI_API_KEY") or os.environ.get("LLM_API_KEY")),
@@ -449,7 +581,7 @@ def _save_catalog_file(d):
     tmp.write_text(json.dumps(d, indent=2, ensure_ascii=False), encoding="utf-8")
     os.replace(tmp, p)
     for k in ("c", "p", "j", "jl"):  # catalogue relu ; profil Obj5 et jury Obj3 reconstruits (ils refusent les identifiants inconnus)
-        _cache.pop(k, None)
+        _ucache().pop(k, None)
 
 
 def _append_to_catalog(card):
@@ -874,19 +1006,19 @@ def gaps(refresh: bool = False):
 
     fp = hashlib.sha1(json.dumps([(c["id"], c["slot"], c.get("colour")) for c in cards]).encode()).hexdigest()
     key = ("gaps", fp)
-    if not refresh and key in _cache:
-        return _cache[key]
-    if refresh or ("gapcand", fp) not in _cache:
+    if not refresh and key in _ucache():
+        return _ucache()[key]
+    if refresh or ("gapcand", fp) not in _ucache():
         cands, model = _gap_llm_candidates(cards)
         if cands:
-            _cache[("gapcand", fp)] = (cands, "ia", model)
+            _ucache()[("gapcand", fp)] = (cands, "ia", model)
         else:
             g = [c.get("gender") for c in cards if c.get("gender") in ("Women", "Men")]
             men = bool(g) and g.count("Men") > g.count("Women")
             basics = [b for b in GAP_BASICS if not (men and b[0] == "onepiece")]
-            _cache[("gapcand", fp)] = ([{"item_id": f"candidate-{i + 1:03d}", "slot": sl, "description": d, "rationale": r}
+            _ucache()[("gapcand", fp)] = ([{"item_id": f"candidate-{i + 1:03d}", "slot": sl, "description": d, "rationale": r}
                                         for i, (sl, d, r) in enumerate(basics)], "base", None)
-    cands, source, model = _cache[("gapcand", fp)]
+    cands, source, model = _ucache()[("gapcand", fp)]
 
     wardrobe = [{"item_id": c["id"], "id": c["id"], "slot": c["slot"], "name": c.get("name"), "type": c.get("type"),
                  "colour": c.get("colour") or [], "embedding": np.load(STORE / c["embedding"]).astype(float).tolist(),
@@ -965,7 +1097,7 @@ def gaps(refresh: bool = False):
                     for x in results],
            "unscorable": [{"description": u["description"], "slot": "footwear" if u["slot"] == "shoes" else u["slot"],
                            "rationale": u.get("rationale", "")} for u in unscorable]}
-    _cache[key] = res
+    _ucache()[key] = res
     return res
 
 
@@ -1274,7 +1406,7 @@ def to_obj3_piece(c):
             "motif": "uni" if (c.get("pattern") or "plain") == "plain" else "imprimé"}
 
 
-OBJ6_UID = "me"   # utilisateur unique de la démo : préférences et rotation mémorisées par l'Obj6 (feedback.db)
+OBJ6_UID = "me"   # sans compte (DRESSME_AUTH=0) ; sinon _obj6_uid() = identifiant du compte connecté
 
 
 def _obj6_post(route, payload):
@@ -1312,12 +1444,12 @@ def obj6_parse(text):
 
 
 def jury():
-    if "j" not in _cache:
+    if "j" not in _ucache():
         if str(OBJ3) not in sys.path:
             sys.path.append(str(OBJ3))
         from dressme.service import DressMeService
-        _cache["j"] = DressMeService({c["id"]: to_obj3_piece(c) for c in catalog()}, llm=None)   # règles seules
-    return _cache["j"]
+        _ucache()["j"] = DressMeService({c["id"]: to_obj3_piece(c) for c in catalog()}, llm=None)   # règles seules
+    return _ucache()["j"]
 
 
 GEMINI_VISION_MODELS = "gemini-3.5-flash-lite,gemini-3.5-flash"   # modèles Gemini existants (la liste par défaut de l'Obj3 cite un modèle retiré)
@@ -1401,15 +1533,15 @@ def jury_llm():
     None sinon (règles seules). Réservé à Outfit Studio : Today juge plusieurs tenues par appel (latence, quota 40/h)."""
     if os.environ.get("DRESSME_JURY_LLM") != "1":
         return None
-    if "jl" not in _cache:
+    if "jl" not in _ucache():
         jury()   # chemin de l'Obj3
         from dressme.service import DressMeService, build_llm
         os.environ.setdefault("GEMINI_MODELS", GEMINI_VISION_MODELS)   # la liste par défaut de l'Obj3 cite un modèle Gemini retiré
         llm = build_llm(str(OBJ3 / "app_data" / "llm_cache"))   # cache des réponses (app_data/ ignoré par git)
-        _cache["jl"] = DressMeService({c["id"]: to_obj3_piece(c) for c in catalog()}, llm=llm) if llm else None
+        _ucache()["jl"] = DressMeService({c["id"]: to_obj3_piece(c) for c in catalog()}, llm=llm) if llm else None
         if llm is None:
             print("[obj3] DRESSME_JURY_LLM=1 mais aucune clé GEMINI_API_KEY / LLM_API_KEY : règles seules.", file=sys.stderr)
-    return _cache["jl"]
+    return _ucache()["jl"]
 
 
 def outfit_compat01(cards):
@@ -1417,8 +1549,8 @@ def outfit_compat01(cards):
     W = [c for c in cards if c.get("embedding") and (STORE / c["embedding"]).exists()]
     if len(W) < 2 or len(W) < len(cards):
         return None
-    M = np.array(engine().pairs([{"id": c["id"], "slot": c["slot"], "embedding": c["embedding"]} for c in W],
-                                [{"id": c["id"], "slot": c["slot"], "embedding": c["embedding"]} for c in W]))
+    E = [{"id": c["id"], "slot": c["slot"], "embedding": str(STORE / c["embedding"])} for c in W]
+    M = np.array(engine().pairs(E, E))
     iu = np.triu_indices(len(W), 1)
     return round(float(M[iu].mean()), 2)
 
@@ -1436,7 +1568,7 @@ def outfit_today(occasion: str = "casual", budget: bool = False, city: str = "Tu
     look = lambda i: (str(by_id[i].get("name")).lower(), by_id[i].get("type"), tuple(by_id[i].get("colour") or []))
     excl_looks = {frozenset(look(i) for i in grp if i in by_id) for grp in excl}
     payload = {"wardrobe": [to_obj6_item(c) for c in by_id.values()], "occasion": OCC_OBJ6[occasion],
-               "city": city, "k": 10, "uid": OBJ6_UID, "exclude_outfits": excl}   # k = 10 : assez de candidats une fois les doublons écartés
+               "city": city, "k": 10, "uid": _obj6_uid(), "exclude_outfits": excl}   # k = 10 : assez de candidats une fois les doublons écartés
     if agenda and agenda.strip():
         payload["agenda"] = agenda.strip()[:300]
     res = obj6_recommend(payload)
@@ -1576,7 +1708,7 @@ def outfit_recommend(body: RecommendIn):
     t0 = time.perf_counter()
     res = obj6_recommend({"wardrobe": [to_obj6_item(c) for c in by_id.values()], "city": body.city, "gender": body.gender,
                           "agenda": agenda, "colours": body.colours, "types": body.types, "explain": body.explain, "k": 10,
-                          "uid": OBJ6_UID, "exclude_outfits": body.exclude_outfits, "exclude_ids": body.exclude_ids})
+                          "uid": _obj6_uid(), "exclude_outfits": body.exclude_outfits, "exclude_ids": body.exclude_ids})
     step("Météo, création et classement des tenues" + (" + explications de la styliste IA" if body.explain else ""), t0)
     ctx = res.get("context", {})
     occ6 = ctx.get("occasion", "casual")
@@ -1641,8 +1773,11 @@ def outfit_recommend(body: RecommendIn):
                         f"{'s' if len(outfits) > 1 else ''} seulement (sur {k}). Ajoutez des pièces pour plus de choix.")
     message = None
     if not outfits:
-        message = (res.get("message") if not res.get("outfits") else None) or \
-                  "Plus d'autre tenue différente avec votre garde-robe : réinitialisez les tenues écartées."
+        message = ("Votre garde-robe est vide : ajoutez des pièces (haut, bas, chaussures) pour recevoir des tenues."
+                   if not by_id else (res.get("message") if not res.get("outfits") else None) or
+                   ("Plus d'autre tenue différente avec votre garde-robe : réinitialisez les tenues écartées."
+                    if body.exclude_outfits else
+                    "Garde-robe insuffisante : il faut un haut et un bas (ou une robe), et des chaussures."))
     return {"context": {"city": body.city, "temperatureC": round(temp), "rainPct": round(rain * 100), "occasion": OCC_USER.get(occ6, occ6),
                         "formality": ctx.get("formality"), "agent": AGENT_USER.get(ctx.get("agenda_source")) if agenda else None,
                         "rag": ctx.get("retrieved") or [], "ramadan": bool(ctx.get("ramadan")), "eid": bool(ctx.get("eid")),
@@ -1665,7 +1800,7 @@ def outfit_feedback(body: FeedbackIn):
     if body.reason is not None and body.reason not in FEEDBACK_REASONS:
         raise HTTPException(422, f"reason : {sorted(FEEDBACK_REASONS)}")
     feats = {k: float(v) for k, v in body.features.items() if isinstance(v, (int, float)) and not isinstance(v, bool)}
-    return _obj6_post("/api/feedback", {"features": feats, "accepted": body.accepted, "uid": OBJ6_UID,
+    return _obj6_post("/api/feedback", {"features": feats, "accepted": body.accepted, "uid": _obj6_uid(),
                                         "reason": body.reason, "item_ids": body.item_ids})
 
 

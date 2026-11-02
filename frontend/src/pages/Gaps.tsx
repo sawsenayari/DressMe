@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useAsync } from '../hooks/useAsync';
 import { getGapAnalysis, searchShops } from '../services/gaps';
 import type { ClothingItem, GapSuggestion, ShopOption } from '../types';
-import { useApp } from '../context/AppContext';
 import { slotLabel } from '../components/ui/ItemFields';
 import { ItemDetailModal } from '../components/ui/ItemDetailModal';
 
@@ -29,13 +28,6 @@ const SLOT_ICON: Record<string, string> = { top: '👚', bottom: '👖', onepiec
 const cap = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
 const sub = { color: 'var(--muted)', fontSize: '0.86rem', margin: '4px 0 0', lineHeight: 1.5 } as const;
 
-const GAP_IMAGES: Record<string, string> = {
-  'gap-1': 'https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=700&auto=format&fit=crop&q=80',
-  'gap-2': 'https://images.unsplash.com/photo-1541099649105-f69ad21f3246?w=700&auto=format&fit=crop&q=80',
-  'gap-3': 'https://images.unsplash.com/photo-1543163521-1bf539c55dd2?w=700&auto=format&fit=crop&q=80',
-  'gap-4': 'https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=700&auto=format&fit=crop&q=80',
-};
-
 type Shop = { loading?: boolean; error?: string; options?: ShopOption[]; order?: 'asc' | 'desc' };
 const SHOW = 3;   // résultats affichés par recherche
 const fmt = (v: number) => v.toLocaleString('fr-FR', { minimumFractionDigits: v % 1 ? 2 : 0, maximumFractionDigits: 3 });
@@ -56,13 +48,11 @@ const gainText = (g: GapSuggestion) => {
 };
 
 export default function Gaps() {
-  const { useDemoData, gaps: demoGaps } = useApp();
   const [refresh, setRefresh] = useState(0);
-  const state = useAsync(() => (useDemoData ? Promise.resolve(null) : getGapAnalysis(refresh > 0)), [useDemoData, refresh]);
+  const state = useAsync(() => getGapAnalysis(refresh > 0), [refresh]);
   const [shops, setShops] = useState<Record<string, Shop>>({});
   const [maxPrice, setMaxPrice] = useState('');
   const [selected, setSelected] = useState<ClothingItem | null>(null);
-  const [wishlist, setWishlist] = useState<Record<string, boolean>>({});
 
   async function findShops(g: GapSuggestion) {
     setShops(s => ({ ...s, [g.id]: { loading: true } }));
@@ -87,43 +77,22 @@ export default function Gaps() {
             Les pièces qui, ajoutées à votre garde-robe, vous permettraient de créer le plus de nouvelles tenues.
           </p>
         </div>
-        {!useDemoData && (
+        {(
           <button className="btn-sm btn-secondary" style={{ borderRadius: '999px' }} disabled={state.loading} onClick={() => setRefresh(r => r + 1)}>
             {state.loading ? 'Analyse…' : '↻ Nouvelle analyse'}
           </button>
         )}
       </header>
 
-      {/* ---------- Mode démonstration ---------- */}
-      {useDemoData && (
-        <ul className="rows">
-          {demoGaps.map((gap, index) => (
-            <li key={gap.id} className="row">
-              <img src={GAP_IMAGES[gap.id] || GAP_IMAGES['gap-1']} alt={gap.description}
-                   style={{ width: '84px', height: '100px', borderRadius: '16px', objectFit: 'cover' }} />
-              <div>
-                <span className="chip-tag chip-tag-lavender">Priorité {gap.rank || index + 1} · {slotLabel(gap.slot)}</span>
-                <h3 style={{ fontSize: '1.15rem', marginTop: '6px' }}>{gap.description}</h3>
-                <p style={sub}>Environ {gainText(gap)}.</p>
-              </div>
-              <button className={`btn-sm ${wishlist[gap.id] ? 'btn-mint' : 'btn-secondary'}`} style={{ borderRadius: '999px' }}
-                      onClick={() => setWishlist(w => ({ ...w, [gap.id]: !w[gap.id] }))}>
-                {wishlist[gap.id] ? '✓ En wishlist' : '+ Wishlist'}
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-
       {/* ---------- Analyse réelle (objectif 4) ---------- */}
-      {!useDemoData && state.loading && <p role="status" style={sub}>Analyse de votre garde-robe : propositions de pièces, accords entre pièces, comptage des tenues…</p>}
-      {!useDemoData && state.error && (
+      {state.loading && <p role="status" style={sub}>Analyse de votre garde-robe : propositions de pièces, accords entre pièces, comptage des tenues…</p>}
+      {state.error && (
         <div role="alert" style={{ background: 'var(--danger-bg)', color: 'var(--danger)', padding: '12px 18px', borderRadius: '16px', marginBottom: '20px' }}>
           Analyse indisponible : {state.error.message}
         </div>
       )}
 
-      {!useDemoData && a && !state.loading && (
+      {a && !state.loading && (
         <>
           {a.mode === 'exemple' ? (
             <div role="status" className="card card-butter" style={{ marginBottom: '20px', padding: '12px 18px', fontSize: '0.9rem' }}>

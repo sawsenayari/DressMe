@@ -43,3 +43,6 @@ obj6_app/models/clip_visual_ft.pt
 
 # compteur des identifiants de pièces (écrit à côté du catalogue)
 **/_last_id.txt
+
+# comptes et garde-robes des utilisateurs (mots de passe hachés, photos)
+gateway/users_data/

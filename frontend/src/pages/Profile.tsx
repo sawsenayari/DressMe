@@ -76,28 +76,28 @@ const h3 = { fontSize: '1.2rem', marginBottom: '8px' } as const;
 const sub = { color: 'var(--muted)', fontSize: '0.88rem', margin: '0 0 14px' } as const;
 
 export default function Profile() {
-  const { profile: contextProfile, setProfile: setContextProfile, useDemoData } = useApp();
+  const { profile: contextProfile, setProfile: setContextProfile } = useApp();
   const [reload, setReload] = useState(0);
-  const state = useAsync(() => (useDemoData ? Promise.resolve(contextProfile) : getProfile()), [useDemoData, reload]);
+  const state = useAsync(getProfile, [reload]);
   const [profile, setProfile] = useState<StyleProfile>(contextProfile);
   const [slot, setSlot] = useState<Slot | ''>('');
   const [gender, setGender] = useState<Gender | ''>('');
 
   // uniquement quand un nouveau profil arrive (setContextProfile change à chaque rendu du contexte)
   useEffect(() => {
-    if (state.data && !useDemoData) { setProfile(state.data); setContextProfile(state.data); }
+    if (state.data) { setProfile(state.data); setContextProfile(state.data); }
   }, [state.data]);   // eslint-disable-line react-hooks/exhaustive-deps
 
   const sugg = useAsync(
-    () => (useDemoData ? Promise.resolve(null) : getStyleSuggestions(slot || undefined, gender || undefined)),
-    [useDemoData, slot, gender],
+    () => getStyleSuggestions(slot || undefined, gender || undefined),
+    [slot, gender],
   );
 
   const pct = (v?: number | null) => (v == null ? '—' : `${v} %`);
   const formality = profile.formalityPref;
   const slots = Object.entries(profile.slotCounts ?? {}).sort((a, b) => (b[1] ?? 0) - (a[1] ?? 0));
   const maxSlot = Math.max(1, ...slots.map(([, n]) => n ?? 0));
-  const live = !useDemoData;
+  const live = true;
 
   return (
     <>

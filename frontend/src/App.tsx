@@ -6,10 +6,18 @@ import DoesItMatch from './pages/DoesItMatch';
 import Gaps from './pages/Gaps';
 import Profile from './pages/Profile';
 import OutfitStudio from './pages/OutfitStudio';
+import Auth from './pages/Auth';
+import { useApp } from './context/AppContext';
 
 export default function App() {
+  const { user, authChecked } = useApp();
+  if (!authChecked) {
+    return <p role="status" style={{ padding: '40px', textAlign: 'center', color: 'var(--muted)' }}>Chargement…</p>;
+  }
+  if (!user) return <Auth />;
+  // key : changer de compte remonte toutes les pages (aucune donnée du compte précédent ne reste affichée)
   return (
-    <Routes>
+    <Routes key={user.id}>
       <Route element={<AppShell />}>
         <Route index element={<Today />} />
         <Route path="wardrobe" element={<Wardrobe />} />

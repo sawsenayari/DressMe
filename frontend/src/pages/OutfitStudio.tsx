@@ -1,10 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ClothingItem, Occasion, Slot, OutfitJuryResult } from '../types';
-import { useApp } from '../context/AppContext';
 import { useAsync } from '../hooks/useAsync';
 import { ItemTile } from '../components/ui/ItemTile';
 import { MannequinView } from '../components/ui/MannequinView';
-import { evaluateOutfitWithJury } from '../data/sampleData';
 import { judgeOutfit } from '../services/jury';
 import { listItems } from '../services/wardrobe';
 import { getWeather, loadCity } from '../services/weather';
@@ -28,24 +26,13 @@ const OCCASIONS: { id: Occasion; label: string; icon: string }[] = [
 ];
 
 export default function OutfitStudio() {
-  const { useDemoData } = useApp();
-  // Changer de mode repart d'un studio vierge : les pièces de démo sont inconnues du backend, et inversement
-  return <Studio key={String(useDemoData)} live={!useDemoData} />;
-}
-
-function Studio({ live }: { live: boolean }) {
-  const { wardrobe: demoWardrobe } = useApp();
-
-  // Live mode: the backend catalogue, the only ids its jury knows
-  const liveWardrobe = useAsync(() => (live ? listItems() : Promise.resolve([])), [live]);
-  const wardrobe = live ? liveWardrobe.data ?? [] : demoWardrobe;
+  // la garde-robe du compte : les seuls identifiants que le jury connaît
+  const liveWardrobe = useAsync(listItems, []);
+  const wardrobe = liveWardrobe.data ?? [];
+  const live = true;
 
   // Selected items composing the outfit
-  const [selectedItems, setSelectedItems] = useState<ClothingItem[]>(() => live ? [] : [
-    demoWardrobe[0], // pink sweater
-    demoWardrobe[1], // cream trousers
-    demoWardrobe[3], // court sneakers
-  ]);
+  const [selectedItems, setSelectedItems] = useState<ClothingItem[]>([]);
 
   const [activeSlotModal, setActiveSlotModal] = useState<Slot | null>(null);
   const [occasion, setOccasion] = useState<Occasion>('casual');
@@ -57,13 +44,7 @@ function Studio({ live }: { live: boolean }) {
       if (w.available && w.feelsLikeC != null) { setTemperature(w.feelsLikeC); setTempFromWeather(true); }
     }).catch(() => { /* météo indisponible : 21 °C par défaut */ });
   }, [live]);
-  const [juryResult, setJuryResult] = useState<OutfitJuryResult | null>(() =>
-    live ? null : evaluateOutfitWithJury(
-      [demoWardrobe[0], demoWardrobe[1], demoWardrobe[3]],
-      'casual',
-      21
-    )
-  );
+  const [juryResult, setJuryResult] = useState<OutfitJuryResult | null>(null);
 
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [juryError, setJuryError] = useState<string | null>(null);
@@ -83,9 +64,7 @@ function Studio({ live }: { live: boolean }) {
     setIsEvaluating(true);
     pendingTimer.current = setTimeout(async () => {
       try {
-        const res = live
-          ? await judgeOutfit({ item_ids: items.map(i => i.id), occasion: occ, temperatureC: temp })
-          : evaluateOutfitWithJury(items, occ, temp);
+        const res = await judgeOutfit({ item_ids: items.map(i => i.id), occasion: occ, temperatureC: temp });
         if (run === lastRun.current) setJuryResult(res);
       } catch (e) {
         if (run === lastRun.current) {

@@ -10,7 +10,7 @@ interface Props {
   onClose: () => void;
   /** Analyse la photo (reconnaissance automatique) et crée la pièce ; crop = pièce découpée choisie. */
   onAnalyze: (file: File, crop?: Crop) => Promise<ClothingItem>;
-  /** Améliore la photo avant l'analyse (découpage de l'objectif 6) ; absent en mode démonstration. */
+  /** Améliore la photo avant l'analyse (découpage de l'objectif 6) */
   onCrop?: (file: File) => Promise<CropResult>;
   /** Enregistre les caractéristiques vérifiées / corrigées par l'utilisateur. */
   onConfirm: (id: string, patch: ItemPatch) => Promise<unknown>;

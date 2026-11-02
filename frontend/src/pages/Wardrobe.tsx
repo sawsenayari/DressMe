@@ -29,7 +29,7 @@ const SEASONS: { id: Season | 'all'; label: string }[] = [
 ];
 
 export default function Wardrobe() {
-  const { useDemoData, wardrobe: demoWardrobe, addWardrobeItem, updateWardrobeItem, removeWardrobeItem, searchQuery, setSearchQuery } = useApp();
+  const { searchQuery, setSearchQuery } = useApp();
   const [version, setVersion] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -48,42 +48,24 @@ export default function Wardrobe() {
   // le formulaire pré-rempli et enregistre (handleSave) ou annule (handleDelete).
   async function handleAnalyze(file: File, crop?: { image: Blob; slot?: string | null }): Promise<ClothingItem> {
     setError('');
-    if (useDemoData) {   // démo : pas de reconnaissance, fiche de départ à compléter
-      const item: ClothingItem = {
-        id: `it_${Date.now()}`, name: 'Nouvelle pièce', type: 'Tshirts', slot: 'top', category: 'top', colour: ['beige'], color: 'beige',
-        season: 'all', usage: 'Casual', formality: 1, warmth: 1, traditional: false,
-        imageUrl: URL.createObjectURL(file), imageCrop: URL.createObjectURL(crop?.image ?? file),
-        source: 'obj1.knn', confidence: { slot: 0.6, colour: 0.6, type: 0.6 },
-      };
-      addWardrobeItem(item);
-      return item;
-    }
     const created = await addItem(file, crop);
     setVersion(v => v + 1);
     return created;
   }
 
-  // Modifier / supprimer : passerelle (PUT / DELETE /wardrobe/items/{id}) en mode API, état local en mode démo
+  // Modifier / supprimer : passerelle (PUT / DELETE /wardrobe/items/{id})
   async function handleSave(id: string, patch: ItemPatch): Promise<ClothingItem | void> {
-    if (useDemoData) {
-      updateWardrobeItem(id, { ...patch, ...(patch.colour ? { color: patch.colour[0] } : {}), ...(patch.slot ? { category: patch.slot } : {}) });
-      const it = demoWardrobe.find(i => i.id === id);
-      return it ? { ...it, ...patch, source: 'user_corrected' } : undefined;
-    }
     const updated = await updateItem(id, patch);
     setVersion(v => v + 1);
     return updated;
   }
 
   async function handleDelete(id: string) {
-    if (useDemoData) { removeWardrobeItem(id); return; }
     await deleteItem(id);
     setVersion(v => v + 1);
   }
 
-  const rawItems: ClothingItem[] = useDemoData
-    ? demoWardrobe
-    : (apiState.data || []);
+  const rawItems: ClothingItem[] = apiState.data || [];
 
   const filteredItems = useMemo(() => {
     let items = [...rawItems];
@@ -255,8 +237,6 @@ export default function Wardrobe() {
           >
             <option value="recent">Récemment ajouté</option>
             <option value="name">Nom (A → Z)</option>
-            {useDemoData && <option value="most-worn">Plus porté</option>}
-            {useDemoData && <option value="least-worn">Moins porté</option>}
             <option value="confidence">À vérifier en premier</option>
           </select>
         </div>
@@ -272,7 +252,7 @@ export default function Wardrobe() {
         </p>
       )}
 
-      {!useDemoData && apiState.error ? (
+      {apiState.error ? (
         <EmptyState text={`Garde-robe indisponible : ${apiState.error.message}`} endpoint="GET /wardrobe/items" />
       ) : filteredItems.length > 0 ? (
         <div className="grid">
@@ -287,7 +267,9 @@ export default function Wardrobe() {
         </div>
       ) : (
         <EmptyState
-          text="Aucune pièce ne correspond aux filtres appliqués."
+          text={apiState.loading ? 'Chargement de votre garde-robe…' : rawItems.length === 0
+            ? 'Votre garde-robe est vide : ajoutez votre première pièce avec « Ajouter une pièce ».'
+            : 'Aucune pièce ne correspond aux filtres appliqués.'}
           endpoint="GET /wardrobe/items"
         />
       )}
@@ -305,7 +287,7 @@ export default function Wardrobe() {
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
         onAnalyze={handleAnalyze}
-        onCrop={useDemoData ? undefined : cropPhoto}
+        onCrop={cropPhoto}
         onConfirm={handleSave}
         onDiscard={handleDelete}
       />

@@ -6,31 +6,6 @@ import type { CompatibilityResult, ClothingItem, PairScore } from '../types';
 import { PhotoPicker } from '../components/ui/PhotoPicker';
 import { ItemTile } from '../components/ui/ItemTile';
 import { ItemDetailModal } from '../components/ui/ItemDetailModal';
-import { useApp } from '../context/AppContext';
-
-const PRESET_CANDIDATES = [
-  {
-    name: 'Blazer en lin vert sauge',
-    imageUrl: 'https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=700&auto=format&fit=crop&q=80',
-    color: 'sage green',
-    slot: 'outer',
-    isDuplicateTest: false,
-  },
-  {
-    name: 'Mule Rose Poudré en Cuir',
-    imageUrl: 'https://images.unsplash.com/photo-1543163521-1bf539c55dd2?w=700&auto=format&fit=crop&q=80',
-    color: 'rose poudré',
-    slot: 'footwear',
-    isDuplicateTest: true, // triggers duplicate detection in Objectif 2
-  },
-  {
-    name: 'Jupe Midi Soie Lavande',
-    imageUrl: 'https://images.unsplash.com/photo-1583496661160-fb5886a0aaaa?w=700&auto=format&fit=crop&q=80',
-    color: 'lavande',
-    slot: 'bottom',
-    isDuplicateTest: false,
-  },
-];
 
 // catégories de l'Obj2 -> libellé
 const CAT_FR: Record<string, string> = {
@@ -44,7 +19,6 @@ const VERDICT_STYLE: Record<string, { color: string; label: string }> = {
 };
 
 export default function DoesItMatch() {
-  const { useDemoData, scoreDemoCandidate, wardrobe } = useApp();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [preview, setPreview] = useState('');
@@ -55,7 +29,7 @@ export default function DoesItMatch() {
   const live = useAsync(listItems);   // garde-robe réelle (mode API) pour retrouver les partenaires renvoyés par /compat
 
   // Partenaires = ceux renvoyés par l'Objectif 2 (meilleurs scores de paire), retrouvés dans la garde-robe affichée
-  const source = useDemoData ? wardrobe : (live.data || []);
+  const source = live.data || [];
   const withItems = (list: PairScore[] = []) => list
     .map(p => ({ item: source.find(i => i.id === p.id), score: p.pair_score01, verdict: p.verdict }))
     .filter((p): p is { item: ClothingItem; score: number; verdict: PairScore['verdict'] } => !!p.item);
@@ -68,7 +42,7 @@ export default function DoesItMatch() {
     setError('');
     setResult(null);
     try {
-      setResult(useDemoData ? await scoreDemoCandidate(f) : await scoreCandidate(f, category));
+      setResult(await scoreCandidate(f, category));
     } catch (e) {
       setError(`Impossible d'analyser cette photo : ${e instanceof Error ? e.message : e}`);
     } finally {
@@ -81,40 +55,6 @@ export default function DoesItMatch() {
     setCandidateName('');
     setPreview(URL.createObjectURL(f));
     score(f);
-  }
-
-  function handleSelectPreset(preset: typeof PRESET_CANDIDATES[0]) {
-    setBusy(true);
-    setError('');
-    setCandidateName(preset.name);
-    setPreview(preset.imageUrl);
-
-    setTimeout(() => {
-      setResult({
-        score: preset.isDuplicateTest ? 91 : 95,
-        score01: preset.isDuplicateTest ? 0.91 : 0.95,
-        verdict: 'compatible',
-        newOutfits: preset.isDuplicateTest ? 2 : 8,
-        partners: [{ id: wardrobe[1]?.id || 'it_0002', pair_score01: 0.88 }],
-        duplicate: preset.isDuplicateTest
-          ? {
-              id: wardrobe[7]?.id || 'it_0008',
-              similarity: 0.94,
-              pct: 96,
-              is_duplicate: true,
-            }
-          : undefined,
-        clashingItems: [],
-        notes: [
-          `La palette ${preset.color} s'harmonise avec 90% de vos bas et hauts neutres.`,
-          preset.isDuplicateTest
-            ? '⚠️ Attention : vous possédez déjà une pièce très similaire dans votre dressing.'
-            : 'Polyvalence élevée : s\'adapte aux occasions Casual Chic et Soirée.',
-          'Matière et silhouette alignées sur votre profil de saison.',
-        ],
-      });
-      setBusy(false);
-    }, 450);
   }
 
   const getScoreTheme = (score: number) => {
@@ -153,27 +93,6 @@ export default function DoesItMatch() {
         >
           {error}
         </div>
-      )}
-
-      {/* Preset Test Candidates */}
-      {useDemoData && (   // exemples à résultats fixes : mode démo uniquement
-      <section style={{ marginBottom: '24px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-          <span style={{ fontSize: '0.85rem', color: 'var(--muted)', fontWeight: 500 }}>
-            Exemples :
-          </span>
-          {PRESET_CANDIDATES.map(preset => (
-            <button
-              key={preset.name}
-              className="chip"
-              onClick={() => handleSelectPreset(preset)}
-              style={{ padding: '6px 14px', fontSize: '0.82rem' }}
-            >
-              🛍️ {preset.name}
-            </button>
-          ))}
-        </div>
-      </section>
       )}
 
       {!preview && (
@@ -232,7 +151,7 @@ export default function DoesItMatch() {
               <p style={{ color: 'var(--muted)', fontSize: '0.85rem', margin: '4px 0 0' }}>
                 {busy ? 'Analyse en cours…' : result?.compared ? `Comparée à ${result.compared} pièces de votre garde-robe` : 'Comparée à votre garde-robe'}
               </p>
-              {!useDemoData && file && result?.categories && (
+              {file && result?.categories && (
                 <div style={{ marginTop: '12px' }}>
                   <label htmlFor="dim-cat" style={{ fontSize: '0.82rem', fontWeight: 600, display: 'block', marginBottom: '4px' }}>
                     Type de pièce {result.category === result.guessedCategory ? '(reconnu sur la photo)' : '(corrigé)'}

@@ -80,14 +80,20 @@ cd frontend
 npm run dev
 ```
 
-Ouvrir http://localhost:5173 et passer le badge en haut à droite sur **« Live Model API »** (sinon ce sont les données de démonstration).
+Ouvrir http://localhost:5173, puis **créer un compte** (ou se connecter) : chaque compte a sa propre garde-robe.
+**Comptes** : à l'ouverture, l'écran de connexion s'affiche ; « Créer un compte » (nom, e-mail, mot de passe de
+8 caractères au moins). Chaque compte a sa propre garde-robe, rangée dans `gateway\users_data\stores\<id>\` (hors git) ;
+mots de passe hachés (PBKDF2-SHA256 salé), session dans un cookie HttpOnly de 30 jours. **Le tout premier compte créé
+reprend la garde-robe existante** (dossier `DRESSME_STORE`) ; les suivants démarrent vides. Variables : `DRESSME_USERS_DIR`
+(dossier des comptes), `DRESSME_AUTH=0` (désactive les comptes : garde-robe unique `DRESSME_STORE`, utilisé par les tests).
 
 Au premier appel, FashionCLIP (~600 Mo) et SegFormer (~110 Mo) sont téléchargés depuis Hugging Face. Ensuite, `set HF_HUB_OFFLINE=1` évite tout accès réseau.
 
-## 3. Démo avec de vraies photos
+## 3. Garde-robe de départ avec de vraies photos
 
 Le catalogue par défaut (`obj5_profil/data/wardrobe.json`, 423 fiches) n'a ni photos ni embeddings : compatibilité et images y sont indisponibles.
-Pour une démo complète, utiliser le store de l'Obj1 (11 pièces avec photos et embeddings) **sur une copie** :
+Pour partir de vraies pièces, utiliser le store de l'Obj1 (photos et embeddings) **sur une copie**, avant de créer le
+premier compte (il reprend ce dossier) :
 
 ```bat
 xcopy /E /I /Y obj1_reconnaissance\data\store %TEMP%\dressme_store

@@ -24,6 +24,7 @@ def test_routes(tmp_path, monkeypatch):
     sys.path.insert(0, str(REPO / "gateway"))
     import app as g
     from fastapi.testclient import TestClient
+    monkeypatch.setattr(g, "LEGACY_STORE", store); monkeypatch.setattr(g, "_cache", {})   # le module a pu être importé avant
     c = TestClient(g.app)
     h = c.get("/health").json(); assert h["ok"] and h["items_avec_embedding"] > 100
     assert {"ia", "shopping", "tenueDuJour"} <= set(h)                                  # état des services affiché dans le menu
