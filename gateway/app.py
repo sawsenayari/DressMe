@@ -1942,6 +1942,7 @@ def outfit_judge(body: JudgeRequest):
 TRYON_ASSETS = Path(__file__).resolve().parent / "assets" / "tryon"
 TRYON_TOP_SPACE = os.environ.get("DRESSME_TRYON_TOP", "yisol/IDM-VTON")
 TRYON_OOTD_SPACE = os.environ.get("DRESSME_TRYON_OOTD", "levihsu/OOTDiffusion")
+TRYON_OOTD_SEED = int(os.environ.get("DRESSME_TRYON_OOTD_SEED", "7"))   # graine retenue : rendu propre sur nos essais (42 : taches)
 _tryon_lock = threading.Lock()
 
 
@@ -1957,7 +1958,10 @@ class TryOnUnavailable(Exception):
 def _tryon_client(space):
     if ("tryon", space) not in _cache:
         from gradio_client import Client
-        _cache[("tryon", space)] = Client(space, token=os.environ.get("HF_TOKEN") or None, verbose=False)
+        # adresse directe du Space (« yisol/IDM-VTON » -> https://yisol-idm-vton.hf.space) : marche aussi avec
+        # HF_HUB_OFFLINE=1, posé pour charger FashionCLIP depuis le cache, qui bloque la résolution par l'API du Hub
+        url = space if space.startswith("http") else "https://" + re.sub(r"[/_.]", "-", space.lower()) + ".hf.space"
+        _cache[("tryon", space)] = Client(url, token=os.environ.get("HF_TOKEN") or None, verbose=False)
     return _cache[("tryon", space)]
 
 
@@ -1982,6 +1986,21 @@ def _tryon_call(space, *args, api_name):
 def _garment_photo(c):
     """Photo de la pièce envoyée au modèle : la découpe sur fond propre si elle existe, sinon la photo."""
     return next((x for x in (_store_file(c.get("image_crop")), _store_file(c.get("image"))) if x is not None and x.is_file()), None)
+
+
+def _garment_input(c):
+    """Photo préparée pour les modèles : sur fond blanc (la transparence d'une découpe PNG est lue comme du noir) et
+    centrée sans déformation dans le format 3:4 (768 x 1024) des modèles ; une photo carrée étirée donne des taches."""
+    from PIL import Image
+    im = Image.open(_garment_photo(c)).convert("RGBA")
+    bg = Image.new("RGBA", im.size, (255, 255, 255, 255)); bg.alpha_composite(im)
+    im = bg.convert("RGB")
+    W, H = 768, 1024
+    im.thumbnail((W - 80, H - 80))
+    canvas = Image.new("RGB", (W, H), "white"); canvas.paste(im, ((W - im.width) // 2, (H - im.height) // 2))
+    f = Path(tempfile.gettempdir()) / f"dressme_tryon_{c['id']}.jpg"
+    canvas.save(f, quality=95)
+    return str(f)
 
 
 def _garment_text(c):
@@ -2009,7 +2028,7 @@ def outfit_tryon(body: TryOnIn):
         g = [c.get("gender") for c in cards if c.get("gender") in ("Women", "Men")]
         gender = "Men" if g and g.count("Men") > g.count("Women") else "Women"
     worn = [c for c in (dress, top, bottom) if c]
-    fp = hashlib.sha1(json.dumps([gender, TRYON_TOP_SPACE, TRYON_OOTD_SPACE,
+    fp = hashlib.sha1(json.dumps(["v4", TRYON_OOTD_SEED, gender, TRYON_TOP_SPACE, TRYON_OOTD_SPACE,
                                   *[(c["id"], str(_garment_photo(c).stat().st_mtime)) for c in worn]]).encode()).hexdigest()[:20]
     rel = f"tryon/{fp}.png"
     out = STORE / rel
@@ -2020,17 +2039,19 @@ def outfit_tryon(body: TryOnIn):
     t0, done, note = time.time(), [], None
     with _tryon_lock:   # un essayage à la fois : le quota GPU gratuit est partagé
         try:
-            if top:
-                person = _tryon_call(TRYON_TOP_SPACE, dict(background=handle_file(person), layers=[], composite=None),
-                                     handle_file(str(_garment_photo(top))), _garment_text(top), True, False, 30, 42,
-                                     api_name="/tryon")[0]
-                done.append(top)
+            # bas / robe d'abord : OOTDiffusion travaille bien sur la photo du mannequin, mal sur une image déjà
+            # retouchée (taches) ; IDM-VTON, plus robuste, pose ensuite le haut sur le résultat
             for c, cat in ((bottom, "Lower-body"), (dress, "Dress")):
                 if c:
-                    r = _tryon_call(TRYON_OOTD_SPACE, handle_file(person), handle_file(str(_garment_photo(c))), cat, 1, 20, 2.0, 42,
+                    r = _tryon_call(TRYON_OOTD_SPACE, handle_file(person), handle_file(_garment_input(c)), cat, 1, 20, 2.0, TRYON_OOTD_SEED,
                                     api_name="/process_dc")
                     person = r[0]["image"] if isinstance(r[0], dict) else r[0]
                     done.append(c)
+            if top:
+                person = _tryon_call(TRYON_TOP_SPACE, dict(background=handle_file(person), layers=[], composite=None),
+                                     handle_file(_garment_input(top)), _garment_text(top), True, False, 30, 42,
+                                     api_name="/tryon")[0]
+                done.append(top)
         except TryOnUnavailable as e:
             if not done:
                 raise HTTPException(503, str(e))
