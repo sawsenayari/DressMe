@@ -16,3 +16,4 @@ scipy
 pandas # base kNN de l'Obj1 (ajout de photo)
 truststore>=0.9
 rembg[cpu]>=2.0  # découpage des photos (module de l'objectif 6) : détourage des photos à plat
+gradio_client>=1.0  # essayage réaliste (Spaces Hugging Face IDM-VTON / OOTDiffusion)

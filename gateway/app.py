@@ -30,6 +30,7 @@ import os
 import sys
 import tempfile
 import threading
+import time
 from pathlib import Path
 try:   # certificats du système (proxy qui intercepte le HTTPS : météo, Gemini, Groq) ; facultatif
     import truststore
@@ -1929,3 +1930,120 @@ def outfit_judge(body: JudgeRequest):
                             "message": f"Météo : {crit['meteo']['raison']} · Style : {crit['formalite']['raison']}"},
                 "compatibility": jury_compat([by_id[i] for i in ids])},
             "repairs": jury_repairs(j["reparations"], by_id)}
+
+
+# ---------------------------------------------------------------- essayage réaliste (photos des pièces portées)
+# Essayage virtuel par diffusion (modèles libres hébergés gratuitement sur Hugging Face Spaces) : la photo de la pièce
+# est « portée » par un mannequin photographique ; motifs, couleurs et coupe viennent de la photo, pas d'une description.
+#   haut / veste : IDM-VTON (yisol/IDM-VTON), le plus fidèle aux détails (logos, boutons, imprimés) ;
+#   bas / robe   : OOTDiffusion (levihsu/OOTDiffusion), catégories « Lower-body » et « Dress ».
+# Les étapes s'enchaînent (le bas est posé sur l'image où le haut est déjà porté). Chaussures et accessoires ne sont pas
+# gérés par ces modèles : le front les montre à côté. Résultat mis en cache dans la garde-robe (tryon/<empreinte>.png).
+TRYON_ASSETS = Path(__file__).resolve().parent / "assets" / "tryon"
+TRYON_TOP_SPACE = os.environ.get("DRESSME_TRYON_TOP", "yisol/IDM-VTON")
+TRYON_OOTD_SPACE = os.environ.get("DRESSME_TRYON_OOTD", "levihsu/OOTDiffusion")
+_tryon_lock = threading.Lock()
+
+
+class TryOnIn(BaseModel):
+    item_ids: list[str]
+    gender: Optional[str] = None   # « Women » / « Men » ; sinon déduit des pièces
+
+
+class TryOnUnavailable(Exception):
+    pass
+
+
+def _tryon_client(space):
+    if ("tryon", space) not in _cache:
+        from gradio_client import Client
+        _cache[("tryon", space)] = Client(space, token=os.environ.get("HF_TOKEN") or None, verbose=False)
+    return _cache[("tryon", space)]
+
+
+def _tryon_call(space, *args, api_name):
+    try:
+        return _tryon_client(space).predict(*args, api_name=api_name)
+    except ImportError:
+        raise TryOnUnavailable("Le module gradio_client n'est pas installé sur le serveur (pip install gradio_client).")
+    except Exception as e:   # quota GPU gratuit, Space en veille ou en maintenance
+        _cache.pop(("tryon", space), None)
+        msg = str(e)
+        log(f"essayage ({space}) : {type(e).__name__}: {msg[:300]}")
+        if "quota" in msg.lower():
+            m = re.search(r"Try again in (\d+):(\d+):\d+", msg)
+            wait = "quelques minutes" if not m or m.groups() == ("0", "00") else                 (f"{int(m[1])} h {int(m[2]):02d}" if int(m[1]) else f"{int(m[2])} min")
+            raise TryOnUnavailable(f"Le quota gratuit de calcul (Hugging Face) est épuisé : réessayez dans {wait}"
+                                   + ("." if os.environ.get("HF_TOKEN") else
+                                      ", ou ajoutez un jeton gratuit HF_TOKEN dans gateway/.env (quota bien plus large)."))
+        raise TryOnUnavailable("Le service d'essayage est momentanément indisponible : réessayez plus tard.")
+
+
+def _garment_photo(c):
+    """Photo de la pièce envoyée au modèle : la découpe sur fond propre si elle existe, sinon la photo."""
+    return next((x for x in (_store_file(c.get("image_crop")), _store_file(c.get("image"))) if x is not None and x.is_file()), None)
+
+
+def _garment_text(c):
+    return " ".join(str(x) for x in [*(c.get("colour") or [])[:2], c.get("type") or c.get("name") or "garment"]).lower()
+
+
+@app.post("/outfits/tryon")
+def outfit_tryon(body: TryOnIn):
+    import hashlib
+    import shutil
+    try:
+        from gradio_client import handle_file
+    except ImportError:
+        raise HTTPException(503, "Le module gradio_client n'est pas installé sur le serveur (pip install gradio_client).")
+    by_id = {c["id"]: c for c in catalog()}
+    cards = [by_id[i] for i in body.item_ids if i in by_id]
+    first = lambda *slots: next((c for s in slots for c in cards if c["slot"] == s and _garment_photo(c)), None)
+    dress, top, bottom = first("onepiece"), first("top", "outer"), first("bottom")
+    if dress:
+        top = bottom = None   # une robe se porte seule
+    if not (dress or top or bottom):
+        raise HTTPException(422, "Choisissez au moins un haut, un bas ou une robe avec photo pour l'essayage.")
+    gender = body.gender if body.gender in ("Women", "Men") else None
+    if gender is None:
+        g = [c.get("gender") for c in cards if c.get("gender") in ("Women", "Men")]
+        gender = "Men" if g and g.count("Men") > g.count("Women") else "Women"
+    worn = [c for c in (dress, top, bottom) if c]
+    fp = hashlib.sha1(json.dumps([gender, TRYON_TOP_SPACE, TRYON_OOTD_SPACE,
+                                  *[(c["id"], str(_garment_photo(c).stat().st_mtime)) for c in worn]]).encode()).hexdigest()[:20]
+    rel = f"tryon/{fp}.png"
+    out = STORE / rel
+    result = {"worn": [c["id"] for c in worn], "notWorn": [c["id"] for c in cards if c not in worn], "gender": gender}
+    if out.is_file():
+        return {**result, "note": None, "imageUrl": f"/files/{rel}{_file_version(rel)}", "cached": True}
+    person = str(TRYON_ASSETS / ("mannequin_men.jpg" if gender == "Men" else "mannequin_women.jpg"))
+    t0, done, note = time.time(), [], None
+    with _tryon_lock:   # un essayage à la fois : le quota GPU gratuit est partagé
+        try:
+            if top:
+                person = _tryon_call(TRYON_TOP_SPACE, dict(background=handle_file(person), layers=[], composite=None),
+                                     handle_file(str(_garment_photo(top))), _garment_text(top), True, False, 30, 42,
+                                     api_name="/tryon")[0]
+                done.append(top)
+            for c, cat in ((bottom, "Lower-body"), (dress, "Dress")):
+                if c:
+                    r = _tryon_call(TRYON_OOTD_SPACE, handle_file(person), handle_file(str(_garment_photo(c))), cat, 1, 20, 2.0, 42,
+                                    api_name="/process_dc")
+                    person = r[0]["image"] if isinstance(r[0], dict) else r[0]
+                    done.append(c)
+        except TryOnUnavailable as e:
+            if not done:
+                raise HTTPException(503, str(e))
+            note = f"Essayage partiel : {', '.join(_tryon_name(c) for c in worn if c not in done)} non porté(s). {e}"
+    if note:   # résultat partiel : montré mais pas mis en cache, pour retenter l'essayage complet plus tard
+        rel = f"tryon/{fp}_partiel.png"
+        out = STORE / rel
+    out.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(person, out)
+    log(f"essayage {fp} : {len(done)}/{len(worn)} pièce(s) en {time.time() - t0:.0f} s")
+    return {**result, "worn": [c["id"] for c in done], "notWorn": [c["id"] for c in cards if c not in done], "note": note,
+            "imageUrl": f"/files/{rel}{_file_version(rel)}", "cached": False}
+
+
+def _tryon_name(c):
+    return (name_fr(c.get("name") or _garment_text(c).capitalize()) or c.get("name") or c.get("type") or c["id"]).lower()

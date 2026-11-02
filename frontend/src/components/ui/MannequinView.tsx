@@ -1,13 +1,33 @@
+import { useEffect, useState } from 'react';
 import type { ClothingItem } from '../../types';
+import { tryOnOutfit, type TryOnResult } from '../../services/outfits';
 
 interface Props {
   items: ClothingItem[];
-  tryOnImageUrl?: string; // non utilisé : pas d'essayage virtuel réel pour l'instant
   className?: string;
 }
 
-/** Silhouette en couches construite avec les photos des pièces choisies. */
+/** Silhouette en couches construite avec les photos des pièces choisies, ou essayage réaliste (photos portées par un
+ *  mannequin, calculé par le serveur seulement sur demande). */
 export function MannequinView({ items }: Props) {
+  const [view, setView] = useState<'2d' | 'real'>('2d');
+  const [tryOn, setTryOn] = useState<TryOnResult | null>(null);
+  const [tryOnBusy, setTryOnBusy] = useState(false);
+  const [tryOnError, setTryOnError] = useState<string | null>(null);
+  const key = items.map(i => i.id).join(',');
+  useEffect(() => { setTryOn(null); setTryOnError(null); setView('2d'); }, [key]);
+  const wearable = items.some(i => ['top', 'outer', 'bottom', 'onepiece'].includes(i.slot));
+
+  const runTryOn = () => {
+    setView('real');
+    if (tryOn || tryOnBusy) return;
+    setTryOnBusy(true); setTryOnError(null);
+    tryOnOutfit(items.map(i => i.id))
+      .then(setTryOn)
+      .catch((e: Error) => setTryOnError(e.message))
+      .finally(() => setTryOnBusy(false));
+  };
+  const beside = tryOn ? items.filter(i => !tryOn.worn.includes(i.id)) : [];
 
   // Segregate items by slot for the 2D layered mannequin
   const top = items.find(i => i.slot === 'top');
@@ -33,10 +53,54 @@ export function MannequinView({ items }: Props) {
           <span style={{ fontSize: '1.2rem' }}>🪞</span>
           <h3 style={{ fontSize: '1.1rem' }}>Aperçu de la tenue</h3>
         </div>
-
+        <div style={{ display: 'flex', gap: '6px' }}>
+          <button className={`btn-sm ${view === '2d' ? '' : 'btn-secondary'}`} style={{ borderRadius: '999px', fontSize: '0.8rem' }}
+                  onClick={() => setView('2d')}>Silhouette</button>
+          <button className={`btn-sm ${view === 'real' ? '' : 'btn-secondary'}`} style={{ borderRadius: '999px', fontSize: '0.8rem' }}
+                  disabled={!wearable} title={wearable ? 'Vos photos portées par un mannequin (IA)' : 'Choisissez un haut, un bas ou une robe'}
+                  onClick={runTryOn}>📸 Essayage réaliste</button>
+        </div>
       </div>
 
-      {(
+      {view === 'real' ? (
+        <div style={{ maxWidth: '380px', margin: '0 auto', display: 'grid', gap: '12px' }}>
+          {tryOnBusy && (
+            <div style={{ minHeight: '420px', borderRadius: '24px', border: '1px dashed var(--line)', display: 'flex', flexDirection: 'column',
+                          alignItems: 'center', justifyContent: 'center', gap: '10px', color: 'var(--muted)', textAlign: 'center', padding: '24px' }}>
+              <span style={{ fontSize: '2rem' }}>🧵</span>
+              <strong style={{ color: 'var(--ink)' }}>Essayage en cours…</strong>
+              <span style={{ fontSize: '0.85rem' }}>Le mannequin enfile vos pièces une à une : comptez de 30 secondes à 2 minutes.</span>
+            </div>
+          )}
+          {tryOnError && !tryOnBusy && (
+            <div className="card card-peach" style={{ padding: '16px', fontSize: '0.88rem' }}>
+              L'essayage n'a pas pu être fait : {tryOnError}
+              <div style={{ marginTop: '10px' }}>
+                <button className="btn-sm btn-secondary" onClick={() => { setTryOnError(null); runTryOn(); }}>Réessayer</button>
+              </div>
+            </div>
+          )}
+          {tryOn && !tryOnBusy && (
+            <>
+              <img src={tryOn.imageUrl} alt="Essayage réaliste de la tenue"
+                   style={{ width: '100%', borderRadius: '24px', border: '1px solid var(--line)', boxShadow: 'var(--shadow-card)' }} />
+              {tryOn.note && <div className="card card-peach" style={{ padding: '12px', fontSize: '0.85rem' }}>{tryOn.note}</div>}
+              {beside.length > 0 && (
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                  {beside.map(i => (
+                    <div key={i.id} title={i.name} style={{ width: '64px', height: '64px', borderRadius: '14px', overflow: 'hidden', background: '#FFFFFF', border: '1px solid var(--line)' }}>
+                      <img src={i.imageCrop || i.imageUrl} alt={i.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    </div>
+                  ))}
+                </div>
+              )}
+              <span style={{ fontSize: '0.78rem', color: 'var(--muted)', textAlign: 'center' }}>
+                Image générée par IA à partir de vos photos{beside.length ? ' ; les autres pièces sont montrées à côté' : ''}.
+              </span>
+            </>
+          )}
+        </div>
+      ) : (
         /* Niveau 1: 2D Layered Mannequin (garanti, non-bloquant) */
         <div
           style={{

@@ -68,6 +68,7 @@ run_all.bat
 | `DRESSME_JURY_LLM=1` | active l'avis de l'IA dans « Composer une tenue » (`DRESSME_JURY_VISUAL=1` : juge visuel Gemini, hors interface) |
 | `LLM_API_KEY` (Groq) | juges texte de l'Obj3 |
 | `GEMINI_API_KEY` | juges texte (prioritaire), **reconnaissance des photos ajoutées** (Obj1 en mode complet) |
+| `HF_TOKEN` | jeton gratuit Hugging Face (lecture) pour l'**essayage réaliste** ; sans jeton, quota anonyme très court |
 
 Sans clé : tout fonctionne en règles seules et l'Obj1 reconnaît par « voisins » (moins précis). `obj6_app\.env` (clé Groq de
 l'Obj6, facultative) est séparé. Vérifier avant chaque commit : aucun `.env`, aucune clé dans `git diff --cached`.
@@ -78,7 +79,7 @@ Automatique (chaque dossier séparément, venv activé) :
 
 | Dossier | Commande (depuis ce dossier) | Attendu |
 |---|---|---|
-| `gateway` | `python -m pytest -q tests` | 16 réussis (≈ 9 min) |
+| `gateway` | `python -m pytest -q tests` | 17 réussis (≈ 9 min) |
 | `obj1_reconnaissance` | `python -m pytest -q` | 30 |
 | `obj2_compat` | `python -m pytest -q tests` puis `python recette.py` | 13 + recette PASS |
 | `obj3_jury` | `python -m pytest -q` | 11 |
@@ -135,6 +136,12 @@ ni dans le modèle Obj5, ni dans le cache Obj1.
   ou un sac de plus ne pouvait jamais rien ajouter). « 🔎 Recherche en ligne » (requête Tavily « [pièce] buy online »)
   demande `DRESSME_TAVILY_API_KEY` dans `gateway/.env`.
   `gap_report.json` ne sert plus que d'exemple quand la garde-robe n'a pas de photos.
+- **Essayage réaliste** (« Aperçu de la tenue » de Composer une tenue et Tenue du jour, bouton « 📸 Essayage réaliste »,
+  `POST /outfits/tryon`) : essayage virtuel par diffusion sur des Spaces Hugging Face gratuits (`gradio_client`). Les
+  photos des pièces sont « portées » par un mannequin photo (`gateway/assets/tryon/`, femme ou homme selon les pièces) :
+  haut ou veste avec IDM-VTON, puis bas (« Lower-body ») ou robe (« Dress ») avec OOTDiffusion. Chaussures et accessoires
+  sont montrés à côté. ≈ 30 s par pièce ; résultat en cache dans `tryon/` de la garde-robe ; si le quota GPU gratuit
+  coupe au milieu, le haut déjà porté est montré (résultat partiel, non mis en cache). Les photos partent chez Hugging Face.
 - **Obj5** : profil et suggestions utilisent la taxonomie de référence (16 styles appris sur 423 fiches, espace
   d'attributs, pas FashionCLIP faute d'embeddings du catalogue) ; palette = part des pièces par couleur ; suggestions
   sans photos (catalogue de référence sans images) ; orientation Économie non évaluable sans prix.

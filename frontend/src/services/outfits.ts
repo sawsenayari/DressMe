@@ -1,5 +1,5 @@
 import type { Gender, Occasion, Outfit, OutfitOptions, RecommendRequest, RecommendResponse } from '../types';
-import { http } from './http';
+import { assetUrl, http } from './http';
 import { withAssets } from './wardrobe';
 
 // DSO3 + DSO6 — outfit of the day (weather and calendar handled server-side)
@@ -32,3 +32,17 @@ export const recommendOutfits = (body: RecommendRequest) =>
     ...r,
     outfits: r.outfits.map(o => ({ ...o, items: o.items.map(withAssets), accessories: o.accessories.map(withAssets) })),
   }));
+
+export interface TryOnResult {
+  imageUrl: string;
+  worn: string[];
+  notWorn: string[];
+  note: string | null;
+  cached: boolean;
+}
+
+/** Essayage réaliste : les photos des pièces (haut, bas ou robe) portées par un mannequin photo (≈ 30 s à 2 min). */
+export const tryOnOutfit = (itemIds: string[], gender?: Gender) =>
+  http<TryOnResult>('/outfits/tryon', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ item_ids: itemIds, gender }),
+  }).then(r => ({ ...r, imageUrl: assetUrl(r.imageUrl) ?? r.imageUrl }));
