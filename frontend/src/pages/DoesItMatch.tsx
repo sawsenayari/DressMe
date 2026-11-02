@@ -10,7 +10,7 @@ import { useApp } from '../context/AppContext';
 
 const PRESET_CANDIDATES = [
   {
-    name: 'Sage Green Linen Blazer',
+    name: 'Blazer en lin vert sauge',
     imageUrl: 'https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=700&auto=format&fit=crop&q=80',
     color: 'sage green',
     slot: 'outer',

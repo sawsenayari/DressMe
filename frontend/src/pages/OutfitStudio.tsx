@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ClothingItem, Occasion, Slot, OutfitJuryResult } from '../types';
 import { useApp } from '../context/AppContext';
 import { useAsync } from '../hooks/useAsync';
@@ -7,21 +7,24 @@ import { MannequinView } from '../components/ui/MannequinView';
 import { evaluateOutfitWithJury } from '../data/sampleData';
 import { judgeOutfit } from '../services/jury';
 import { listItems } from '../services/wardrobe';
+import { getWeather, loadCity } from '../services/weather';
 
 const SLOTS: { id: Slot; label: string; icon: string }[] = [
   { id: 'top', label: 'Haut', icon: '👚' },
   { id: 'bottom', label: 'Bas', icon: '👖' },
-  { id: 'onepiece', label: 'Robe / Pièce unique', icon: '👗' },
-  { id: 'outer', label: 'Veste / Manteau', icon: '🧥' },
+  { id: 'onepiece', label: 'Robe / pièce unique', icon: '👗' },
+  { id: 'outer', label: 'Veste / manteau', icon: '🧥' },
   { id: 'footwear', label: 'Chaussures', icon: '👠' },
-  { id: 'bag', label: 'Sac à main', icon: '👜' },
+  { id: 'bag', label: 'Sac', icon: '👜' },
   { id: 'accessory', label: 'Accessoire', icon: '🧣' },
 ];
 
 const OCCASIONS: { id: Occasion; label: string; icon: string }[] = [
   { id: 'casual', label: 'Décontracté', icon: '☕' },
-  { id: 'work', label: 'Travail & Bureau', icon: '💼' },
-  { id: 'evening', label: 'Soirée Habillée', icon: '🌙' },
+  { id: 'work', label: 'Travail / bureau', icon: '💼' },
+  { id: 'evening', label: 'Soirée', icon: '🌙' },
+  { id: 'sport', label: 'Sport', icon: '🏃' },
+  { id: 'ceremony', label: 'Mariage / cérémonie', icon: '💍' },
 ];
 
 export default function OutfitStudio() {
@@ -47,6 +50,13 @@ function Studio({ live }: { live: boolean }) {
   const [activeSlotModal, setActiveSlotModal] = useState<Slot | null>(null);
   const [occasion, setOccasion] = useState<Occasion>('casual');
   const [temperature, setTemperature] = useState(21);
+  const [tempFromWeather, setTempFromWeather] = useState(false);
+  useEffect(() => {   // départ : température ressentie du jour dans la ville choisie (Tenue du jour)
+    if (!live) return;
+    getWeather(loadCity()).then(w => {
+      if (w.available && w.feelsLikeC != null) { setTemperature(w.feelsLikeC); setTempFromWeather(true); }
+    }).catch(() => { /* météo indisponible : 21 °C par défaut */ });
+  }, [live]);
   const [juryResult, setJuryResult] = useState<OutfitJuryResult | null>(() =>
     live ? null : evaluateOutfitWithJury(
       [demoWardrobe[0], demoWardrobe[1], demoWardrobe[3]],
@@ -163,12 +173,13 @@ function Studio({ live }: { live: boolean }) {
             value={temperature}
             onChange={e => {
               const t = Number(e.target.value);
-              setTemperature(t);
+              setTemperature(t); setTempFromWeather(false);
               runJuryEvaluation(selectedItems, occasion, t);
             }}
             style={{ width: '90px', accentColor: 'var(--pastel-pink-deep)' }}
           />
           <strong style={{ fontSize: '0.9rem', minWidth: '38px' }}>{temperature}°C</strong>
+          {tempFromWeather && <span style={{ fontSize: '0.75rem', color: 'var(--muted)' }}>(ressenti à {loadCity()})</span>}
         </div>
       </section>
 
@@ -177,7 +188,7 @@ function Studio({ live }: { live: boolean }) {
         {/* Left Column: Composed Outfit Slots */}
         <div>
           <h3 style={{ fontSize: '1.2rem', marginBottom: '16px' }}>
-            Pièces Sélectionnées ({selectedItems.length})
+            Pièces choisies ({selectedItems.length})
           </h3>
 
           <div style={{ display: 'grid', gap: '14px' }}>

@@ -1037,6 +1037,14 @@ a {
     order: 3;
     width: 100%;
   }
+  .topbar-actions {
+    gap: 8px;
+  }
+  .topbar-pill, .demo-toggle-btn {   /* « pluie 0 % », « Ma garde-robe » : pas de coupure en deux lignes */
+    white-space: nowrap;
+    padding: 7px 12px;
+    font-size: 0.76rem;
+  }
   .tabbar {
     display: flex;
     position: fixed;
@@ -1054,9 +1062,13 @@ a {
     display: flex;
     flex-direction: column;
     align-items: center;
+    flex: 1 1 0;          /* 6 onglets : largeur partagée, aucun ne sort de l'écran */
+    min-width: 0;
+    text-align: center;
+    line-height: 1.15;
     gap: 4px;
-    padding: 8px 12px;
-    font-size: 0.72rem;
+    padding: 8px 2px;
+    font-size: 0.66rem;
     font-weight: 500;
     color: var(--muted);
     border-radius: var(--radius-md);

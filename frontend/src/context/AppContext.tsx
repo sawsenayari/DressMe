@@ -25,7 +25,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // but can toggle off if connecting to live model server
   const [useDemoData, setUseDemoData] = useState<boolean>(() => {
     const saved = localStorage.getItem('dressme_demo_mode');
-    return saved !== null ? saved === 'true' : true;
+    return saved === 'true';   // par défaut : la vraie garde-robe (la démo s'active avec le bouton du haut)
   });
 
   const [wardrobe, setWardrobe] = useState<ClothingItem[]>(() => {
@@ -74,7 +74,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (budget) {
       return {
         ...base,
-        reason: `[Budget Optimized] Re-wearing your top-rated wardrobe staples. ${base.reason}`,
+        reason: `[Budget] On reporte vos pièces préférées. ${base.reason}`,
       };
     }
     return base;
@@ -87,9 +87,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       newOutfits: 7,
       clashingItems: wardrobe.slice(4, 5),
       notes: [
-        'Complements 80% of your neutral tops and bottoms.',
-        'High versatility: transitions from casual to evening effortlessly.',
-        'Fabric & palette align with your spring & autumn seasonal profile.',
+        'S\'accorde avec 80 % de vos hauts et bas neutres.',
+        'Très polyvalente : se porte en journée comme en soirée.',
+        'Matière et couleurs adaptées au printemps et à l\'automne.',
       ],
     };
   };

@@ -1,14 +1,13 @@
-import { useState } from 'react';
 import type { ClothingItem } from '../../types';
 
 interface Props {
   items: ClothingItem[];
-  tryOnImageUrl?: string;
+  tryOnImageUrl?: string; // non utilisé : pas d'essayage virtuel réel pour l'instant
   className?: string;
 }
 
-export function MannequinView({ items, tryOnImageUrl }: Props) {
-  const [viewMode, setViewMode] = useState<'layers' | 'tryon'>('layers');
+/** Silhouette en couches construite avec les photos des pièces choisies. */
+export function MannequinView({ items }: Props) {
 
   // Segregate items by slot for the 2D layered mannequin
   const top = items.find(i => i.slot === 'top');
@@ -20,7 +19,6 @@ export function MannequinView({ items, tryOnImageUrl }: Props) {
 
   return (
     <div className="card" style={{ padding: '24px', background: 'var(--surface)' }}>
-      {/* View Switcher Controls (Niveau 1 vs Niveau 2) */}
       <div
         style={{
           display: 'flex',
@@ -36,41 +34,9 @@ export function MannequinView({ items, tryOnImageUrl }: Props) {
           <h3 style={{ fontSize: '1.1rem' }}>Aperçu de la tenue</h3>
         </div>
 
-        <div style={{ display: 'flex', gap: '6px', background: 'var(--paper)', padding: '4px', borderRadius: '999px' }}>
-          <button
-            className="chip"
-            style={{
-              padding: '6px 14px',
-              fontSize: '0.8rem',
-              boxShadow: 'none',
-              background: viewMode === 'layers' ? '#FFFFFF' : 'transparent',
-              color: viewMode === 'layers' ? 'var(--ink)' : 'var(--muted)',
-              border: viewMode === 'layers' ? '1px solid var(--line)' : 'none',
-              fontWeight: viewMode === 'layers' ? 700 : 500,
-            }}
-            onClick={() => setViewMode('layers')}
-          >
-            Silhouette
-          </button>
-          <button
-            className="chip"
-            style={{
-              padding: '6px 14px',
-              fontSize: '0.8rem',
-              boxShadow: 'none',
-              background: viewMode === 'tryon' ? 'linear-gradient(135deg, var(--pastel-pink) 0%, var(--pastel-lavender) 100%)' : 'transparent',
-              color: viewMode === 'tryon' ? '#292832' : 'var(--muted)',
-              border: 'none',
-              fontWeight: viewMode === 'tryon' ? 700 : 500,
-            }}
-            onClick={() => setViewMode('tryon')}
-          >
-            ✨ Essayage virtuel
-          </button>
-        </div>
       </div>
 
-      {viewMode === 'layers' ? (
+      {(
         /* Niveau 1: 2D Layered Mannequin (garanti, non-bloquant) */
         <div
           style={{
@@ -188,49 +154,6 @@ export function MannequinView({ items, tryOnImageUrl }: Props) {
                 Chaussures
               </div>
             )}
-          </div>
-        </div>
-      ) : (
-        /* Niveau 2: Virtual Try-On (CatVTON / FASHN photoréaliste) */
-        <div style={{ textAlign: 'center' }}>
-          <div
-            style={{
-              position: 'relative',
-              width: '100%',
-              maxWidth: '380px',
-              margin: '0 auto',
-              aspectRatio: '3/4',
-              borderRadius: '24px',
-              overflow: 'hidden',
-              boxShadow: 'var(--shadow-hover)',
-              border: '1px solid var(--line)',
-            }}
-          >
-            <img
-              src={tryOnImageUrl || 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=800&auto=format&fit=crop&q=80'}
-              alt="Essayage virtuel photoréaliste (CatVTON)"
-              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-            />
-            <div
-              style={{
-                position: 'absolute',
-                bottom: '12px',
-                left: '12px',
-                right: '12px',
-                background: 'rgba(255, 255, 255, 0.92)',
-                backdropFilter: 'blur(8px)',
-                padding: '10px 14px',
-                borderRadius: '16px',
-                textAlign: 'left',
-              }}
-            >
-              <div style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--ink)' }}>
-                Rendu Photoréaliste (CatVTON / FASHN)
-              </div>
-              <div style={{ fontSize: '0.74rem', color: 'var(--muted)' }}>
-                Généré en local sur GPU T4 — Aucune photo externe transmise.
-              </div>
-            </div>
           </div>
         </div>
       )}

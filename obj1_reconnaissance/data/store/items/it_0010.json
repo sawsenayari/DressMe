@@ -1,14 +1,15 @@
 {
   "id": "it_0010",
-  "name": "White traditional garment",
-  "slot": "onepiece",
-  "type": "Other",
+  "name": "White sneakers",
+  "slot": "footwear",
+  "type": "Sneakers",
   "colour": [
-    "white"
+    "white",
+    "beige"
   ],
-  "usage": "Ethnic",
-  "warmth": 2,
-  "formality": 3,
+  "usage": "Sports",
+  "warmth": 1,
+  "formality": 0,
   "waterproof": false,
   "open_toe": false,
   "gender": "Men",
@@ -18,11 +19,11 @@
   "season": "all",
   "pattern": "plain",
   "confidence": {
-    "slot": 0.9552672390565717,
-    "colour": 0.8610438775488947,
-    "type": 0.8119771531980859
+    "slot": 1.0,
+    "colour": 1.0,
+    "type": 1.0
   },
-  "source": "obj1.llm",
+  "source": "user_corrected",
   "price_dt": null,
-  "traditional": true
+  "traditional": false
 }
