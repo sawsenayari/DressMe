@@ -124,8 +124,10 @@ ni dans le modèle Obj5, ni dans le cache Obj1.
 - **Obj4** : analyse calculée sur la garde-robe (candidats de l'IA Gemini/Groq, sinon liste de pièces de base). Chaque
   candidat est simulé par une pièce de même catégorie (proxy de l'Obj4) ; seuils 0,70 / 0,40 non calibrés. Chiffre
   affiché et classement : comptage de l'Obj4 avec chaque association tranchée au score 0,5 de l'Obj2 (ajout de la
-  passerelle) ; les bornes prudente / optimiste de l'Obj4 restent affichées. « Où l'acheter ? » n'apparaît qu'avec
-  `DRESSME_TAVILY_API_KEY`.
+  passerelle) ; les bornes prudente / optimiste suivent la formule de l'Obj4. Comptage corrigé dans la passerelle :
+  chaque veste ou sac compatible donne une tenue différente (l'Obj4 plafonnait à « avec ou sans », si bien qu'une veste
+  ou un sac de plus ne pouvait jamais rien ajouter). « 🔎 Recherche en ligne » (requête Tavily « [pièce] buy online »)
+  demande `DRESSME_TAVILY_API_KEY` dans `gateway/.env`.
   `gap_report.json` ne sert plus que d'exemple quand la garde-robe n'a pas de photos.
 - **Obj5** : profil et suggestions utilisent la taxonomie de référence (16 styles appris sur 423 fiches, espace
   d'attributs, pas FashionCLIP faute d'embeddings du catalogue) ; palette = part des pièces par couleur ; suggestions

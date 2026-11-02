@@ -791,6 +791,45 @@ def _gap_static():
     return out
 
 
+def _count_outfits(items, judgments, unknown_as_compatible):
+    """Comptage des tenues du moteur de l'Obj4 (mêmes modèles : haut + bas + chaussures, ou robe + chaussures ; veste et
+    sac en couches facultatives), SANS le plafond « une seule veste / un seul sac » de l'Obj4 : chaque veste ou sac
+    compatible donne une tenue différente. Avec le plafond, une veste ou un sac de plus ne pouvait jamais rien ajouter
+    (le candidat étant simulé par une pièce déjà possédée)."""
+    from itertools import product
+    from dressme_gap_agent.outfit_engine import CORE_PATTERNS, LAYER_SLOTS
+    from dressme_gap_agent.slot_mapping import normalize_slot
+    by_slot = {}
+    for it in items:
+        by_slot.setdefault(normalize_slot(it["slot"]), []).append(it["item_id"])
+
+    def ok(a, b):
+        v = judgments.get(tuple(sorted((a, b))), "uncertain")
+        return unknown_as_compatible if v == "uncertain" else v == "compatible"
+
+    total = 0
+    for pattern in CORE_PATTERNS:
+        lists = [by_slot.get(sl, []) for sl in pattern]
+        if any(not x for x in lists):
+            continue
+        for core in product(*lists):
+            if not all(ok(core[i], core[j]) for i in range(len(core)) for j in range(i + 1, len(core))):
+                continue
+            mult = 1
+            for layer in LAYER_SLOTS:   # sans veste, ou avec chacune des vestes compatibles (idem pour les sacs)
+                mult *= 1 + sum(all(ok(x, c) for c in core) for x in by_slot.get(layer, []))
+            total += mult
+    return total
+
+
+def _gain_bounds(wardrobe, cand, judgments):
+    """Bornes prudente / optimiste, même formule que gain_bounds de l'Obj4, avec le comptage ci-dessus."""
+    b_lo, b_hi = _count_outfits(wardrobe, judgments, False), _count_outfits(wardrobe, judgments, True)
+    a_lo, a_hi = _count_outfits([*wardrobe, cand], judgments, False), _count_outfits([*wardrobe, cand], judgments, True)
+    return {"before_lower": b_lo, "before_upper": b_hi, "after_lower": a_lo, "after_upper": a_hi,
+            "gain_lower": max(0, a_lo - b_hi), "gain_upper": max(0, a_hi - b_lo)}
+
+
 @app.get("/gaps")
 def gaps(refresh: bool = False):
     """Pièces manquantes (objectif 4) calculées sur la garde-robe : candidats (IA de l'Obj4, sinon pièces de base),
@@ -801,7 +840,7 @@ def gaps(refresh: bool = False):
     from dressme_gap_agent.candidate_prototypes import CandidatePrototypeError, resolve_candidate_prototypes
     from dressme_gap_agent.compatibility_scores import score_to_verdict
     from dressme_gap_agent.contracts import validate_gap_result
-    from dressme_gap_agent.outfit_engine import count_outfits, gain_bounds, required_pair_keys
+    from dressme_gap_agent.outfit_engine import required_pair_keys
 
     # garde-robe comptée par l'Obj4 : pièces avec embedding, hors accessoires, une seule pièce par apparence
     cards, seen = [], set()
@@ -873,11 +912,11 @@ def gaps(refresh: bool = False):
     # chiffre principal : comptage du moteur de l'Obj4 où chaque association est tranchée au score 0,5 de l'Obj2
     # (ni prudent ni optimiste) ; les bornes de l'Obj4 restent fournies telles quelles
     likely = {pk: ("compatible" if scores[pk] >= GAP_LIKELY else "incompatible") for pk in pairs}
-    now_likely = count_outfits(wardrobe, likely, unknown_as_compatible=False)["total_outfits"]
+    now_likely = _count_outfits(wardrobe, likely, False)
     results = []
     for r in resolved:
-        b = gain_bounds(wardrobe, r, verdicts)
-        after = count_outfits([*wardrobe, r], likely, unknown_as_compatible=False)["total_outfits"]
+        b = _gain_bounds(wardrobe, r, verdicts)
+        after = _count_outfits([*wardrobe, r], likely, False)
         results.append({"item_id": r["item_id"], "description": r["description"], "slot": r["slot"],
                         "rationale": r.get("rationale", ""), "proxy_item_id": r["proxy_item_id"],
                         "gain_likely": max(0, after - now_likely), **b})
@@ -886,8 +925,8 @@ def gaps(refresh: bool = False):
         x["rank"] = rank
     validate_gap_result({"contract_version": "1.0", "status": "complete", "ranking_ready": True, "gaps": results,
                          "compatibility_progress": {"total_pairs": len(pairs), "completed_pairs": len(pairs), "remaining_pairs": 0}})
-    now_low = count_outfits(wardrobe, verdicts, unknown_as_compatible=False)["total_outfits"]
-    now_high = count_outfits(wardrobe, verdicts, unknown_as_compatible=True)["total_outfits"]
+    now_low = _count_outfits(wardrobe, verdicts, False)
+    now_high = _count_outfits(wardrobe, verdicts, True)
     cat = {c["id"]: c for c in catalog()}
     def colour_differs(desc, proxy_id):
         """La description cite une couleur que la pièce de simulation n'a pas (proxy de l'Obj4 = même catégorie)."""
@@ -921,7 +960,7 @@ def gaps_shopping(description: str, slot: str = "", max_price: Optional[float] =
     try:
         cfg = ShoppingSearchConfig.from_env()
     except ShoppingSearchError:
-        raise HTTPException(503, "La recherche de boutiques n'est pas configurée (clé de recherche absente du serveur).")
+        raise HTTPException(503, "La recherche en ligne n'est pas configurée : ajoutez la clé DRESSME_TAVILY_API_KEY dans gateway/.env puis relancez run_all.bat.")
     try:
         opts = search_gap({"description": description.strip(), "slot": slot}, cfg, max_results=max(1, min(k, 10)),
                           max_price=max_price)

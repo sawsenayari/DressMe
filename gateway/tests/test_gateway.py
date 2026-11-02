@@ -457,11 +457,19 @@ def test_gaps_analysis_and_shopping(tmp_path, monkeypatch):
     monkeypatch.setattr(g, "_cache", {})
     assert c.get("/gaps").json()["shoppingEnabled"] is True
     import dressme_gap_agent.shopping as shop
-    monkeypatch.setattr(shop, "search_gap", lambda gap, cfg, max_results=5, max_price=None: [
-        {"title": "Baskets", "url": "https://exemple.tn/b", "snippet": "…", "price": 89.0, "currency": "TND", "source": "x"}])
+    sent = []
+    def fake_search(gap, cfg, max_results=5, max_price=None):
+        sent.append(shop._search_query(gap))   # requête Tavily construite par l'Obj4
+        return [{"title": "Baskets", "url": "https://exemple.tn/b", "snippet": "…", "price": 89.0, "currency": "TND", "source": "x"}]
+    monkeypatch.setattr(shop, "search_gap", fake_search)
     r = c.get("/gaps/shopping", params={"description": "baskets blanches", "max_price": 100}).json()
+    assert sent == ["baskets blanches buy online"]
     assert r["options"][0]["price"] == 89.0 and r["options"][0]["url"].startswith("https://")
     assert c.get("/gaps/shopping", params={"description": " "}).status_code == 422
+    # comptage : chaque veste compatible donne une tenue (l'Obj4 plafonnait à « avec ou sans veste »)
+    items = [{"item_id": i, "slot": sl} for i, sl in (("t", "top"), ("b", "bottom"), ("s", "footwear"), ("o", "outer"), ("o2", "outer"))]
+    J = {tuple(sorted(p)): "compatible" for p in [("t", "b"), ("t", "s"), ("b", "s")] + [(o, x) for o in ("o", "o2") for x in "tbs"]}
+    assert g._count_outfits(items, J, False) == 3 and g._count_outfits(items[:4], J, False) == 2
 
 
 def test_crop_photo_then_add(tmp_path, monkeypatch):

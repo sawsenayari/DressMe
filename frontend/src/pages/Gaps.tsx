@@ -136,7 +136,7 @@ export default function Gaps() {
 
           {a.mode === 'analyse' && a.shoppingEnabled && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px', flexWrap: 'wrap' }}>
-              <label htmlFor="gap-price" style={{ fontSize: '0.86rem', fontWeight: 600 }}>Budget maximum pour « Où l'acheter ? »</label>
+              <label htmlFor="gap-price" style={{ fontSize: '0.86rem', fontWeight: 600 }}>Budget maximum pour la recherche en ligne</label>
               <input id="gap-price" className="form-input" type="number" min={0} placeholder="sans limite" value={maxPrice}
                      onChange={e => setMaxPrice(e.target.value)} style={{ width: '130px' }} />
             </div>
@@ -167,7 +167,7 @@ export default function Gaps() {
                         </div>
                         <span style={{ fontSize: '0.76rem', color: 'var(--muted)' }}>
                           Fourchette : {gainText(g)}
-                          {!n && (g.slot === 'outer' || g.slot === 'bag') && ` · votre ${g.slot === 'bag' ? 'sac actuel va' : 'veste actuelle va'} déjà avec ces tenues`}
+                          {!n && g.proxy && ` · « ${g.proxy.name || slotLabel(g.proxy.slot)} », qui sert à la simuler, ne s'accorde avec aucune de vos tenues selon le modèle : estimation peu fiable`}
                         </span>
                       </div>
                     ) : (
@@ -182,10 +182,11 @@ export default function Gaps() {
                         {g.proxyColourDiffers && ' (couleur différente : estimation moins précise)'}
                       </p>
                     )}
-                    {a.mode === 'analyse' && a.shoppingEnabled && (
+                    {a.mode === 'analyse' && (
                       <div style={{ marginTop: '8px' }}>
-                        <button className="btn-sm btn-secondary" style={{ borderRadius: '999px' }} disabled={sh?.loading} onClick={() => findShops(g)}>
-                          {sh?.loading ? 'Recherche…' : "🛒 Où l'acheter ?"}
+                        <button className="btn-sm btn-secondary" style={{ borderRadius: '999px' }} disabled={sh?.loading} onClick={() => findShops(g)}
+                                title={`Recherche web : « ${g.description} buy online »`}>
+                          {sh?.loading ? 'Recherche…' : '🔎 Recherche en ligne'}
                         </button>
                         {sh?.error && <p role="alert" style={{ ...sub, color: 'var(--danger)' }}>{sh.error}</p>}
                         {sh?.options && (sh.options.length ? (
@@ -193,6 +194,7 @@ export default function Gaps() {
                             {sh.options.map(o => (
                               <li key={o.url}>
                                 <a href={o.url} target="_blank" rel="noreferrer noopener">{o.title}</a>
+                                <span style={{ color: 'var(--muted)' }}> · {new URL(o.url).hostname.replace(/^www\./, '')}</span>
                                 {o.price != null && <span style={{ fontWeight: 700 }}> · {o.price} {o.currency ?? ''}</span>}
                               </li>
                             ))}
