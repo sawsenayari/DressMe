@@ -144,10 +144,13 @@ export interface GapAnalysis {
 export interface ShopOption {
   title: string;
   url: string;
-  snippet: string;
+  site: string; // nom de domaine du vendeur
+  description: string; // description de la page produit (sinon extrait de la recherche)
   price: number | null;
   currency: string | null;
+  priceTnd?: number | null; // prix converti en dinars (taux approximatif) pour comparer les devises
   imageUrl?: string | null;
+  product: boolean; // fiche produit (prix ou balises produit) plutôt qu'un article
 }
 
 /** DSO5: Style Profile (Ahmed Ayari) */

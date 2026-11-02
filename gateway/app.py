@@ -950,9 +950,106 @@ def gaps(refresh: bool = False):
     return res
 
 
+_TND_PRICE = re.compile(r"(\d{1,3}(?:[ .,\u00a0]\d{3})*(?:[.,]\d{1,3})?)\s?(?:DT|TND|dinars?)\b", re.IGNORECASE)
+
+
+# taux approximatifs (dinars pour 1 unité), seulement pour trier et indiquer un ordre de grandeur
+SOCIAL_SITES = ("facebook.", "instagram.", "pinterest.", "tiktok.", "twitter.", "x.com", "reddit.", "youtube.", "youtu.be")
+TND_RATE = {"TND": 1.0, "EUR": 3.4, "USD": 3.1, "GBP": 4.0, "$": 3.1, "€": 3.4, "£": 4.0}
+
+
+def _price_tnd(text):
+    """Prix en dinars (« 89,000 DT », « 129 TND ») que l'extraction de l'Obj4 ($ € £) ne reconnaît pas."""
+    m = _TND_PRICE.search(text or "")
+    if not m:
+        return None
+    raw = m.group(1).replace(" ", "").replace("\u00a0", "")
+    if "." in raw and "," in raw:                     # 1.299,500 DT : milliers puis décimales (ou l'inverse)
+        sep = "." if raw.index(".") < raw.index(",") else ","
+        raw = raw.replace(sep, "").replace("," if sep == "." else ".", ".")
+    elif re.fullmatch(r"\d+[.,]\d{3}", raw):        # 89,000 DT / 89.000 DT = 89 dinars (millimes)
+        raw = raw.replace(",", ".")
+    else:
+        raw = raw.replace(".", "").replace(",", ".") if raw.count(".") > 1 else raw.replace(",", ".")
+    try:
+        return float(raw)
+    except ValueError:
+        return None
+
+
+def _page_meta(url):
+    """Balises de la page produit (comme le site les affiche) : description, photo, prix (og / product / JSON-LD)."""
+    from html.parser import HTMLParser
+    from urllib.request import Request, urlopen
+
+    class P(HTMLParser):
+        def __init__(self):
+            super().__init__(); self.meta = {}; self.ld = []; self._ld = False
+
+        def handle_starttag(self, tag, attrs):
+            a = {k.lower(): v for k, v in attrs}
+            if tag == "meta":
+                k = (a.get("property") or a.get("name") or a.get("itemprop") or "").lower()
+                if k and a.get("content") and k not in self.meta:
+                    self.meta[k] = a["content"].strip()
+            elif tag == "script" and (a.get("type") or "").lower() == "application/ld+json":
+                self._ld = True; self.ld.append("")
+
+        def handle_endtag(self, tag):
+            if tag == "script":
+                self._ld = False
+
+        def handle_data(self, data):
+            if self._ld:
+                self.ld[-1] += data
+
+    try:
+        req = Request(url, headers={"User-Agent": "Mozilla/5.0 (DressMe)", "Accept-Language": "fr,en;q=0.8"})
+        with urlopen(req, timeout=6) as r:
+            if "text/html" not in r.headers.get("Content-Type", "").lower():
+                return {}
+            html = r.read(400_000).decode("utf-8", errors="ignore")
+    except Exception:
+        return {}
+    p = P(); p.feed(html)
+    m = p.meta
+    out = {"description": m.get("og:description") or m.get("description") or m.get("twitter:description"),
+           "image": m.get("og:image") or m.get("twitter:image"),
+           "title": m.get("og:title"), "product": (m.get("og:type") or "").lower().startswith("product")}
+    price = m.get("product:price:amount") or m.get("og:price:amount") or m.get("price")
+    cur = m.get("product:price:currency") or m.get("og:price:currency") or m.get("pricecurrency")
+    if not price:   # JSON-LD schema.org Product / Offer
+        for block in p.ld:
+            mm = re.search(r'"price"\s*:\s*"?([\d.,]+)"?', block)
+            if mm:
+                price = mm.group(1); out["product"] = True
+                cc = re.search(r'"priceCurrency"\s*:\s*"([A-Z]{3})"', block)
+                cur = cur or (cc.group(1) if cc else None)
+                break
+    try:
+        out["price"] = float(str(price).replace(",", ".")) if price else None
+    except ValueError:
+        out["price"] = None
+    out["currency"] = (cur or "").upper() or None
+    return out
+
+
+def _clean_snippet(text, n=220):
+    """Texte de Tavily sans markdown ni liens, coupé à la fin d'un mot."""
+    t = re.sub(r"!\[[^\]]*\]\([^)]*\)", " ", text or "")
+    t = re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", t)
+    t = re.sub(r"[#*_`>|]+", " ", t)
+    t = re.sub(r"\s+", " ", t).strip()
+    return t if len(t) <= n else t[:n].rsplit(" ", 1)[0] + "…"
+
+
 @app.get("/gaps/shopping")
-def gaps_shopping(description: str, slot: str = "", max_price: Optional[float] = None, k: int = 5):
-    """Où acheter une pièce manquante (recherche web de l'Obj4, Tavily) ; ne modifie pas le classement des manques."""
+def gaps_shopping(description: str, slot: str = "", max_price: Optional[float] = None, k: int = 10):
+    """Recherche en ligne d'une pièce manquante : Tavily (requête de l'Obj4 « [pièce] buy online »), puis lecture des
+    pages trouvées (description, photo, prix du produit). Résultats triés par prix croissant, prix inconnus à la fin ;
+    les fiches produit passent devant les articles. Ne modifie pas le classement des manques."""
+    from concurrent.futures import ThreadPoolExecutor
+    from urllib.parse import urlparse
     _obj4_path()
     from dressme_gap_agent.shopping import ShoppingSearchConfig, ShoppingSearchError, search_gap
     if not description.strip() or len(description) > 120:
@@ -961,15 +1058,37 @@ def gaps_shopping(description: str, slot: str = "", max_price: Optional[float] =
         cfg = ShoppingSearchConfig.from_env()
     except ShoppingSearchError:
         raise HTTPException(503, "La recherche en ligne n'est pas configurée : ajoutez la clé DRESSME_TAVILY_API_KEY dans gateway/.env puis relancez run_all.bat.")
-    try:
-        opts = search_gap({"description": description.strip(), "slot": slot}, cfg, max_results=max(1, min(k, 10)),
-                          max_price=max_price)
+    try:   # sans filtre de prix ici : l'Obj4 écarterait les prix en dinars qu'il ne sait pas lire
+        opts = search_gap({"description": description.strip(), "slot": slot}, cfg, max_results=max(3, min(k, 12)))
     except Exception as e:
         log(f"Obj4 : recherche de boutiques en échec ({type(e).__name__}: {str(e)[:160]})")
-        raise HTTPException(502, "La recherche de boutiques n'a pas abouti. Réessayez dans un instant.")
-    return {"description": description, "options": [
-        {"title": o["title"], "url": o["url"], "snippet": (o.get("snippet") or "")[:240], "price": o.get("price"),
-         "currency": o.get("currency"), "imageUrl": o.get("image_url")} for o in opts]}
+        raise HTTPException(502, "La recherche en ligne n'a pas abouti. Réessayez dans un instant.")
+    opts = [o for o in opts if not any(sn in urlparse(o["url"]).netloc.lower() for sn in SOCIAL_SITES)]   # pas des boutiques
+    with ThreadPoolExecutor(max_workers=6) as pool:
+        metas = list(pool.map(lambda o: _page_meta(o["url"]), opts))
+    out = []
+    for o, m in zip(opts, metas):
+        price, cur = m.get("price"), m.get("currency")
+        if price is None and o.get("price") is not None:
+            price, cur = o["price"], o.get("currency")
+        if price is None:
+            price = _price_tnd(f"{o.get('title', '')} {o.get('snippet', '')}")
+            cur = "TND" if price is not None else None
+        if price is not None and price <= 0:   # prix vide sur la page (« 0 »)
+            price, cur = None, None
+        tnd = round(price * TND_RATE[cur], 1) if price is not None and cur in TND_RATE else None
+        if max_price is not None and (tnd is None or tnd > max_price):   # budget en dinars
+            continue
+        out.append({"title": (m.get("title") or o["title"]).strip()[:140], "url": o["url"],
+                    "site": urlparse(o["url"]).netloc.removeprefix("www."),
+                    "description": _clean_snippet(m.get("description") or o.get("snippet") or ""),
+                    "price": price, "currency": cur, "imageUrl": m.get("image") or o.get("image_url"),
+                    "priceTnd": tnd,
+                    # fiche produit : la page se déclare produit (og:type, product:price, schema.org) et n'est pas une
+                    # page d'accueil de marque ; un prix trouvé dans le texte ne suffit pas
+                    "product": bool(m.get("product")) and urlparse(o["url"]).path.strip("/") != ""})
+    out.sort(key=lambda x: (not x["product"], x["priceTnd"] is None, x["priceTnd"] or 0))   # devises comparées en dinars
+    return {"description": description, "query": f"{description.strip()} buy online", "options": out}
 
 
 AXIS = {"efficacite": "efficiency", "economie": "economy", "image": "brand", "mixte": "mixte"}

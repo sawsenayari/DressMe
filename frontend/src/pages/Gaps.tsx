@@ -36,7 +36,18 @@ const GAP_IMAGES: Record<string, string> = {
   'gap-4': 'https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=700&auto=format&fit=crop&q=80',
 };
 
-type Shop = { loading?: boolean; error?: string; options?: ShopOption[] };
+type Shop = { loading?: boolean; error?: string; options?: ShopOption[]; order?: 'asc' | 'desc' };
+const SHOW = 3;   // résultats affichés par recherche
+const fmt = (v: number) => v.toLocaleString('fr-FR', { minimumFractionDigits: v % 1 ? 2 : 0, maximumFractionDigits: 3 });
+const money = (o: ShopOption) => (o.price == null ? 'Prix sur le site'
+  : `${fmt(o.price)} ${o.currency ?? ''}`.trim() + (o.currency && o.currency !== 'TND' && o.priceTnd != null ? ` (≈ ${fmt(Math.round(o.priceTnd))} TND)` : ''));
+/** 3 résultats : fiches produit d'abord, puis prix connus triés (croissant ou décroissant), puis prix inconnus. */
+const pickShops = (opts: ShopOption[], order: 'asc' | 'desc') => {
+  const val = (o: ShopOption) => o.priceTnd ?? null;   // devises différentes : comparées en dinars
+  const rank = (o: ShopOption) => (o.product ? 0 : 2) + (val(o) == null ? 1 : 0);
+  return [...opts].sort((x, y) => rank(x) - rank(y)
+    || (val(x) != null && val(y) != null ? (order === 'asc' ? val(x)! - val(y)! : val(y)! - val(x)!) : 0)).slice(0, SHOW);
+};
 
 const likelyOf = (g: GapSuggestion) => g.gain_likely ?? g.unlockedOutfits;
 const gainText = (g: GapSuggestion) => {
@@ -136,7 +147,7 @@ export default function Gaps() {
 
           {a.mode === 'analyse' && a.shoppingEnabled && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px', flexWrap: 'wrap' }}>
-              <label htmlFor="gap-price" style={{ fontSize: '0.86rem', fontWeight: 600 }}>Budget maximum pour la recherche en ligne</label>
+              <label htmlFor="gap-price" style={{ fontSize: '0.86rem', fontWeight: 600 }}>Budget maximum (TND) pour la recherche en ligne</label>
               <input id="gap-price" className="form-input" type="number" min={0} placeholder="sans limite" value={maxPrice}
                      onChange={e => setMaxPrice(e.target.value)} style={{ width: '130px' }} />
             </div>
@@ -190,16 +201,41 @@ export default function Gaps() {
                         </button>
                         {sh?.error && <p role="alert" style={{ ...sub, color: 'var(--danger)' }}>{sh.error}</p>}
                         {sh?.options && (sh.options.length ? (
-                          <ul style={{ margin: '8px 0 0', paddingLeft: '18px', fontSize: '0.85rem', lineHeight: 1.6 }}>
-                            {sh.options.map(o => (
-                              <li key={o.url}>
-                                <a href={o.url} target="_blank" rel="noreferrer noopener">{o.title}</a>
-                                <span style={{ color: 'var(--muted)' }}> · {new URL(o.url).hostname.replace(/^www\./, '')}</span>
-                                {o.price != null && <span style={{ fontWeight: 700 }}> · {o.price} {o.currency ?? ''}</span>}
-                              </li>
-                            ))}
-                            <li style={{ listStyle: 'none', color: 'var(--muted)', fontSize: '0.78rem' }}>Prix indicatifs : vérifiez sur le site du vendeur.</li>
-                          </ul>
+                          <div style={{ marginTop: '10px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '8px' }}>
+                              <span style={{ fontSize: '0.8rem', color: 'var(--muted)' }}>
+                                {Math.min(SHOW, sh.options.length)} sur {sh.options.length} résultat{sh.options.length > 1 ? 's' : ''} · trier par
+                              </span>
+                              {(['asc', 'desc'] as const).map(ord => (
+                                <button key={ord} className="chip" style={{ fontSize: '0.75rem', padding: '4px 10px' }}
+                                        aria-pressed={(sh.order ?? 'asc') === ord}
+                                        onClick={() => setShops(s => ({ ...s, [g.id]: { ...s[g.id], order: ord } }))}>
+                                  {ord === 'asc' ? 'Prix croissant' : 'Prix décroissant'}
+                                </button>
+                              ))}
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: '10px' }}>
+                              {pickShops(sh.options, sh.order ?? 'asc').map(o => (
+                                <a key={o.url} href={o.url} target="_blank" rel="noreferrer noopener" className="card"
+                                   style={{ display: 'grid', gap: '6px', alignContent: 'start', padding: '10px', background: '#FFFFFF', color: 'inherit', textDecoration: 'none' }}>
+                                  <div style={{ height: '150px', borderRadius: '12px', background: 'var(--paper)', display: 'grid', placeItems: 'center', overflow: 'hidden' }}>
+                                    {o.imageUrl
+                                      ? <img src={o.imageUrl} alt={o.title} loading="lazy" referrerPolicy="no-referrer"
+                                             onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                                             style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                                      : <span style={{ fontSize: '0.78rem', color: 'var(--muted)' }}>Pas de photo</span>}
+                                  </div>
+                                  <span style={{ fontSize: '0.86rem', fontWeight: 700, lineHeight: 1.3, color: 'var(--ink)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{o.title}</span>
+                                  <span style={{ fontSize: '1rem', fontWeight: 800, color: o.price == null ? 'var(--muted)' : 'var(--pastel-mint-deep)' }}>{money(o)}</span>
+                                  <span style={{ fontSize: '0.74rem', color: 'var(--muted)' }}>{o.site}</span>
+                                  {o.description && (
+                                    <span style={{ fontSize: '0.78rem', lineHeight: 1.4, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{o.description}</span>
+                                  )}
+                                </a>
+                              ))}
+                            </div>
+                            <p style={{ ...sub, fontSize: '0.74rem' }}>Prix et photos tels que trouvés en ligne : vérifiez sur le site du vendeur (taille, livraison, prix final).</p>
+                          </div>
                         ) : <p style={sub}>Aucune boutique trouvée{maxPrice ? ' dans ce budget' : ''}.</p>)}
                       </div>
                     )}

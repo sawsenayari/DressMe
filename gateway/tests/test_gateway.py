@@ -460,11 +460,25 @@ def test_gaps_analysis_and_shopping(tmp_path, monkeypatch):
     sent = []
     def fake_search(gap, cfg, max_results=5, max_price=None):
         sent.append(shop._search_query(gap))   # requête Tavily construite par l'Obj4
-        return [{"title": "Baskets", "url": "https://exemple.tn/b", "snippet": "…", "price": 89.0, "currency": "TND", "source": "x"}]
+        return [{"title": "Article de blog", "url": "https://blog.tn/a", "snippet": "Idées de tenues", "price": None, "currency": None},
+                {"title": "Baskets B", "url": "https://boutique.tn/b", "snippet": "Prix : 149,900 DT", "price": None, "currency": None},
+                {"title": "Baskets A", "url": "https://shop.com/a", "snippet": "…", "price": 60.0, "currency": "EUR"},
+                {"title": "Baskets C", "url": "https://vente.tn/c", "snippet": "**Neuves** [voir](https://x)", "price": None, "currency": None},
+                {"title": "Post", "url": "https://www.facebook.com/p/1", "snippet": "2,4 K vues", "price": None, "currency": None}]
     monkeypatch.setattr(shop, "search_gap", fake_search)
+    pages = {"https://vente.tn/c": {"description": "Baskets en cuir blanc, semelle gomme.", "image": "https://vente.tn/c.jpg",
+                                    "price": 89.0, "currency": "TND", "product": True}}
+    monkeypatch.setattr(g, "_page_meta", lambda url: pages.get(url, {}))   # pas d'accès réseau dans le test
+    r = c.get("/gaps/shopping", params={"description": "baskets blanches"}).json()
+    assert sent == ["baskets blanches buy online"] and r["query"] == "baskets blanches buy online"
+    o = r["options"]
+    # produits triés par prix converti en dinars (60 EUR ≈ 204 TND), article sans prix à la fin
+    assert [x["title"] for x in o] == ["Baskets C", "Baskets B", "Baskets A", "Article de blog"] and o[2]["priceTnd"] == 204.0
+    assert (o[0]["price"], o[0]["currency"], o[0]["imageUrl"], o[0]["site"]) == (89.0, "TND", "https://vente.tn/c.jpg", "vente.tn")
+    assert o[1]["price"] == 149.9 and o[1]["currency"] == "TND"                                     # prix en dinars lu dans le texte
+    assert o[0]["description"].startswith("Baskets en cuir") and "](" not in o[3]["description"]
     r = c.get("/gaps/shopping", params={"description": "baskets blanches", "max_price": 100}).json()
-    assert sent == ["baskets blanches buy online"]
-    assert r["options"][0]["price"] == 89.0 and r["options"][0]["url"].startswith("https://")
+    assert [x["title"] for x in r["options"]] == ["Baskets C"]                                       # budget de 100 TND
     assert c.get("/gaps/shopping", params={"description": " "}).status_code == 422
     # comptage : chaque veste compatible donne une tenue (l'Obj4 plafonnait à « avec ou sans veste »)
     items = [{"item_id": i, "slot": sl} for i, sl in (("t", "top"), ("b", "bottom"), ("s", "footwear"), ("o", "outer"), ("o2", "outer"))]
