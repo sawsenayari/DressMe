@@ -18,7 +18,8 @@ interface Props {
   onDiscard: (id: string) => Promise<unknown>;
 }
 
-type Step = 'photo' | 'improving' | 'choose' | 'analysing' | 'review' | 'saving';
+// photo -> ready (rien n'est envoyé tant que l'utilisateur ne clique pas) -> [improving -> choose] -> analysing -> review
+type Step = 'photo' | 'ready' | 'improving' | 'choose' | 'analysing' | 'review' | 'saving';
 const ORIGINAL = -1;
 
 const toBlob = async (dataUrl: string) => (await fetch(dataUrl)).blob();
@@ -32,43 +33,50 @@ export function AddItemModal({ isOpen, onClose, onAnalyze, onCrop, onConfirm, on
   const [item, setItem] = useState<ClothingItem | null>(null);
   const [form, setForm] = useState<ItemForm | null>(null);
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (!isOpen) return null;
 
   const reset = () => {
-    setStep('photo'); setFile(null); setPreviewUrl(''); setCrop(null); setChoice(0); setItem(null); setForm(null); setError('');
+    setStep('photo'); setFile(null); setPreviewUrl(''); setCrop(null); setChoice(0); setItem(null); setForm(null); setError(''); setNotice('');
   };
   const close = () => { reset(); onClose(); };
   const busy = step === 'improving' || step === 'analysing' || step === 'saving';
 
-  // 2) analyse de la photo d'origine ou de la pièce découpée choisie
-  const analyse = async (f: File, part?: CropPart) => {
-    setStep('analysing'); setError('');
-    try {
-      const created = await onAnalyze(f, part ? { image: await toBlob(part.image), slot: part.slot } : undefined);
-      setItem(created); setForm(formFromItem(created)); setStep('review');
-    } catch (err) {
-      setError(`La photo n'a pas pu être analysée : ${err instanceof Error ? err.message : err}`);
-      setStep(crop?.needed ? 'choose' : 'photo');
-    }
-  };
-
-  // 1) photo choisie -> amélioration (découpage) si utile, sinon analyse directe
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // 1) photo choisie : simple aperçu, rien n'est envoyé au serveur
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
     e.target.value = '';
     if (!f) return;
-    setFile(f); setPreviewUrl(URL.createObjectURL(f)); setError(''); setCrop(null); setChoice(0);
-    if (!onCrop) { analyse(f); return; }
-    setStep('improving');
+    setFile(f); setPreviewUrl(URL.createObjectURL(f)); setError(''); setNotice(''); setCrop(null); setChoice(0); setStep('ready');
+  };
+
+  // 2a) « Améliorer la photo » (sur demande) : découpage de l'objectif 6
+  const improve = async () => {
+    if (!file || !onCrop) return;
+    setStep('improving'); setError(''); setNotice('');
     try {
-      const r = await onCrop(f);
-      if (r.needed && r.parts.length) { setCrop(r); setStep('choose'); return; }
-    } catch {
-      /* amélioration indisponible : la photo est analysée telle quelle */
+      const r = await onCrop(file);
+      if (r.needed && r.parts.length) { setCrop(r); setChoice(0); setStep('choose'); return; }
+      setNotice('Cette photo est déjà nette (fond clair et uni) : rien à améliorer, vous pouvez l\'analyser telle quelle.');
+    } catch (err) {
+      setError(`Amélioration impossible : ${err instanceof Error ? err.message : err}. Vous pouvez analyser la photo telle quelle.`);
     }
-    analyse(f);
+    setStep('ready');
+  };
+
+  // 2b) « Analyser » (sur demande) : photo d'origine ou pièce découpée choisie
+  const analyse = async (part?: CropPart) => {
+    if (!file) return;
+    setStep('analysing'); setError(''); setNotice('');
+    try {
+      const created = await onAnalyze(file, part ? { image: await toBlob(part.image), slot: part.slot } : undefined);
+      setItem(created); setForm(formFromItem(created)); setStep('review');
+    } catch (err) {
+      setError(`La photo n'a pas pu être analysée : ${err instanceof Error ? err.message : err}`);
+      setStep(crop?.needed ? 'choose' : 'ready');
+    }
   };
 
   // 3) enregistrement des caractéristiques vérifiées
@@ -102,7 +110,9 @@ export function AddItemModal({ isOpen, onClose, onAnalyze, onCrop, onConfirm, on
       ? crop?.kind === 'portée'
         ? 'Plusieurs vêtements sont visibles : choisissez celui à ajouter (vous pourrez ajouter les autres ensuite avec la même photo).'
         : 'Le fond de la photo a été retiré pour mieux reconnaître le vêtement. Gardez la version qui vous convient.'
-      : 'Choisissez une photo : nous améliorons la photo si besoin, reconnaissons le vêtement et remplissons sa fiche pour vous.';
+      : step === 'ready' || step === 'improving' || step === 'analysing'
+        ? `Rien n'est envoyé sans votre accord : ${onCrop ? 'améliorez la photo si besoin (fond chargé, photo portée), puis ' : ''}lancez l'analyse.`
+        : 'Choisissez une photo : vous pourrez l\'améliorer puis lancer la reconnaissance du vêtement, qui remplit sa fiche pour vous.';
 
   const tile = (idx: number, src: string, label: string) => (
     <button key={idx} type="button" onClick={() => setChoice(idx)} aria-pressed={choice === idx}
@@ -126,6 +136,11 @@ export function AddItemModal({ isOpen, onClose, onAnalyze, onCrop, onConfirm, on
             {error}
           </div>
         )}
+        {notice && (
+          <div role="status" style={{ padding: '10px 14px', borderRadius: '12px', background: 'var(--pastel-mint-soft, #e8f7f1)', fontSize: '0.85rem', marginBottom: '16px' }}>
+            {notice}
+          </div>
+        )}
 
         {step === 'choose' && crop ? (
           <div role="group" aria-label="Choix de la photo" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '10px', marginBottom: '18px' }}>
@@ -135,8 +150,8 @@ export function AddItemModal({ isOpen, onClose, onAnalyze, onCrop, onConfirm, on
         ) : (
           <div
             style={{ border: '2px dashed var(--pastel-pink)', borderRadius: '20px', padding: previewUrl ? '12px' : '26px 16px', textAlign: 'center',
-                     background: 'var(--pastel-pink-subtle)', cursor: step === 'photo' ? 'pointer' : 'default', marginBottom: '18px' }}
-            onClick={() => step === 'photo' && fileInputRef.current?.click()}
+                     background: 'var(--pastel-pink-subtle)', cursor: step === 'photo' || step === 'ready' ? 'pointer' : 'default', marginBottom: '18px' }}
+            onClick={() => (step === 'photo' || step === 'ready') && fileInputRef.current?.click()}
           >
             {previewUrl ? (
               <div>
@@ -145,7 +160,7 @@ export function AddItemModal({ isOpen, onClose, onAnalyze, onCrop, onConfirm, on
                 <span style={{ display: 'inline-block', marginTop: '8px', fontSize: '0.8rem', color: 'var(--muted)', fontWeight: 600 }}>
                   {step === 'improving' ? '✂️ Amélioration de la photo… (quelques secondes)'
                     : step === 'analysing' ? '🔎 Analyse de la photo… (quelques secondes)'
-                    : step === 'photo' ? 'Changer la photo' : '✓ Photo analysée'}
+                    : step === 'photo' || step === 'ready' ? 'Changer la photo' : '✓ Photo analysée'}
                 </span>
               </div>
             ) : (
@@ -180,8 +195,14 @@ export function AddItemModal({ isOpen, onClose, onAnalyze, onCrop, onConfirm, on
           {step === 'photo' && (
             <button type="button" className="btn" style={{ flex: 1 }} onClick={() => fileInputRef.current?.click()}>Choisir une photo</button>
           )}
+          {step === 'ready' && onCrop && (
+            <button type="button" className="btn btn-secondary" style={{ flex: 1 }} onClick={improve}>✂️ Améliorer la photo</button>
+          )}
+          {step === 'ready' && (
+            <button type="button" className="btn" style={{ flex: 1 }} onClick={() => analyse()}>🔎 Analyser la photo</button>
+          )}
           {step === 'choose' && file && (
-            <button type="button" className="btn" style={{ flex: 1 }} onClick={() => analyse(file, chosen)}>
+            <button type="button" className="btn" style={{ flex: 1 }} onClick={() => analyse(chosen)}>
               {chosen ? `Analyser : ${chosen.label.toLowerCase()}` : "Analyser la photo d'origine"}
             </button>
           )}
