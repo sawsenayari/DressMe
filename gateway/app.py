@@ -5,7 +5,8 @@ Routes attendues par le front (frontend/src/services) :
   GET  /wardrobe/items            -> fiches du catalogue (ItemCard -> ClothingItem)         [Obj1 : lecture seule]
   POST /wardrobe/items            -> photo -> Obj1 (crop + ItemCard v1 + emb/<id>.npy) -> ajout au catalogue ; 501 si l'Obj1 n'est pas lançable
   POST /compatibility/score       -> photo (+ champ facultatif `category`) -> embedding FashionCLIP -> Obj2 /compat
-  GET  /gaps                      -> rapport de l'objectif 4 (gap_report.json)
+  GET  /gaps                      -> pièces manquantes de l'objectif 4 (calculées sur la garde-robe)
+  GET  /gaps/shopping             -> où acheter une pièce manquante (recherche web de l'Obj4)
   GET/PUT /profile                -> profil de style de l'objectif 5
   GET  /outfits/today             -> Obj6 (service HTTP, candidats + contexte météo) -> jury Obj3 (règles) + compatibilité Obj2 -> Outfit ; 501 si l'Obj6 ne répond pas
   POST /outfits/judge             -> tenue composée -> jury Obj3 (règles + réparations) + compatibilité Obj2 -> OutfitJuryResult
@@ -23,6 +24,7 @@ Dossiers (variables d'environnement, défauts relatifs à la racine du dépôt) 
 """
 import io
 import json
+import re
 import os
 import sys
 import tempfile
@@ -501,18 +503,235 @@ FRONT_SLOT = {  # slots / catégories Polyvore de l'Obj4 -> Slot du front
 }
 
 
-@app.get("/gaps")
-def gaps():
+OBJ4 = REPO / "obj4_manques"
+# Liste de pièces de base (repli quand aucune IA n'est disponible) : mêmes champs que les candidats de l'IA de l'Obj4
+GAP_BASICS = [
+    ("top", "chemise blanche unie", "Basique neutre qui s'accorde avec presque tous les bas."),
+    ("top", "t-shirt noir uni", "Haut simple pour multiplier les tenues décontractées."),
+    ("bottom", "pantalon noir droit", "Bas neutre qui va avec la plupart des hauts, du quotidien au bureau."),
+    ("bottom", "jean bleu foncé", "Bas polyvalent pour les tenues de tous les jours."),
+    ("onepiece", "robe noire simple", "Pièce unique qui forme une tenue complète avec des chaussures."),
+    ("outer", "trench beige", "Couche légère et neutre qui complète beaucoup de tenues."),
+    ("shoes", "baskets blanches", "Chaussures neutres qui s'accordent avec la majorité des tenues."),
+    ("shoes", "bottines noires", "Chaussures fermées pour la mi-saison et les tenues plus habillées."),
+    ("bag", "sac cabas beige", "Sac neutre qui accompagne la plupart des tenues."),
+]
+# mots français ajoutés aux pièces pour que le choix du proxy de l'Obj4 (mots communs avec la description) marche en français
+GAP_TYPE_FR = {"sneakers": "baskets tennis", "casual shoes": "baskets chaussures", "track pants": "pantalon jogging",
+               "sweatshirts": "sweat pull", "boots": "bottes bottines", "shoes": "chaussures", "heels": "escarpins talons",
+               "sandals": "sandales", "flats": "ballerines", "shirts": "chemise chemisier", "tshirts": "t-shirt tshirt",
+               "tops": "haut top", "sweaters": "pull", "trousers": "pantalon", "pants": "pantalon", "jeans": "jean",
+               "shorts": "short", "skirts": "jupe", "dresses": "robe", "coats": "manteau trench", "jackets": "veste blazer",
+               "handbags": "sac main", "bags": "sac cabas"}
+GAP_COLOUR_FR = {"black": "noir noire noirs noires", "white": "blanc blanche blancs blanches", "grey": "gris grise grises",
+                 "beige": "beige beiges", "brown": "marron", "blue": "bleu bleue bleus bleues", "red": "rouge rouges",
+                 "pink": "rose roses", "green": "vert verte verts vertes", "yellow": "jaune jaunes", "purple": "violet violette"}
+# accessoires (non comptés dans les tenues de l'Obj4) que l'IA range parfois en « sac » ou « haut »
+GAP_ACCESSORY_WORDS = re.compile(r"\b(ceinture|belt|montre|watch|bijou|collier|necklace|bracelet|chapeau|hat|casquette|cap|"
+                                 r"écharpe|echarpe|foulard|scarf|lunettes|sunglasses|cravate|tie)s?\b", re.IGNORECASE)
+GAP_COMPATIBLE, GAP_INCOMPATIBLE = 0.70, 0.40
+GAP_LIKELY = 0.50   # estimation de la passerelle : association retenue si l'Obj2 la juge plus probable qu'improbable
+GAP_COLOUR_WORDS = {w: en for en, ws in GAP_COLOUR_FR.items() for w in ws.split()}   # « noire » -> black   # seuils de l'Obj4 (non encore calibrés par l'équipe)
+
+
+def _obj4_path():
+    if str(OBJ4) not in sys.path:
+        sys.path.append(str(OBJ4))
+
+
+class _FrenchGateway:
+    """Enveloppe de la passerelle LLM de l'Obj4 : demande les descriptions et justifications en français."""
+    def __init__(self, inner):
+        self.inner = inner
+
+    def complete(self, messages, **kw):
+        extra = {"role": "system", "content": "Rédige les champs 'description' et 'rationale' en français, phrases courtes."}
+        return self.inner.complete([messages[0], extra, *messages[1:]], **kw)
+
+
+def _gap_llm_candidates(items, n=6):
+    """Candidats de pièces manquantes proposés par l'IA de l'Obj4 (Gemini, sinon Groq) ; (None, None) sans IA."""
+    from openai import OpenAI
+    from dressme_gap_agent.compatibility import generate_gap_archetypes
+    from dressme_gap_agent.config import AgentConfig
+    from dressme_gap_agent.gateway import OpenAICompatibleGateway
+    routes = []
+    if os.environ.get("GEMINI_API_KEY"):
+        model = os.environ.get("GEMINI_MODELS", "gemini-3.5-flash-lite,gemini-3.1-flash").split(",")[0].strip()
+        routes.append(("https://generativelanguage.googleapis.com/v1beta/openai", os.environ["GEMINI_API_KEY"], model))
+    if os.environ.get("LLM_API_KEY"):
+        routes.append(("https://api.groq.com/openai/v1", os.environ["LLM_API_KEY"], "openai/gpt-oss-120b"))
+    summary = [{"item_id": c["id"], "category": c["slot"], "slot": "shoes" if c["slot"] == "footwear" else c["slot"],
+                "color_candidates": [{"label": x} for x in c.get("colour") or []],
+                "style_candidates": [{"label": c["usage"]}] if c.get("usage") else []} for c in items]
+    for base, key, model in routes:
+        try:
+            cfg = AgentConfig(base_url=base, api_key=key, model=model, allow_remote_router=True, timeout_seconds=45,
+                              max_judge_tokens=2000)
+            gw = OpenAICompatibleGateway(OpenAI(api_key=key, base_url=base, timeout=45, max_retries=0), cfg)
+            return generate_gap_archetypes(_FrenchGateway(gw), cfg, summary, max_candidates=n), model
+        except Exception as e:
+            log(f"Obj4 : candidats IA indisponibles avec {model} ({type(e).__name__}: {str(e)[:160]})")
+    return None, None
+
+
+def _gap_static():
+    """Rapport statique de l'Obj4 (repli documenté) : exemple sans lien avec la garde-robe."""
     if not GAPS.exists():
         log(f"rapport de manques introuvable : {GAPS}")
         raise HTTPException(503, "L'analyse des pièces manquantes n'est pas encore disponible.")
     d = json.load(open(GAPS, encoding="utf-8"))
     d = d if isinstance(d, list) else d.get("gaps", [])
+    out = []
     for i, g in enumerate(d):
-        g.setdefault("rank", i + 1)
-        s = FRONT_SLOT.get(str(g.get("slot") or g.get("category") or "").lower(), "accessory")
-        g["slot"] = g["category"] = s
-    return d
+        sl = FRONT_SLOT.get(str(g.get("slot") or g.get("category") or "").lower(), "accessory")
+        n = int(g.get("unlockedOutfits") or 0)
+        out.append({"id": g.get("id", f"gap-{i + 1}"), "rank": i + 1, "description": g.get("description", ""), "slot": sl,
+                    "category": sl, "rationale": "", "gain_lower": int(g.get("gain_lower", n)),
+                    "gain_upper": int(g.get("gain_upper", n)), "unlockedOutfits": n, "proxy": None})
+    return out
+
+
+@app.get("/gaps")
+def gaps(refresh: bool = False):
+    """Pièces manquantes (objectif 4) calculées sur la garde-robe : candidats (IA de l'Obj4, sinon pièces de base),
+    chacun représenté par une pièce de même catégorie (proxy de l'Obj4), scores de paires de l'Obj2, comptage
+    déterministe des tenues (moteur de l'Obj4) avec un gain prudent et un gain optimiste. Repli : rapport statique."""
+    import hashlib
+    _obj4_path()
+    from dressme_gap_agent.candidate_prototypes import CandidatePrototypeError, resolve_candidate_prototypes
+    from dressme_gap_agent.compatibility_scores import score_to_verdict
+    from dressme_gap_agent.contracts import validate_gap_result
+    from dressme_gap_agent.outfit_engine import count_outfits, gain_bounds, required_pair_keys
+
+    # garde-robe comptée par l'Obj4 : pièces avec embedding, hors accessoires, une seule pièce par apparence
+    cards, seen = [], set()
+    for c in wardrobe_with_embeddings():
+        sig = (str(c.get("name")).lower(), c.get("type"), tuple(c.get("colour") or []), c["slot"])
+        if c["slot"] != "accessory" and sig not in seen:
+            seen.add(sig)
+            cards.append(c)
+    if len(cards) < 2:
+        return {"mode": "exemple", "notice": "Ajoutez des pièces avec photo à votre garde-robe pour une analyse personnalisée.",
+                "gaps": _gap_static(), "unscorable": [], "outfitsNow": None, "source": None}
+
+    fp = hashlib.sha1(json.dumps([(c["id"], c["slot"], c.get("colour")) for c in cards]).encode()).hexdigest()
+    key = ("gaps", fp)
+    if not refresh and key in _cache:
+        return _cache[key]
+    if refresh or ("gapcand", fp) not in _cache:
+        cands, model = _gap_llm_candidates(cards)
+        if cands:
+            _cache[("gapcand", fp)] = (cands, "ia", model)
+        else:
+            g = [c.get("gender") for c in cards if c.get("gender") in ("Women", "Men")]
+            men = bool(g) and g.count("Men") > g.count("Women")
+            basics = [b for b in GAP_BASICS if not (men and b[0] == "onepiece")]
+            _cache[("gapcand", fp)] = ([{"item_id": f"candidate-{i + 1:03d}", "slot": sl, "description": d, "rationale": r}
+                                        for i, (sl, d, r) in enumerate(basics)], "base", None)
+    cands, source, model = _cache[("gapcand", fp)]
+
+    wardrobe = [{"item_id": c["id"], "id": c["id"], "slot": c["slot"], "name": c.get("name"), "type": c.get("type"),
+                 "colour": c.get("colour") or [], "embedding": np.load(STORE / c["embedding"]).astype(float).tolist(),
+                 "pattern": " ".join([GAP_TYPE_FR.get(str(c.get("type") or "").lower(), ""),
+                                      *[GAP_COLOUR_FR.get(x, "") for x in c.get("colour") or []]])}
+                for c in cards]
+    resolved, unscorable, used = [], [], set()
+    for cand in cands:
+        base = {k: cand[k] for k in ("item_id", "slot", "description", "rationale")}
+        if GAP_ACCESSORY_WORDS.search(base["description"]):   # accessoire : pas compté dans les tenues -> non chiffré
+            unscorable.append({**base, "slot": "accessory"})
+            continue
+        try:   # proxy de l'Obj4 : pièce de même catégorie la plus proche du texte, jamais deux fois la même
+            r = resolve_candidate_prototypes([base], [w for w in wardrobe if w["id"] not in used])[0]
+            used.add(r["proxy_item_id"])
+            resolved.append(r)
+        except CandidatePrototypeError:   # aucune pièce de cette catégorie pour la représenter
+            unscorable.append(base)
+
+    combined = [*wardrobe, *resolved]
+    pairs = [pk for pk in required_pair_keys(combined) if not all(x.startswith("candidate-") for x in pk)]
+    # scores de l'Obj2 par blocs de catégories (seulement les paires utiles au comptage, comme le pipeline de l'Obj4)
+    by_id = {x["item_id"]: x for x in combined}
+    blocks = {}
+    for x, y in pairs:
+        sx, sy = by_id[x]["slot"], by_id[y]["slot"]
+        if (sy, sx) in blocks:
+            x, y, sx, sy = y, x, sy, sx
+        bx, by_ = blocks.setdefault((sx, sy), ({}, {}))
+        bx[x] = by_id[x]; by_[y] = by_id[y]
+    scores = {}
+    for (sx, sy), (bx, by_) in blocks.items():
+        A, B = list(bx.values()), list(by_.values())
+        M = engine().pairs([{"id": v["item_id"], "slot": v["slot"], "embedding": v["embedding"]} for v in A],
+                           [{"id": v["item_id"], "slot": v["slot"], "embedding": v["embedding"]} for v in B])
+        for i, va in enumerate(A):
+            for j, vb in enumerate(B):
+                if va["item_id"] != vb["item_id"]:
+                    scores[tuple(sorted((va["item_id"], vb["item_id"])))] = float(M[i][j])
+    verdicts = {pk: score_to_verdict(scores[pk], compatible_threshold=GAP_COMPATIBLE,
+                                     incompatible_threshold=GAP_INCOMPATIBLE) for pk in pairs}
+    # chiffre principal : comptage du moteur de l'Obj4 où chaque association est tranchée au score 0,5 de l'Obj2
+    # (ni prudent ni optimiste) ; les bornes de l'Obj4 restent fournies telles quelles
+    likely = {pk: ("compatible" if scores[pk] >= GAP_LIKELY else "incompatible") for pk in pairs}
+    now_likely = count_outfits(wardrobe, likely, unknown_as_compatible=False)["total_outfits"]
+    results = []
+    for r in resolved:
+        b = gain_bounds(wardrobe, r, verdicts)
+        after = count_outfits([*wardrobe, r], likely, unknown_as_compatible=False)["total_outfits"]
+        results.append({"item_id": r["item_id"], "description": r["description"], "slot": r["slot"],
+                        "rationale": r.get("rationale", ""), "proxy_item_id": r["proxy_item_id"],
+                        "gain_likely": max(0, after - now_likely), **b})
+    results.sort(key=lambda x: (-x["gain_likely"], -x["gain_upper"], -x["gain_lower"], x["item_id"]))
+    for rank, x in enumerate(results, 1):
+        x["rank"] = rank
+    validate_gap_result({"contract_version": "1.0", "status": "complete", "ranking_ready": True, "gaps": results,
+                         "compatibility_progress": {"total_pairs": len(pairs), "completed_pairs": len(pairs), "remaining_pairs": 0}})
+    now_low = count_outfits(wardrobe, verdicts, unknown_as_compatible=False)["total_outfits"]
+    now_high = count_outfits(wardrobe, verdicts, unknown_as_compatible=True)["total_outfits"]
+    cat = {c["id"]: c for c in catalog()}
+    def colour_differs(desc, proxy_id):
+        """La description cite une couleur que la pièce de simulation n'a pas (proxy de l'Obj4 = même catégorie)."""
+        wanted = {GAP_COLOUR_WORDS[w] for w in re.findall(r"[a-zà-ÿ]+", desc.lower()) if w in GAP_COLOUR_WORDS}
+        have = set((cat.get(proxy_id) or {}).get("colour") or [])
+        return bool(wanted) and not wanted & have
+
+    res = {"mode": "analyse", "source": source, "model": model, "pieces": len(cards), "pairsScored": len(pairs),
+           "thresholds": {"compatible": GAP_COMPATIBLE, "incompatible": GAP_INCOMPATIBLE, "likely": GAP_LIKELY},
+           "calibrated": False, "shoppingEnabled": bool(os.environ.get("DRESSME_TAVILY_API_KEY", "").strip()),
+           "outfitsNow": {"lower": now_low, "upper": now_high, "likely": now_likely},
+           "gaps": [{"id": x["item_id"], "rank": x["rank"], "description": x["description"], "slot": x["slot"],
+                     "category": x["slot"], "rationale": x["rationale"], "gain_lower": x["gain_lower"],
+                     "gain_upper": x["gain_upper"], "gain_likely": x["gain_likely"], "unlockedOutfits": x["gain_likely"],
+                     "ranking_ready": True, "proxyColourDiffers": colour_differs(x["description"], x["proxy_item_id"]),
+                     "proxy": to_front_item(cat[x["proxy_item_id"]]) if x["proxy_item_id"] in cat else None}
+                    for x in results],
+           "unscorable": [{"description": u["description"], "slot": "footwear" if u["slot"] == "shoes" else u["slot"],
+                           "rationale": u.get("rationale", "")} for u in unscorable]}
+    _cache[key] = res
+    return res
+
+
+@app.get("/gaps/shopping")
+def gaps_shopping(description: str, slot: str = "", max_price: Optional[float] = None, k: int = 5):
+    """Où acheter une pièce manquante (recherche web de l'Obj4, Tavily) ; ne modifie pas le classement des manques."""
+    _obj4_path()
+    from dressme_gap_agent.shopping import ShoppingSearchConfig, ShoppingSearchError, search_gap
+    if not description.strip() or len(description) > 120:
+        raise HTTPException(422, "Description de la pièce invalide.")
+    try:
+        cfg = ShoppingSearchConfig.from_env()
+    except ShoppingSearchError:
+        raise HTTPException(503, "La recherche de boutiques n'est pas configurée (clé de recherche absente du serveur).")
+    try:
+        opts = search_gap({"description": description.strip(), "slot": slot}, cfg, max_results=max(1, min(k, 10)),
+                          max_price=max_price)
+    except Exception as e:
+        log(f"Obj4 : recherche de boutiques en échec ({type(e).__name__}: {str(e)[:160]})")
+        raise HTTPException(502, "La recherche de boutiques n'a pas abouti. Réessayez dans un instant.")
+    return {"description": description, "options": [
+        {"title": o["title"], "url": o["url"], "snippet": (o.get("snippet") or "")[:240], "price": o.get("price"),
+         "currency": o.get("currency"), "imageUrl": o.get("image_url")} for o in opts]}
 
 
 AXIS = {"efficacite": "efficiency", "economie": "economy", "image": "brand", "mixte": "mixte"}

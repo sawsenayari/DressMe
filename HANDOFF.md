@@ -16,7 +16,7 @@ branché, testé et poussé sur `main` (GitHub `sawsenayari/DressMe`, dépôt **
 | **Wardrobe** | `GET/POST /wardrobe/items`, `PUT/DELETE /wardrobe/items/{id}` | Obj1 (reconnaissance de la photo) |
 | **Composer une tenue** (Outfit Studio) | `POST /outfits/judge` | jury Obj3 (règles + IA + photos en option) + Obj2 |
 | **Does it match ?** | `POST /compatibility/score` | Obj2 (FashionCLIP + PairMLP) |
-| **Pièces à ajouter** (Gaps) | `GET /gaps` | Obj4 (rapport statique `gap_report.json`) |
+| **Pièces à ajouter** (Gaps) | `GET /gaps`, `GET /gaps/shopping` | Obj4 (candidats IA, proxies, comptage des tenues) + Obj2 (scores) |
 | **Mon profil de style** | `GET /profile`, `GET /profile/recommendations` | Obj5 (profil, pièces suggérées) |
 
 Ports : 8000 passerelle (seul backend du front), 8006 Obj6 (service HTTP lancé par `run_all.bat`), 5173 front (Vite).
@@ -73,7 +73,7 @@ Automatique (chaque dossier séparément, venv activé) :
 
 | Dossier | Commande (depuis ce dossier) | Attendu |
 |---|---|---|
-| `gateway` | `python -m pytest -q tests` | 13 réussis (≈ 8 min) |
+| `gateway` | `python -m pytest -q tests` | 14 réussis (≈ 9 min) |
 | `obj1_reconnaissance` | `python -m pytest -q` | 30 |
 | `obj2_compat` | `python -m pytest -q tests` puis `python recette.py` | 13 + recette PASS |
 | `obj3_jury` | `python -m pytest -q` | 11 |
@@ -117,7 +117,12 @@ ni dans le modèle Obj5, ni dans le cache Obj1.
 - **Obj3** : les règles ignorent la chaleur des chaussures (bottes acceptées à 35 °C en règles seules) ; le réparateur reste
   dans la réponse de `/outfits/judge` mais n'est pas affiché.
 - **Obj6** : pas de mode budget ; 6 slots (le sac devient « accessoire ») ; sa vision utilise open_clip, pas FashionCLIP.
-- **Obj4** : rapport statique (pas recalculé à chaque ajout de pièce).
+- **Obj4** : analyse calculée sur la garde-robe (candidats de l'IA Gemini/Groq, sinon liste de pièces de base). Chaque
+  candidat est simulé par une pièce de même catégorie (proxy de l'Obj4) ; seuils 0,70 / 0,40 non calibrés. Chiffre
+  affiché et classement : comptage de l'Obj4 avec chaque association tranchée au score 0,5 de l'Obj2 (ajout de la
+  passerelle) ; les bornes prudente / optimiste de l'Obj4 restent affichées. « Où l'acheter ? » n'apparaît qu'avec
+  `DRESSME_TAVILY_API_KEY`.
+  `gap_report.json` ne sert plus que d'exemple quand la garde-robe n'a pas de photos.
 - **Obj5** : profil et suggestions utilisent la taxonomie de référence (16 styles appris sur 423 fiches, espace
   d'attributs, pas FashionCLIP faute d'embeddings du catalogue) ; palette = part des pièces par couleur ; suggestions
   sans photos (catalogue de référence sans images) ; orientation Économie non évaluable sans prix.
@@ -132,7 +137,7 @@ ni dans le modèle Obj5, ni dans le cache Obj1.
 2. Obj1 (avec Amir) : dictionnaire chaleur / formalité, rangement des pièces traditionnelles par sous-type (jebba = robe,
    chemise brodée = haut…).
 3. Obj3 : prendre en compte la chaleur des chaussures dans les règles, puis réévaluer le réparateur avant de le réafficher.
-4. Obj4 : recalculer le rapport de manques depuis la garde-robe réelle.
+4. Obj4 : calibrer les seuils de compatibilité et remplacer les proxies par une vraie représentation des pièces proposées.
 5. Obj6 : mode budget, sac en slot à part entière.
 6. Mettre à jour `react-router` (v7) et vérifier l'application.
 

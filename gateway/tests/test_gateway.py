@@ -39,9 +39,6 @@ def test_routes(tmp_path, monkeypatch):
     assert pal[0]["pieces"] == sum(pal[0]["color"] in (i.get("colour") or []) for i in cat)
     assert p["dominantPieces"] and {d["id"] for d in p["dominantPieces"]} <= {i["id"] for i in cat}   # style dominant = vos pièces
     assert {"slotCounts", "nItems", "nItemsUsed", "notes", "dominantShare", "space"} <= set(p)
-    gp = c.get("/gaps"); assert gp.status_code in (200, 503)
-    if gp.status_code == 200:
-        assert all(g["slot"] == g["category"] and g["slot"] in ("top", "bottom", "onepiece", "outer", "footwear", "bag", "accessory") for g in gp.json())
     monkeypatch.setattr(g, "OBJ6_URL", "http://127.0.0.1:9")   # Obj6 absent (même si un vrai service tourne sur 8006)
     assert c.get("/outfits/today").status_code == 501
     monkeypatch.setattr(g, "OBJ1", tmp_path / "absent")                              # Obj1 non lançable -> 501
@@ -405,3 +402,51 @@ def test_weather(monkeypatch):
     monkeypatch.setattr(httpx, "get", down)
     assert c.get("/weather", params={"city": "Djerba"}).json() == {"city": "Djerba", "available": False}
     assert c.get("/weather", params={"city": "Paris"}).status_code == 422
+
+
+def test_gaps_analysis_and_shopping(tmp_path, monkeypatch):
+    """Obj4 sur la garde-robe : candidats (IA simulée, puis liste de base sans clé), proxy de même catégorie, scores Obj2,
+    gains prudent/optimiste triés et contrat de l'Obj4 respecté ; « Où l'acheter ? » sans clé -> 503, avec recherche simulée."""
+    store = make_store(tmp_path)
+    cat = json.load(open(store / "wardrobe.json", encoding="utf-8"))
+    keep = [x for n, sl in ((8, "top"), (8, "bottom"), (6, "footwear"), (2, "outer")) for x in [y for y in cat if y["slot"] == sl][:n]]
+    json.dump(keep, open(store / "wardrobe.json", "w", encoding="utf-8"))
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False); monkeypatch.delenv("LLM_API_KEY", raising=False)
+    monkeypatch.delenv("DRESSME_TAVILY_API_KEY", raising=False)
+    sys.path.insert(0, str(REPO / "gateway"))
+    import app as g
+    from fastapi.testclient import TestClient
+    monkeypatch.setattr(g, "STORE", store); monkeypatch.setattr(g, "_cache", {})
+    for k in ("GEMINI_API_KEY", "LLM_API_KEY", "DRESSME_TAVILY_API_KEY"):   # gateway/.env rechargé à l'import : aucune vraie clé
+        monkeypatch.delenv(k, raising=False)
+    c = TestClient(g.app)
+    d = c.get("/gaps").json()
+    assert d["mode"] == "analyse" and d["source"] == "base" and d["outfitsNow"]["lower"] <= d["outfitsNow"]["upper"]
+    gaps = d["gaps"]; assert gaps and [x["rank"] for x in gaps] == list(range(1, len(gaps) + 1))
+    assert all(0 <= x["gain_lower"] <= x["gain_likely"] <= x["gain_upper"] for x in gaps)          # estimé entre les bornes
+    key = lambda x: (-x["gain_likely"], -x["gain_upper"], -x["gain_lower"])
+    assert [key(x) for x in gaps] == sorted(key(x) for x in gaps)                                   # classé sur l'estimé
+    o = d["outfitsNow"]; assert o["lower"] <= o["likely"] <= o["upper"] and d["shoppingEnabled"] is False
+    assert all(isinstance(x["proxyColourDiffers"], bool) for x in gaps)
+    ids = {x["id"] for x in keep}
+    assert all(x["proxy"]["id"] in ids and x["proxy"]["slot"] == x["slot"] for x in gaps)          # proxy de même catégorie
+    assert len({x["proxy"]["id"] for x in gaps}) == len(gaps)                                       # jamais deux fois le même
+    assert any(u["slot"] in ("bag", "onepiece") for u in d["unscorable"])                          # catégorie absente : non chiffrée
+    # IA (simulée) : ses candidats remplacent la liste de base ; refresh redemande
+    monkeypatch.setattr(g, "_gap_llm_candidates", lambda items, n=6: ([
+        {"item_id": "candidate-001", "slot": "shoes", "description": "baskets blanches", "rationale": "Neutres."},
+        {"item_id": "candidate-002", "slot": "bag", "description": "Ceinture en cuir marron", "rationale": "x"}], "faux-modele"))
+    d = c.get("/gaps", params={"refresh": True}).json()
+    assert d["source"] == "ia" and d["model"] == "faux-modele" and [x["slot"] for x in d["gaps"]] == ["footwear"]
+    assert d["unscorable"] == [{"description": "Ceinture en cuir marron", "slot": "accessory", "rationale": "x"}]   # accessoire
+    # « Où l'acheter ? »
+    r = c.get("/gaps/shopping", params={"description": "baskets blanches"}); assert r.status_code == 503
+    monkeypatch.setenv("DRESSME_TAVILY_API_KEY", "faux")
+    monkeypatch.setattr(g, "_cache", {})
+    assert c.get("/gaps").json()["shoppingEnabled"] is True
+    import dressme_gap_agent.shopping as shop
+    monkeypatch.setattr(shop, "search_gap", lambda gap, cfg, max_results=5, max_price=None: [
+        {"title": "Baskets", "url": "https://exemple.tn/b", "snippet": "…", "price": 89.0, "currency": "TND", "source": "x"}])
+    r = c.get("/gaps/shopping", params={"description": "baskets blanches", "max_price": 100}).json()
+    assert r["options"][0]["price"] == 89.0 and r["options"][0]["url"].startswith("https://")
+    assert c.get("/gaps/shopping", params={"description": " "}).status_code == 422

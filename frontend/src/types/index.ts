@@ -112,6 +112,34 @@ export interface GapSuggestion {
   gain_upper?: number;
   rank?: number;
   ranking_ready?: boolean;
+  rationale?: string; // pourquoi cette pièce (IA de l'Obj4 ou liste de base)
+  proxy?: ClothingItem | null; // votre pièce de même catégorie qui sert à simuler la pièce proposée
+  proxyColourDiffers?: boolean; // la pièce de simulation n'a pas la couleur demandée
+  gain_likely?: number; // nouvelles tenues estimées (associations jugées plus probables qu'improbables)
+}
+
+/** DSO4 : analyse des pièces manquantes (GET /gaps) */
+export interface GapAnalysis {
+  mode: 'analyse' | 'exemple'; // exemple = rapport statique (garde-robe sans photos)
+  notice?: string;
+  source: 'ia' | 'base' | null; // qui a proposé les pièces : IA ou liste de pièces de base
+  model?: string | null;
+  pieces?: number;
+  pairsScored?: number;
+  outfitsNow: { lower: number; upper: number; likely?: number } | null; // tenues possibles aujourd'hui (prudent / optimiste / estimé)
+  shoppingEnabled?: boolean; // recherche de boutiques configurée sur le serveur
+  calibrated?: boolean;
+  gaps: GapSuggestion[];
+  unscorable: { description: string; slot: Slot; rationale: string }[]; // pas de pièce de cette catégorie pour simuler
+}
+
+export interface ShopOption {
+  title: string;
+  url: string;
+  snippet: string;
+  price: number | null;
+  currency: string | null;
+  imageUrl?: string | null;
 }
 
 /** DSO5: Style Profile (Ahmed Ayari) */
