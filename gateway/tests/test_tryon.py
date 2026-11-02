@@ -1,5 +1,5 @@
 """Essayage réaliste : enchaînement haut puis bas, cache, résultat partiel quand le quota GPU gratuit est épuisé (modèles simulés)."""
-import json, sys
+import io, json, sys
 from pathlib import Path
 from PIL import Image
 REPO = Path(__file__).resolve().parents[2]
@@ -75,3 +75,24 @@ def test_tryon_falls_back_to_ootdiffusion(tmp_path, monkeypatch):
     monkeypatch.setattr(g, "_tryon_call", fake_call)
     r = TestClient(g.app).post("/outfits/tryon", json={"item_ids": ["b1"]}).json()
     assert calls == ["/leffa_predict_vt", "/process_dc"] and r["worn"] == ["b1"] and r["note"] is None
+
+
+def test_inspire_describes_then_generates(tmp_path, monkeypatch):
+    store = make_store(tmp_path)
+    sys.path.insert(0, str(REPO / "gateway"))
+    import app as g
+    from fastapi.testclient import TestClient
+    monkeypatch.setattr(g, "LEGACY_STORE", store); monkeypatch.setattr(g, "_cache", {})
+    monkeypatch.delenv("CLOUDFLARE_API_TOKEN", raising=False); monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    c = TestClient(g.app)
+    r = c.post("/outfits/inspire", json={"item_ids": ["t1"]}); assert r.status_code == 501 and "CLOUDFLARE" in r.json()["detail"]
+    monkeypatch.setenv("CLOUDFLARE_ACCOUNT_ID", "a"); monkeypatch.setenv("CLOUDFLARE_API_TOKEN", "t")   # sans Gemini : fiche
+    prompts = []
+
+    def fake_flux(prompt):
+        prompts.append(prompt); buf = io.BytesIO(); Image.new("RGB", (20, 20)).save(buf, "JPEG"); return buf.getvalue()
+    monkeypatch.setattr(g, "_flux_image", fake_flux)
+    r = c.post("/outfits/inspire", json={"item_ids": ["b1", "t1", "s1"]}).json()
+    assert r["descriptions"] == ["blue shirt", "grey pants", "sneakers"] and "young man" in prompts[0]   # haut, bas, chaussures
+    assert c.get(r["imageUrl"]).status_code == 200 and not r["cached"]
+    assert c.post("/outfits/inspire", json={"item_ids": ["b1", "t1", "s1"]}).json()["cached"] and len(prompts) == 1

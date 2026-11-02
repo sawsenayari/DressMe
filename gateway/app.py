@@ -2096,3 +2096,100 @@ def _tryon_lower(person, c, kind, handle_file):
 
 def _tryon_name(c):
     return (name_fr(c.get("name") or _garment_text(c).capitalize()) or c.get("name") or c.get("type") or c["id"]).lower()
+
+
+# ---------------------------------------------------------------- tenue « inspirée » (sans quota GPU)
+# Variante illimitée de l'essayage : Gemini décrit chaque photo (couleurs, matière, motif, coupe, longueur), puis FLUX
+# (Cloudflare Workers AI, allocation gratuite quotidienne) génère une photo de mode de la tenue à partir de ces
+# descriptions. Image inspirée des photos, pas copiée : moins fidèle que l'essayage, mais toujours disponible.
+CF_FLUX_MODEL = os.environ.get("DRESSME_FLUX_MODEL", "@cf/black-forest-labs/flux-1-schnell")
+INSPIRE_PERSON = {"Women": "a young woman with long straight black hair", "Men": "a young man with short dark hair"}
+INSPIRE_DESC_PROMPT = ('Describe this garment so an image model can reproduce it faithfully when worn. Return JSON {"desc": "..."}: '
+                       "one English phrase of 15-30 words: exact colours (shade), fabric look, pattern/print/graphics (position, "
+                       "colours), cut, neckline, sleeves, length, fit, notable details. No brand guesses, no background.")
+
+
+class InspireIn(BaseModel):
+    item_ids: list[str]
+    gender: Optional[str] = None
+
+
+def _inspire_desc(c):
+    """Description anglaise de la pièce vue par Gemini (mise en cache à côté des photos) ; à défaut, ses champs."""
+    f = _garment_photo(c)
+    rel = f"tryon/desc_{c['id']}_{int(f.stat().st_mtime)}.txt"
+    if (STORE / rel).is_file():
+        return (STORE / rel).read_text(encoding="utf-8")
+    fallback = " ".join(str(x) for x in [*(c.get("colour") or [])[:2], c.get("pattern") if c.get("pattern") not in (None, "solid", "plain") else "",
+                                           c.get("type") or c.get("name") or "garment"] if x).lower()
+    key = os.environ.get("GEMINI_API_KEY")
+    if not key:
+        return fallback
+    try:
+        from PIL import Image
+        models = [m.strip() for m in os.environ.get("GEMINI_VISION_MODELS", GEMINI_VISION_MODELS).split(",") if m.strip()]
+        d = json.loads(GeminiVisionLLM(key, models).generate(Image.open(_garment_input(c)), INSPIRE_DESC_PROMPT,
+                                                             "You describe garments precisely for an image generator."))["desc"]
+        d = re.sub(r"\s+", " ", str(d)).strip()[:300]
+    except Exception as e:   # quota Gemini, réponse illisible : description tirée de la fiche
+        log(f"tenue inspirée : description Gemini indisponible ({type(e).__name__}: {str(e)[:150]})")
+        return fallback
+    (STORE / rel).parent.mkdir(parents=True, exist_ok=True)
+    (STORE / rel).write_text(d, encoding="utf-8")
+    return d
+
+
+def _cf_keys():
+    acc, tok = os.environ.get("CLOUDFLARE_ACCOUNT_ID"), os.environ.get("CLOUDFLARE_API_TOKEN")
+    if not (acc and tok):
+        raise HTTPException(501, "Tenue inspirée non activée : ajoutez CLOUDFLARE_ACCOUNT_ID et CLOUDFLARE_API_TOKEN dans gateway/.env.")
+    return acc, tok
+
+
+def _flux_image(prompt):
+    """Image JPEG générée par FLUX sur Cloudflare Workers AI (CLOUDFLARE_ACCOUNT_ID + CLOUDFLARE_API_TOKEN)."""
+    import base64
+    import requests
+    acc, tok = _cf_keys()
+    try:
+        r = requests.post(f"https://api.cloudflare.com/client/v4/accounts/{acc}/ai/run/{CF_FLUX_MODEL}",
+                          headers={"Authorization": f"Bearer {tok}"}, json={"prompt": prompt, "steps": 8}, timeout=120)
+    except requests.RequestException as e:
+        log(f"tenue inspirée : Cloudflare injoignable ({type(e).__name__})")
+        raise HTTPException(503, "Le service d'images est injoignable : réessayez plus tard.")
+    if r.status_code != 200:
+        log(f"tenue inspirée : Cloudflare {r.status_code} {r.text[:300]}")
+        if r.status_code == 429 or "limit" in r.text.lower():
+            raise HTTPException(503, "L'allocation gratuite du jour (Cloudflare) est épuisée : réessayez demain.")
+        raise HTTPException(503 if r.status_code >= 500 else 502, "Le service d'images a refusé la demande (clés Cloudflare à vérifier).")
+    return base64.b64decode(r.json()["result"]["image"])
+
+
+@app.post("/outfits/inspire")
+def outfit_inspire(body: InspireIn):
+    import hashlib
+    by_id = {c["id"]: c for c in catalog()}
+    order = {"onepiece": 0, "outer": 1, "top": 2, "bottom": 3, "footwear": 4, "bag": 5, "accessory": 6}
+    cards = sorted((by_id[i] for i in body.item_ids if i in by_id and _garment_photo(by_id[i])), key=lambda c: order.get(c["slot"], 9))
+    if not cards:
+        raise HTTPException(422, "Choisissez au moins une pièce avec photo.")
+    _cf_keys()   # avant d'appeler Gemini : rien n'est consommé si la génération n'est pas activée
+    gender = body.gender if body.gender in ("Women", "Men") else None
+    if gender is None:
+        g = [c.get("gender") for c in cards if c.get("gender") in ("Women", "Men")]
+        gender = "Men" if g and g.count("Men") > g.count("Women") else "Women"
+    descs = [_inspire_desc(c) for c in cards]
+    prompt = (f"A single full-length photograph of one person only, front view, centered: {INSPIRE_PERSON[gender]}, "
+              "head to toe with the shoes visible, standing straight facing the camera, arms relaxed, plain light grey studio "
+              "background, soft natural light, photorealistic fashion catalog, sharp focus. Not a collage, no split screen, no "
+              "back view. The outfit, exactly as described: " + "; ".join(descs) + ".")
+    fp = hashlib.sha1(json.dumps([CF_FLUX_MODEL, prompt]).encode()).hexdigest()[:20]
+    rel = f"tryon/inspire_{fp}.jpg"
+    result = {"worn": [c["id"] for c in cards], "notWorn": [i for i in body.item_ids if i not in {c["id"] for c in cards}],
+              "gender": gender, "note": None, "descriptions": descs}
+    if not (STORE / rel).is_file():
+        data = _flux_image(prompt)   # flux-1-schnell n'accepte pas de graine : allure du mannequin fixée par le texte
+        (STORE / rel).parent.mkdir(parents=True, exist_ok=True)
+        (STORE / rel).write_bytes(data)
+        return {**result, "imageUrl": f"/files/{rel}{_file_version(rel)}", "cached": False}
+    return {**result, "imageUrl": f"/files/{rel}{_file_version(rel)}", "cached": True}

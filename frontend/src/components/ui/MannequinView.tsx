@@ -1,32 +1,38 @@
 import { useEffect, useState } from 'react';
 import type { ClothingItem } from '../../types';
-import { tryOnOutfit, type TryOnResult } from '../../services/outfits';
+import { inspireOutfit, tryOnOutfit, type TryOnResult } from '../../services/outfits';
 
 interface Props {
   items: ClothingItem[];
   className?: string;
 }
 
-/** Silhouette en couches construite avec les photos des pièces choisies, ou essayage réaliste (photos portées par un
- *  mannequin, calculé par le serveur seulement sur demande). */
+type Mode = 'real' | 'inspire';
+const RUN: Record<Mode, (ids: string[]) => Promise<TryOnResult>> = { real: tryOnOutfit, inspire: inspireOutfit };
+
+/** Silhouette en couches construite avec les photos des pièces choisies ; essayage réaliste (photos portées par un
+ *  mannequin, quota quotidien) ; tenue inspirée (photo de mode générée d'après les descriptions des photos, illimitée).
+ *  Les deux derniers sont calculés par le serveur seulement sur demande. */
 export function MannequinView({ items }: Props) {
-  const [view, setView] = useState<'2d' | 'real'>('2d');
-  const [tryOn, setTryOn] = useState<TryOnResult | null>(null);
-  const [tryOnBusy, setTryOnBusy] = useState(false);
-  const [tryOnError, setTryOnError] = useState<string | null>(null);
+  const [view, setView] = useState<'2d' | Mode>('2d');
+  const [results, setResults] = useState<Partial<Record<Mode, TryOnResult>>>({});
+  const [busy, setBusy] = useState<Partial<Record<Mode, boolean>>>({});
+  const [errors, setErrors] = useState<Partial<Record<Mode, string>>>({});
   const key = items.map(i => i.id).join(',');
-  useEffect(() => { setTryOn(null); setTryOnError(null); setView('2d'); }, [key]);
+  useEffect(() => { setResults({}); setErrors({}); setView('2d'); }, [key]);
   const wearable = items.some(i => ['top', 'outer', 'bottom', 'onepiece'].includes(i.slot));
 
-  const runTryOn = () => {
-    setView('real');
-    if (tryOn || tryOnBusy) return;
-    setTryOnBusy(true); setTryOnError(null);
-    tryOnOutfit(items.map(i => i.id))
-      .then(setTryOn)
-      .catch((e: Error) => setTryOnError(e.message))
-      .finally(() => setTryOnBusy(false));
+  const run = (mode: Mode, retry = false) => {
+    setView(mode);
+    if ((results[mode] && !retry) || busy[mode]) return;
+    setBusy(b => ({ ...b, [mode]: true })); setErrors(e => ({ ...e, [mode]: undefined }));
+    RUN[mode](items.map(i => i.id))
+      .then(r => setResults(x => ({ ...x, [mode]: r })))
+      .catch((e: Error) => setErrors(x => ({ ...x, [mode]: e.message })))
+      .finally(() => setBusy(b => ({ ...b, [mode]: false })));
   };
+  const mode: Mode = view === 'inspire' ? 'inspire' : 'real';
+  const tryOn = results[mode] ?? null, tryOnBusy = !!busy[mode], tryOnError = errors[mode] ?? null;
   const beside = tryOn ? items.filter(i => !tryOn.worn.includes(i.id)) : [];
 
   // Segregate items by slot for the 2D layered mannequin
@@ -58,25 +64,30 @@ export function MannequinView({ items }: Props) {
                   onClick={() => setView('2d')}>Silhouette</button>
           <button className={`btn-sm ${view === 'real' ? '' : 'btn-secondary'}`} style={{ borderRadius: '999px', fontSize: '0.8rem' }}
                   disabled={!wearable} title={wearable ? 'Vos photos portées par un mannequin (IA)' : 'Choisissez un haut, un bas ou une robe'}
-                  onClick={runTryOn}>📸 Essayage réaliste</button>
+                  onClick={() => run('real')}>📸 Essayage réaliste</button>
+          <button className={`btn-sm ${view === 'inspire' ? '' : 'btn-secondary'}`} style={{ borderRadius: '999px', fontSize: '0.8rem' }}
+                  title="Photo de mode générée d'après la description de vos pièces (illimité, moins fidèle)"
+                  onClick={() => run('inspire')}>✨ Inspirée</button>
         </div>
       </div>
 
-      {view === 'real' ? (
+      {view !== '2d' ? (
         <div style={{ maxWidth: '380px', margin: '0 auto', display: 'grid', gap: '12px' }}>
           {tryOnBusy && (
             <div style={{ minHeight: '420px', borderRadius: '24px', border: '1px dashed var(--line)', display: 'flex', flexDirection: 'column',
                           alignItems: 'center', justifyContent: 'center', gap: '10px', color: 'var(--muted)', textAlign: 'center', padding: '24px' }}>
               <span style={{ fontSize: '2rem' }}>🧵</span>
-              <strong style={{ color: 'var(--ink)' }}>Essayage en cours…</strong>
-              <span style={{ fontSize: '0.85rem' }}>Le mannequin enfile vos pièces une à une : comptez de 30 secondes à 2 minutes.</span>
+              <strong style={{ color: 'var(--ink)' }}>{mode === 'real' ? 'Essayage en cours…' : 'Création de la photo…'}</strong>
+              <span style={{ fontSize: '0.85rem' }}>{mode === 'real'
+                ? 'Le mannequin enfile vos pièces une à une : comptez de 30 secondes à 2 minutes.'
+                : 'L’IA décrit vos pièces puis compose la photo : une vingtaine de secondes.'}</span>
             </div>
           )}
           {tryOnError && !tryOnBusy && (
             <div className="card card-peach" style={{ padding: '16px', fontSize: '0.88rem' }}>
-              L'essayage n'a pas pu être fait : {tryOnError}
+              {mode === 'real' ? 'L’essayage' : 'La photo'} n'a pas pu être faite : {tryOnError}
               <div style={{ marginTop: '10px' }}>
-                <button className="btn-sm btn-secondary" onClick={() => { setTryOnError(null); runTryOn(); }}>Réessayer</button>
+                <button className="btn-sm btn-secondary" onClick={() => run(mode, true)}>Réessayer</button>
               </div>
             </div>
           )}
@@ -95,7 +106,8 @@ export function MannequinView({ items }: Props) {
                 </div>
               )}
               <span style={{ fontSize: '0.78rem', color: 'var(--muted)', textAlign: 'center' }}>
-                Image générée par IA à partir de vos photos{beside.length ? ' ; les autres pièces sont montrées à côté' : ''}.
+                {mode === 'real' ? 'Image générée par IA à partir de vos photos' : 'Photo imaginée par IA d’après la description de vos pièces (moins fidèle que l’essayage)'}
+                {beside.length ? ' ; les autres pièces sont montrées à côté' : ''}.
               </span>
             </>
           )}

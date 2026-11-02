@@ -46,3 +46,9 @@ export const tryOnOutfit = (itemIds: string[], gender?: Gender) =>
   http<TryOnResult>('/outfits/tryon', {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ item_ids: itemIds, gender }),
   }).then(r => ({ ...r, imageUrl: assetUrl(r.imageUrl) ?? r.imageUrl }));
+
+/** Tenue « inspirée » (illimitée) : photos décrites par Gemini, image de mode générée par FLUX à partir de ces descriptions. */
+export const inspireOutfit = (itemIds: string[], gender?: Gender) =>
+  http<TryOnResult>('/outfits/inspire', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ item_ids: itemIds, gender }),
+  }).then(r => ({ ...r, imageUrl: assetUrl(r.imageUrl) ?? r.imageUrl }));

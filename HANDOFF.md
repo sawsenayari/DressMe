@@ -69,6 +69,7 @@ run_all.bat
 | `LLM_API_KEY` (Groq) | juges texte de l'Obj3 |
 | `GEMINI_API_KEY` | juges texte (prioritaire), **reconnaissance des photos ajoutées** (Obj1 en mode complet) |
 | `HF_TOKEN` | jeton gratuit Hugging Face (lecture) pour l'**essayage réaliste** ; sans jeton, quota anonyme très court |
+| `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN` | **tenue inspirée** (FLUX sur Cloudflare Workers AI, allocation gratuite quotidienne) |
 
 Sans clé : tout fonctionne en règles seules et l'Obj1 reconnaît par « voisins » (moins précis). `obj6_app\.env` (clé Groq de
 l'Obj6, facultative) est séparé. Vérifier avant chaque commit : aucun `.env`, aucune clé dans `git diff --cached`.
@@ -146,6 +147,10 @@ ni dans le modèle Obj5, ni dans le cache Obj1.
   appelés par leur adresse directe (`*.hf.space`), ce qui marche aussi avec `HF_HUB_OFFLINE=1`. Limites : avec
   OOTDiffusion, une jupe prend la longueur du pantalon du mannequin ; le quota gratuit d'un compte Hugging Face ne permet que quelques
   essayages par jour. Les photos partent chez Hugging Face.
+- **Tenue inspirée** (onglet « ✨ Inspirée », `POST /outfits/inspire`) : sans quota GPU. Gemini décrit chaque photo
+  (couleurs, matière, motif, coupe, longueur ; description en cache dans `tryon/desc_*.txt`, sinon champs de la fiche),
+  puis FLUX schnell (Cloudflare Workers AI) génère une photo de mode de la tenue. Image inspirée des photos, moins
+  fidèle que l’essayage ; même description du mannequin pour garder son allure d’une tenue à l’autre.
 - **Obj5** : profil et suggestions utilisent la taxonomie de référence (16 styles appris sur 423 fiches, espace
   d'attributs, pas FashionCLIP faute d'embeddings du catalogue) ; palette = part des pièces par couleur ; suggestions
   sans photos (catalogue de référence sans images) ; orientation Économie non évaluable sans prix.
