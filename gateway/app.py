@@ -181,7 +181,8 @@ NAME_NOUN = {
     "shoes": ("chaussures", "f", True), "sneakers": ("baskets", "f", True), "boots": ("bottes", "f", True),
     "heels": ("talons", "m", True), "sandals": ("sandales", "f", True), "flats": ("ballerines", "f", True),
     "bag": ("sac", "m", False), "scarf": ("écharpe", "f", False), "belt": ("ceinture", "f", False),
-    "hat": ("chapeau", "m", False), "cap": ("casquette", "f", False),
+    "hat": ("chapeau", "m", False), "cap": ("casquette", "f", False), "accessory": ("accessoire", "m", False),
+    "socks": ("chaussettes", "f", True), "tie": ("cravate", "f", False), "watch": ("montre", "f", False),
 }
 NAME_COLOUR = {   # (masculin, féminin, masc. pluriel, fém. pluriel)
     "black": ("noir", "noire", "noirs", "noires"), "white": ("blanc", "blanche", "blancs", "blanches"),
@@ -1162,8 +1163,6 @@ def _profile_notes(p):
     notes, ignored = [], p["n_items"] - p["n_items_used"]
     if ignored:
         notes.append(f"{ignored} pièce(s) non prise(s) en compte (doublon ou catégorie incertaine).")
-    if p["scores"]["economie"] is None:
-        notes.append("Indiquez le prix de vos pièces (Wardrobe → ✏️ Modifier) pour que l'orientation Économie soit évaluée.")
     if p["n_items_used"] < 10:
         notes.append(f"Seulement {p['n_items_used']} pièces analysées : profil encore peu stable.")
     for w in p.get("warnings") or []:
@@ -1221,7 +1220,8 @@ def profile_recommendations(slot: Optional[str] = None, k: int = 8, gender: Opti
     except Exception as e:
         log(f"Suggestions Obj5 indisponibles : {type(e).__name__}: {e}")
         raise HTTPException(503, "Les suggestions de style ne sont pas disponibles pour le moment.")
-    if gender not in ("Women", "Men"):   # par défaut : le genre le plus présent dans la garde-robe
+    auto = gender not in ("Women", "Men")
+    if auto:   # par défaut : le genre le plus présent dans la garde-robe
         g = [i.gender for i in wardrobe if i.gender in ("Women", "Men")]
         gender = max(set(g), key=g.count) if g else None
     owned = {(str(i.name).lower(), i.type, tuple(i.colour)) for i in wardrobe}
@@ -1229,16 +1229,24 @@ def profile_recommendations(slot: Optional[str] = None, k: int = 8, gender: Opti
              and (str(c.name).lower(), c.type, tuple(c.colour)) not in owned]
     k = max(1, min(k, 20))
     by_id = {c.id: c for c in cands}
-    recs, seen = [], set()
-    for r in recommend(prof, wardrobe, cands, model, 100, slot or None, None):   # une seule pièce par apparence
+    # « Toutes » : au plus 2 pièces par catégorie (le catalogue de référence homme compte 164 tenues traditionnelles
+    # sur 223 : elles occuperaient toutes les places) ; une seule pièce par apparence
+    per_slot = 2 if not slot else k
+    recs, seen, taken = [], set(), {}
+    for r in recommend(prof, wardrobe, cands, model, 400, slot or None, None):
         c = by_id[r.id]; sig = (str(c.name).lower(), c.type, tuple(c.colour))
-        if sig not in seen and len(recs) < k:
-            seen.add(sig); recs.append(r)
-    REASON = {"couleur neutre": "couleur neutre", "pièce basique": "pièce basique", "dans votre style dominant": "dans votre style dominant"}
-    return {"axis": AXIS.get(prof.persona, "mixte"), "gender": gender, "items": [
+        if sig in seen or taken.get(c.slot, 0) >= per_slot or len(recs) >= k:
+            continue
+        seen.add(sig); taken[c.slot] = taken.get(c.slot, 0) + 1; recs.append(r)
+    from collections import Counter
+    available = Counter(c.slot for c in cands)
+    return {"axis": AXIS.get(prof.persona, "mixte"), "gender": gender, "genderAuto": auto,
+            "available": dict(available), "items": [
         {"id": r.id, "name": name_fr(by_id[r.id].name) or by_id[r.id].name, "slot": by_id[r.id].slot, "type": by_id[r.id].type,
          "colour": list(by_id[r.id].colour), "usage": by_id[r.id].usage, "formality": by_id[r.id].formality,
-         "match": round(100 * max(0.0, min(1.0, r.score))), "reasons": [REASON.get(x, x) for x in r.reasons]}
+         "traditional": bool(by_id[r.id].traditional),
+         "match": round(100 * max(0.0, min(1.0, r.score))),
+         "reasons": [x for x in r.reasons if "prix" not in x]}   # pas de prix dans l'interface
         for r in recs]}
 
 

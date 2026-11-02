@@ -190,6 +190,7 @@ export interface StyleSuggestion {
   formality?: number;
   match: number; // score de classement : proximité avec la garde-robe + bonus de l'orientation (0-100)
   reasons: string[];
+  traditional?: boolean; // tenue traditionnelle (jebba, kaftan…)
 }
 
 /** DSO6 : écran « tenue du jour » complet (POST /outfits/recommend) */

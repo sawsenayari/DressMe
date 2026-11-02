@@ -6,7 +6,8 @@ import { colourLabel, slotLabel, typeLabel, usageLabel } from '../components/ui/
 import { useApp } from '../context/AppContext';
 
 // orientation calculée par l'Obj5 (persona)
-const AXIS_TITLE: Record<string, string> = { efficiency: 'Efficacité', economy: 'Économie', brand: 'Image', mixte: 'Équilibre' };
+const AXIS_TITLE: Record<string, string> = { efficiency: 'Efficacité', brand: 'Image', mixte: 'Équilibre' };
+const axisOf = (p: StyleProfile) => { const a = p.persona ?? p.axis; return a in AXIS_TITLE ? a : 'mixte'; };
 const FORMALITY = ['Décontracté', 'Quotidien soigné', 'Professionnel', 'Très habillé'];
 const SLOTS: Slot[] = ['top', 'bottom', 'onepiece', 'outer', 'footwear', 'bag', 'accessory'];
 const SWATCH: Record<string, string> = {
@@ -30,31 +31,41 @@ const styleLabel = (c?: string) => {
   return words.join(' · ').replace(/^./, x => x.toUpperCase());
 };
 
-// Bilan en phrases simples, tiré des résultats de l'Obj5
+// Bilan : une ligne par thème (icône, titre, valeur forte, détail), tiré des résultats de l'Obj5
 const PERSONA_TEXT: Record<string, string> = {
-  efficiency: "beaucoup de couleurs neutres et de pièces basiques : des tenues faciles et rapides à composer",
-  economy: 'des pièces plutôt abordables par rapport au catalogue',
+  efficiency: 'beaucoup de couleurs neutres et de pièces basiques : des tenues faciles et rapides à composer',
   brand: 'un style marqué et cohérent, avec des pièces habillées ou des couleurs fortes',
-  mixte: "un équilibre entre pièces pratiques et pièces qui affirment votre style",
+  mixte: 'un équilibre entre pièces pratiques et pièces qui affirment votre style',
 };
-function verdict(p: StyleProfile): string[] {
-  const out: string[] = [];
+type BilanRow = { icon: string; title: string; value: string; detail?: string; swatches?: string[]; warn?: boolean };
+function bilan(p: StyleProfile): BilanRow[] {
+  const rows: BilanRow[] = [];
   const slots = Object.entries(p.slotCounts ?? {}).sort((a, b) => (b[1] ?? 0) - (a[1] ?? 0));
-  if (p.nItems != null && slots.length)
-    out.push(`Votre garde-robe compte ${p.nItems} pièces, surtout des ${STYLE_WORDS[slots[0][0]] ?? slots[0][0]} (${slots[0][1]}).`);
-  const cols = (p.palette ?? []).slice(0, 2).map(c => colourLabel(c.color).toLowerCase());
-  if (cols.length) out.push(`Vos couleurs les plus présentes : ${cols.join(' et ')}.`);
-  if (p.diversityScore != null) {
-    const v = p.diversityScore >= 70 ? 'variée' : p.diversityScore >= 40 ? 'assez variée' : 'peu variée';
-    const f = p.formalityPref == null ? '' : `, de style plutôt ${FORMALITY[Math.round(p.formalityPref)].toLowerCase()}`;
-    out.push(`Elle est ${v} (${p.diversityScore} %)${f}.`);
-  }
-  const axis = p.persona ?? p.axis;
-  out.push(`Orientation ${AXIS_TITLE[axis]} : ${PERSONA_TEXT[axis]}.`);
+  if (p.nItems != null)
+    rows.push({ icon: '👚', title: 'Garde-robe', value: `${p.nItems} pièces`,
+                detail: slots.length ? `surtout des ${STYLE_WORDS[slots[0][0]] ?? slots[0][0]} (${slots[0][1]})` : undefined });
+  const pal = (p.palette ?? []).slice(0, 3);
+  if (pal.length)
+    rows.push({ icon: '🎨', title: 'Couleurs', value: pal.slice(0, 2).map(c => colourLabel(c.color).toLowerCase()).join(' et '),
+                detail: 'les plus présentes', swatches: pal.map(c => c.color) });
+  if (p.diversityScore != null)
+    rows.push({ icon: '🌈', title: 'Variété', value: p.diversityScore >= 70 ? 'variée' : p.diversityScore >= 40 ? 'assez variée' : 'peu variée',
+                detail: `${p.diversityScore} % : vos pièces se répartissent entre plusieurs styles` });
+  if (p.formalityPref != null)
+    rows.push({ icon: '👔', title: 'Style', value: FORMALITY[Math.round(p.formalityPref)].toLowerCase(),
+                detail: `formalité moyenne ${p.formalityPref.toFixed(1)} sur 3` });
+  const axis = axisOf(p);
+  rows.push({ icon: '🧭', title: 'Orientation', value: AXIS_TITLE[axis], detail: PERSONA_TEXT[axis] });
   const missing = (['top', 'bottom', 'footwear'] as Slot[]).filter(s => p.slotCounts && !p.slotCounts[s]);
-  if (p.slotCounts && missing.length) out.push(`À compléter : ${missing.map(s => STYLE_WORDS[s]).join(', ')}.`);
-  return out;
+  if (p.slotCounts && missing.length)
+    rows.push({ icon: '➕', title: 'À compléter', value: missing.map(s => STYLE_WORDS[s]).join(', '), warn: true });
+  return rows;
 }
+// libellé d'une suggestion : une « pièce unique » traditionnelle (jebba, kaftan…) n'est pas une robe
+const SLOT_ICON: Record<string, string> = { top: '👚', bottom: '👖', onepiece: '👗', outer: '🧥', footwear: '👞', bag: '👜', accessory: '🧣' };
+const suggSlot = (slot: string, traditional?: boolean) => (slot === 'onepiece' && traditional ? 'Tenue traditionnelle' : slotLabel(slot));
+const chipSlot = (slot: Slot, gender?: string | null) =>
+  slot === 'onepiece' ? (gender === 'Men' ? 'Tenue traditionnelle' : 'Robe / tenue traditionnelle') : slotLabel(slot);
 
 const bar = (value: number, color: string) => (
   <div style={{ width: '100%', height: '8px', background: '#FFFFFF', borderRadius: '999px', margin: '10px 0 8px', overflow: 'hidden' }}>
@@ -116,10 +127,23 @@ export default function Profile() {
           {/* Bilan */}
           {live && (
             <section className="card card-lavender" aria-label="Bilan de votre garde-robe" style={{ marginBottom: '20px', padding: '18px 22px' }}>
-              <h3 style={{ fontSize: '1.1rem', marginBottom: '8px' }}>🧾 Bilan de votre garde-robe</h3>
-              <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '0.92rem', lineHeight: 1.7 }}>
-                {verdict(profile).map(t => <li key={t}>{t}</li>)}
-              </ul>
+              <h3 style={{ fontSize: '1.1rem', marginBottom: '12px' }}>🧾 Bilan de votre garde-robe</h3>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '10px' }}>
+                {bilan(profile).map(r => (
+                  <div key={r.title} style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', background: '#FFFFFF', borderRadius: '16px',
+                                              padding: '12px 14px', border: r.warn ? '1px solid var(--pastel-butter-deep)' : '1px solid var(--line)' }}>
+                    <span aria-hidden style={{ fontSize: '1.5rem', lineHeight: 1 }}>{r.icon}</span>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--muted)' }}>{r.title}</div>
+                      <div style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--ink)', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                        {r.swatches?.map(c => <span key={c} aria-hidden style={{ width: '14px', height: '14px', borderRadius: '50%', background: swatch(c), border: '1px solid var(--line)' }} />)}
+                        <span style={{ textTransform: 'none' }}>{r.value.charAt(0).toUpperCase() + r.value.slice(1)}</span>
+                      </div>
+                      {r.detail && <div style={{ fontSize: '0.8rem', color: 'var(--muted)', lineHeight: 1.4 }}>{r.detail}</div>}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </section>
           )}
 
@@ -148,7 +172,7 @@ export default function Profile() {
               {[
                 { v: pct(profile.diversityScore), l: 'Variété de la garde-robe' },
                 { v: formality == null ? '—' : `${formality.toFixed(1)} / 3`, l: `Formalité : ${formality == null ? '—' : FORMALITY[Math.round(formality)]}` },
-                { v: profile.persona ? AXIS_TITLE[profile.persona] : AXIS_TITLE[profile.axis], l: 'Orientation calculée' },
+                { v: AXIS_TITLE[axisOf(profile)], l: 'Orientation calculée' },
                 ...(live && profile.nItems != null ? [{ v: `${profile.nItemsUsed} / ${profile.nItems}`, l: 'Pièces analysées' }] : []),
               ].map(x => (
                 <div key={x.l} style={{ background: '#FFFFFF', padding: '12px 16px', borderRadius: '16px', border: '1px solid var(--line)', textAlign: 'center' }}>
@@ -206,14 +230,22 @@ export default function Profile() {
           {live && (
             <section style={{ marginBottom: '28px' }}>
               <h3 style={h3}>🛍️ Pièces qui prolongent votre style</h3>
-              <p style={sub}>Choisies dans un catalogue de référence, proches de votre garde-robe et classées selon votre orientation ({AXIS_TITLE[profile.persona ?? profile.axis]}).</p>
-              <div className="chips" role="group" aria-label="Catégorie">
-                <button className="chip" aria-pressed={slot === ''} onClick={() => setSlot('')}>Toutes</button>
-                {SLOTS.map(s => <button key={s} className="chip" aria-pressed={slot === s} onClick={() => setSlot(s)}>{slotLabel(s)}</button>)}
-              </div>
+              <p style={sub}>
+                Choisies dans un catalogue de référence, proches de votre garde-robe et classées selon votre orientation
+                ({AXIS_TITLE[axisOf(profile)]}){sugg.data?.gender && <> · pour <strong>{sugg.data.gender === 'Men' ? 'homme' : 'femme'}</strong>
+                {sugg.data.genderAuto ? ' (déduit de votre garde-robe)' : ''}</>}.
+              </p>
               <div className="chips" role="group" aria-label="Pour">
                 {([['', 'Automatique'], ['Women', '👩 Femme'], ['Men', '👨 Homme']] as const).map(([g, l]) => (
                   <button key={g} className="chip" style={{ fontSize: '0.8rem' }} aria-pressed={gender === g} onClick={() => setGender(g)}>{l}</button>
+                ))}
+              </div>
+              <div className="chips" role="group" aria-label="Catégorie">
+                <button className="chip" aria-pressed={slot === ''} onClick={() => setSlot('')}>Toutes</button>
+                {SLOTS.filter(s => !sugg.data?.available || (sugg.data.available[s] ?? 0) > 0 || slot === s).map(s => (
+                  <button key={s} className="chip" aria-pressed={slot === s} onClick={() => setSlot(s)}>
+                    {s === 'onepiece' && sugg.data?.gender === 'Men' ? '👘' : SLOT_ICON[s]} {chipSlot(s, sugg.data?.gender)}
+                  </button>
                 ))}
               </div>
               {sugg.loading && <p role="status" style={sub}>Recherche de pièces…</p>}
@@ -221,16 +253,32 @@ export default function Profile() {
               {sugg.data && (sugg.data.items.length ? (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px' }}>
                   {sugg.data.items.map(it => (
-                    <article key={it.id} className="card" style={{ background: '#FFFFFF', padding: '14px 16px', display: 'grid', gap: '6px', alignContent: 'start' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        {it.colour.map(c => <span key={c} aria-hidden title={colourLabel(c)} style={{ width: '18px', height: '18px', borderRadius: '50%', background: swatch(c), border: '1px solid var(--line)' }} />)}
-                        <strong style={{ fontSize: '0.95rem' }}>{it.name || typeLabel(it.type)}</strong>
+                    <article key={it.id} className="card" style={{ background: '#FFFFFF', padding: '14px 16px', display: 'grid', gap: '8px', alignContent: 'start' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div aria-hidden style={{ width: '52px', height: '52px', flex: 'none', borderRadius: '14px', display: 'grid', placeItems: 'center', fontSize: '26px',
+                                                   background: `linear-gradient(135deg, ${swatch(it.colour[0] ?? 'grey')} 0%, ${swatch(it.colour[1] ?? it.colour[0] ?? 'grey')} 100%)`,
+                                                   border: '1px solid var(--line)' }}>
+                          <span style={{ filter: 'drop-shadow(0 1px 2px rgba(255,255,255,.9))' }}>{it.slot === 'onepiece' && it.traditional ? '👘' : SLOT_ICON[it.slot] ?? '🛍️'}</span>
+                        </div>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--ink)' }}>{it.name || typeLabel(it.type)}</div>
+                          <div style={{ fontSize: '0.78rem', color: 'var(--muted)' }}>
+                            {[suggSlot(it.slot, it.traditional), typeLabel(it.type)].filter((x, i, a) => x && x !== 'Autre' && a.indexOf(x) === i).join(' · ')}
+                            {it.usage ? ` · ${usageLabel(it.usage)}` : ''}
+                          </div>
+                        </div>
                       </div>
-                      <span style={{ fontSize: '0.8rem', color: 'var(--muted)' }}>
-                        {slotLabel(it.slot)} · {typeLabel(it.type)} · {it.colour.map(colourLabel).join(' + ')}{it.usage ? ` · ${usageLabel(it.usage)}` : ''}
-                      </span>
-                      <span style={{ fontSize: '0.82rem' }}>Correspondance avec votre style : <strong>{it.match} %</strong></span>
-                      {it.reasons.length > 0 && <span style={{ fontSize: '0.78rem', color: 'var(--pastel-mint-deep)' }}>✓ {it.reasons.join(' · ')}</span>}
+                      <div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', color: 'var(--muted)' }}>
+                          <span>Correspondance avec votre style</span><strong style={{ color: 'var(--ink)' }}>{it.match} %</strong>
+                        </div>
+                        {bar(it.match, 'var(--pastel-mint-deep)')}
+                      </div>
+                      {it.reasons.length > 0 && (
+                        <div className="chips" style={{ marginBottom: 0, gap: '6px' }}>
+                          {it.reasons.map(r => <span key={r} className="chip-tag chip-tag-mint" style={{ fontSize: '0.72rem' }}>✓ {r}</span>)}
+                        </div>
+                      )}
                     </article>
                   ))}
                 </div>

@@ -176,6 +176,10 @@ def test_profile_small_wardrobe_uses_reference_model(tmp_path, monkeypatch):
     r = c.get("/profile/recommendations", params={"k": 5}); assert r.status_code == 200, r.text
     items = r.json()["items"]; assert 0 < len(items) <= 5 and not owned & {x["id"] for x in items}
     assert len({(x["name"], x["type"], tuple(x["colour"])) for x in items}) == len(items)
+    from collections import Counter
+    assert max(Counter(x["slot"] for x in items).values()) <= 2                     # « Toutes » : 2 pièces au plus par catégorie
+    assert all("traditional" in x and not any("prix" in y for y in x["reasons"]) for x in items)   # pas de prix affiché
+    assert r.json()["available"] and r.json()["genderAuto"] is True
     shoes = c.get("/profile/recommendations", params={"slot": "footwear", "k": 3, "gender": "Women"}).json()
     assert shoes["gender"] == "Women" and all(x["slot"] == "footwear" for x in shoes["items"])
     assert c.get("/profile/recommendations").json()["axis"] in ("efficiency", "economy", "brand", "mixte")

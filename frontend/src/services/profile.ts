@@ -9,5 +9,6 @@ export const getStyleSuggestions = (slot?: Slot, gender?: Gender, k = 8) => {
   const q = new URLSearchParams({ k: String(k) });
   if (slot) q.set('slot', slot);
   if (gender) q.set('gender', gender);
-  return http<{ axis: StyleAxis; gender: Gender | null; items: StyleSuggestion[] }>(`/profile/recommendations?${q}`);
+  return http<{ axis: StyleAxis; gender: Gender | null; genderAuto?: boolean; available?: Partial<Record<Slot, number>>;
+                items: StyleSuggestion[] }>(`/profile/recommendations?${q}`);
 };
