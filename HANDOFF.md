@@ -112,7 +112,8 @@ ni dans le modèle Obj5, ni dans le cache Obj1.
 - **Catalogue par défaut sans photos** : `obj5_profil/data/wardrobe.json` (423 fiches) n'a ni images ni embeddings ;
   utiliser le store de démo de l'Obj1 (section 3) ou récupérer le `store/` du passage Colab de l'Obj1.
 - **Découpage (module de l'Obj6, dans la passerelle)** : SegFormer `mattmdjaga/segformer_b2_clothes` + rembg `u2netp`
-  (téléchargés au premier usage, 4,6 Mo pour u2netp ; rembg sert aussi à l'Obj1 avec `u2net`, 176 Mo). Bon sur les photos
+  (téléchargés au premier usage, 4,6 Mo pour u2netp), seulement sur clic « Améliorer la photo » : « Analyser la photo »
+  envoie la photo entière à l'Obj1 (découpeur de l'Obj1 en mode « none », sans détourage). Bon sur les photos
   portées occidentales et les photos à plat ; approximatif sur les tenues traditionnelles portées (l'utilisateur peut
   garder la photo d'origine). Photo produit sur fond clair : pas d'étape.
 - **Obj1** : une pièce traditionnelle est toujours rangée en « robe / pièce unique » ; chaleur et formalité sont des

@@ -644,13 +644,10 @@ def add_item(image: UploadFile = File(...), crop: Optional[UploadFile] = File(No
             import inspect
             if slot_hint in SLOTS and "slot_hint" in inspect.signature(svc.recognize).parameters:
                 kw = dict(slot_hint=slot_hint)   # catégorie trouvée par le découpage (si le service de l'Obj1 la prend)
-        elif cropper is not None:  # vrai service : une seule pièce par photo (la plus grande)
-            try:
-                piece = cropper.crop(raw, strategy="main")[0]
-            except Exception as e:  # modèle de segmentation indisponible : photo entière, signalée
-                print(f"[obj1] découpe impossible ({type(e).__name__}) : photo entière.", file=sys.stderr)
-                piece = cropper.crop(raw, mode="none")[0]
-                piece.quality = {"ok": False, "reasons": ["crop_unavailable"]}
+        elif cropper is not None:
+            # pas d'amélioration demandée : photo entière, seulement mise au format de l'Obj1 (mode « none » : ni
+            # segmentation ni détourage). Le découpage ne se fait que sur demande (« Améliorer la photo », /wardrobe/crop).
+            piece = cropper.crop(raw, mode="none")[0]
             src = Path(tmp) / "piece.png"
             piece.image.save(src)
             kw = dict(crop_reasons=(piece.quality or {}).get("reasons"), slot_hint=piece.slot_hint)
