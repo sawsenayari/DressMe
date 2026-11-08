@@ -84,7 +84,7 @@ Automatique (chaque dossier séparément, venv activé) :
 | `obj1_reconnaissance` | `python -m pytest -q` | 30 |
 | `obj2_compat` | `python -m pytest -q tests` puis `python recette.py` | 13 + recette PASS |
 | `obj3_jury` | `python -m pytest -q` | 11 |
-| `obj4_manques` | `python -m pytest -q` | 53 (+ 2 ignorés) |
+| `obj4_manques` | `python -m pytest -q` | 54 (+ 2 ignorés) |
 | `obj5_profil` | `python -m pytest -q tests` | 11 |
 | `obj6_app` | `.venv\Scripts\python -m pytest -q` | 17 |
 | `frontend` | `npx tsc --noEmit` puis `npm run build` | sans erreur |
