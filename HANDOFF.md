@@ -82,7 +82,7 @@ Automatique (chaque dossier séparément, venv activé) :
 |---|---|---|
 | `gateway` | `python -m pytest -q tests` | 20 réussis (≈ 9 min) |
 | `obj1_reconnaissance` | `python -m pytest -q` | 30 |
-| `obj2_compat` | `python -m pytest -q tests` puis `python recette.py` | 13 + recette PASS |
+| `obj2_compat` | `python -m pytest -q tests` puis `python recette.py` | 20 + recette PASS |
 | `obj3_jury` | `python -m pytest -q` | 11 |
 | `obj4_manques` | `python -m pytest -q` | 54 (+ 2 ignorés) |
 | `obj5_profil` | `python -m pytest -q tests` | 11 |
@@ -150,6 +150,8 @@ ni dans le modèle Obj5, ni dans le cache Obj1.
 - **Conseil de la styliste IA** (« Ça va avec ? », bouton « 💬 Conseil de la styliste IA », `POST /compatibility/advice`) :
   couche LLM de l'Obj2. Le score reste celui du PairMLP ; Gemini vision voit la photo et reçoit les faits calculés (verdict,
   pièces qui vont / à éviter, doublon) ; sortie JSON vérifiée par le code (ids hors liste retirés), en cache par photo.
+  Module `obj2_compat/stylist/` : prompts versionnés (v1 gelée, v2 par défaut), schéma Pydantic, garde-fous, relance si
+  JSON invalide, traces JSONL (`users_data/traces/stylist.jsonl`), banc `python -m stylist.evaluate` (voir son README).
 - **Tenue inspirée** (onglet « ✨ Inspirée », `POST /outfits/inspire`) : sans quota GPU. Gemini décrit chaque photo
   (couleurs, matière, motif, coupe, longueur ; description en cache dans `tryon/desc_*.txt`, sinon champs de la fiche),
   puis FLUX schnell (Cloudflare Workers AI) génère une photo de mode de la tenue. Image inspirée des photos, moins

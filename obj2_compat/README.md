@@ -40,3 +40,7 @@ Entrée : {"a": [Item...], "b": [Item...]}   Sortie : {"scores01": [[...]], "ver
 - Fiche sans embedding -> erreur 422 explicite. Calculer les embeddings avec `python embed_cards.py DOSSIER_DES_FICHES`
   (FashionCLIP, image_crop sinon image ; NON testé avec le vrai modèle dans mon environnement).
 - Recette : 11 PASS, 0 FAIL, 1 SKIP (le rejeu du test réel demande real_embeddings.npz et resultat_5B.csv) ; 13 tests automatiques.
+
+## Styliste IA (couche LLM)
+Conseil sur photo qui explique le score sans le modifier : voir `stylist/README.md`
+(prompts versionnés, garde-fous, évaluation v1 / v2). 7 tests de plus (`tests/test_stylist.py`).

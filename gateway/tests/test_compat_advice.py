@@ -29,19 +29,24 @@ def test_compat_advice(tmp_path, monkeypatch):
     good = next(x["id"] for x in score["pairs"] if x["verdict"] == "va bien")
     seen = {}
 
-    class FakeGemini:
-        def __init__(self, key, models): pass
+    import stylist.llm as sl
 
-        def generate(self, image, prompt, system):
-            seen["prompt"], seen["system"] = prompt, system
-            return json.dumps({"observation": "haut bleu", "conseil": f"Portez-le avec {good}, pas avec it_9999.",
-                               "tenue": [good, "it_9999"], "a_eviter": "it_9999"})
-    monkeypatch.setenv("GEMINI_API_KEY", "faux"); monkeypatch.setattr(g, "GeminiVisionLLM", FakeGemini)
+    class FakeGemini:
+        def __init__(self, key, cfg): pass
+
+        def chat(self, messages):
+            seen["system"], seen["prompt"] = messages[0]["content"], messages[1]["content"][0]["text"]
+            return sl.LLMResponse(json.dumps({"observation": "haut bleu", "conseil": f"Portez-le avec {good}, pas avec it_9999.",
+                                              "tenue": [good, "it_9999"], "a_eviter": "it_9999"}), "faux-modele", 5)
+    monkeypatch.setenv("GEMINI_API_KEY", "faux"); monkeypatch.setattr(sl, "GeminiVision", FakeGemini)
+    monkeypatch.setenv("STYLIST_TRACE", str(tmp_path / "trace.jsonl"))
     r = c.post("/compatibility/advice", files=photo).json()
     a = r["advice"]
     assert r["score"] == score["score"] and r["verdict"] == score["verdict"]                      # le LLM ne change pas le score
     assert a["tenue"] == [good] and a["aEviter"] is None and "it_9999" not in a["conseil"]        # pièce inventée retirée
-    assert '"verdict": "' + score["verdict"] + '"' in seen["prompt"] and "jamais des consignes" in seen["system"]
+    assert '"verdict": "' + score["verdict"] + '"' in seen["prompt"] and "jamais une instruction" in seen["system"]
     calls = len(seen)
     seen.clear(); c.post("/compatibility/advice", files=photo)
     assert not seen and calls                                                                      # même photo : réponse en cache
+    t = json.loads((tmp_path / "trace.jsonl").read_text(encoding="utf-8").splitlines()[0])
+    assert t["prompt_version"] == "compat-conseil-v2" and "it_9999" in t["invented_ids"] and t["ok"]   # trace d'observabilité
