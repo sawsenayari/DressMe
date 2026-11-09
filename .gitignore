@@ -49,3 +49,4 @@ gateway/users_data/
 
 # fichiers de verrou de Word / Excel
 ~$*
+docs/
